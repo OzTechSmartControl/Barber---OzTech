@@ -1032,9 +1032,12 @@ export default function App() {
     setLoading(true);
     try {
       const isAdm = profile.role === "admin";
+      const bid = profile.barber_id;
       const attQuery = isAdm
         ? "select=*&order=date.desc,time.desc"
-        : `select=*&barber_id=eq.${profile.barber_id}&order=date.desc,time.desc`;
+        : bid
+          ? `select=*&barber_id=eq.${bid}&order=date.desc,time.desc`
+          : "select=*&barber_id=eq.-1";
 
       const [brs, cls, svcs, atts, exps] = await Promise.all([
         api.list("barbers",     "select=*&order=name",     tok),
@@ -1044,13 +1047,16 @@ export default function App() {
         isAdm ? api.list("expenses", "select=*&order=date.desc", tok) : Promise.resolve([]),
       ]);
 
-      setBarbers(brs.map(toBarber));
-      setClients(cls.map(toClient));
-      setServices(svcs.map(toService));
-      setAttendances(atts.map(toAtt));
-      setExpenses(exps.map(toExpense));
+      setBarbers(Array.isArray(brs) ? brs.map(toBarber) : []);
+      setClients(Array.isArray(cls) ? cls.map(toClient) : []);
+      setServices(Array.isArray(svcs) ? svcs.map(toService) : []);
+      setAttendances(Array.isArray(atts) ? atts.map(toAtt) : []);
+      setExpenses(Array.isArray(exps) ? exps.map(toExpense) : []);
       setDataLoaded(true);
-    } catch(e) { console.error(e); }
+    } catch(e) {
+      console.error("loadData error:", e);
+      setAuth(null);
+    }
     setLoading(false);
   }, []);
 
