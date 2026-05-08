@@ -586,7 +586,7 @@ function ClientsView({ clients, setClients, attendances, services, token, isAdmi
                     <td style={{ padding:"10px 0.75rem", color:T.success, fontWeight:600 }}>{R$(spent)}</td>
                     <td style={{ padding:"10px 0.75rem", color:T.muted }}>{hist.length}×</td>
                     <td style={{ padding:"10px 0.75rem", textAlign:"right" }}>
-                      <button onClick={e=>openEdit(c,e)} style={{ background:"none", border:"none", color:T.muted, cursor:"pointer", display:"inline-flex" }}><Edit2 size={13}/></button>
+                      {isAdmin && <button onClick={e=>openEdit(c,e)} style={{ background:"none", border:"none", color:T.muted, cursor:"pointer", display:"inline-flex" }}><Edit2 size={13}/></button>}
                     </td>
                   </tr>
                 );
@@ -601,7 +601,10 @@ function ClientsView({ clients, setClients, attendances, services, token, isAdmi
             <Card>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"1rem" }}>
                 <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:20, color:T.text }}>{selected.name}</div>
-                <button onClick={()=>setSelected(null)} style={{ background:"none", border:"none", color:T.muted, cursor:"pointer" }}><X size={16}/></button>
+                <div style={{ display:"flex", gap:6 }}>
+                  {isAdmin && <button onClick={e=>openEdit(selected,e)} style={{ background:"none", border:"none", color:T.muted, cursor:"pointer", display:"inline-flex" }}><Edit2 size={15}/></button>}
+                  <button onClick={()=>setSelected(null)} style={{ background:"none", border:"none", color:T.muted, cursor:"pointer" }}><X size={16}/></button>
+                </div>
               </div>
               <div style={{ fontSize:13, marginBottom:"1rem" }}>
                 {selected.phone&&<div style={{ color:T.muted, marginBottom:5, display:"flex", alignItems:"center", gap:6 }}><Phone size={13}/>{selected.phone}</div>}
