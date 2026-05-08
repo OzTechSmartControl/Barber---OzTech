@@ -968,48 +968,49 @@ function ReportsView({ attendances, clients, services, barbers, expenses }) {
       const el = document.getElementById("pdf-content");
       if (!el) { setGenerating(""); return; }
 
-      const html = el.innerHTML;
-      const win = window.open("", "_blank", "width=900,height=700");
-      win.document.write(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="UTF-8"/>
-          <title>${name}</title>
-          <style>
-            * { box-sizing: border-box; margin: 0; padding: 0; }
-            body { font-family: Arial, sans-serif; color: #111; background: white; padding: 24px; }
-            table { width: 100%; border-collapse: collapse; font-size: 13px; }
-            th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid #eee; }
-            thead tr { background: #f5f5f5; }
-            h1 { font-size: 22px; font-weight: 700; margin-bottom: 2px; }
-            .header { display: flex; justify-content: space-between; border-bottom: 2px solid #c9963b; padding-bottom: 12px; margin-bottom: 20px; }
-            .meta { text-align: right; font-size: 13px; color: #555; }
-            .kpis { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 20px; }
-            .kpi { border: 1px solid #ddd; border-radius: 6px; padding: 10px 14px; text-align: center; }
-            .kpi-label { font-size: 11px; color: #888; text-transform: uppercase; margin-bottom: 4px; }
-            .kpi-val { font-size: 20px; font-weight: 700; }
-            .section-title { font-size: 14px; font-weight: 700; margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 4px; margin-top: 20px; }
-            .total-row { background: #f0f0f0; font-weight: 700; border-top: 2px solid #ddd; }
-            .gold { color: #c9963b; }
-            .stripe { background: #fafafa; }
-            @page { margin: 1cm; size: A4; }
-            @media print { body { padding: 0; } }
-          </style>
-        </head>
-        <body>${html}</body>
-        </html>
-      `);
-      win.document.close();
-      win.onload = () => {
-        setTimeout(() => {
-          win.focus();
-          win.print();
-          win.close();
-        }, 400);
-      };
+      // Inject print styles directly into current page
+      const styleId = "pdf-print-style";
+      const existing = document.getElementById(styleId);
+      if (existing) existing.remove();
+
+      const style = document.createElement("style");
+      style.id = styleId;
+      style.textContent = `
+        @media print {
+          body > * { display: none !important; }
+          #pdf-print-root { display: block !important; position: fixed; inset: 0; background: white; z-index: 99999; overflow: auto; padding: 24px; font-family: Arial, sans-serif; color: black; }
+          @page { margin: 1cm; size: A4; }
+        }
+      `;
+      document.head.appendChild(style);
+
+      // Create print container
+      const printRoot = document.createElement("div");
+      printRoot.id = "pdf-print-root";
+      printRoot.style.cssText = "display:none";
+      printRoot.innerHTML = `
+        <style>
+          #pdf-print-root * { color: black !important; background: white !important; box-shadow: none !important; }
+          #pdf-print-root table { width: 100%; border-collapse: collapse; font-size: 13px; }
+          #pdf-print-root th, #pdf-print-root td { padding: 7px 10px; text-align: left; border-bottom: 1px solid #eee; }
+          #pdf-print-root thead tr { background: #f5f5f5 !important; }
+          #pdf-print-root .total-row { background: #f0f0f0 !important; font-weight: 700; border-top: 2px solid #ddd; }
+          #pdf-print-root .stripe { background: #fafafa !important; }
+        </style>
+        ${el.innerHTML}
+      `;
+      document.body.appendChild(printRoot);
+
+      const prevTitle = document.title;
+      document.title = name;
+
+      window.print();
+
+      document.title = prevTitle;
+      document.body.removeChild(printRoot);
+      style.remove();
       setGenerating("");
-    }, 200);
+    }, 300);
   };
 
   // ── REPORT RENDERERS ────────────────────────────────────
