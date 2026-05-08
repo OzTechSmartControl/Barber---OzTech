@@ -1129,12 +1129,28 @@ function ReportsView({ attendances, clients, services, barbers, expenses }) {
   return (
     <div>
       <style>{`
+        #report-print-area {
+          position: absolute;
+          left: -9999px;
+          top: -9999px;
+          visibility: hidden;
+        }
         @media print {
-          body > * { display: none !important; }
-          #report-print-area { display: block !important; position: fixed; inset: 0; background: white; z-index: 99999; overflow: visible; }
+          body * { visibility: hidden !important; }
+          #report-print-area,
+          #report-print-area * { visibility: visible !important; }
+          #report-print-area {
+            position: fixed !important;
+            inset: 0 !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            background: white !important;
+            z-index: 99999 !important;
+            padding: 0 !important;
+          }
           @page { margin: 1.5cm; size: A4; }
         }
-        #report-print-area { display: none; }
       `}</style>
 
       {preview && (
