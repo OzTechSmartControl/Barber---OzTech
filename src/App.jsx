@@ -962,33 +962,54 @@ function ReportsView({ attendances, clients, services, barbers, expenses }) {
   const mRev   = mAtts.reduce((s, a) => s + a.price, 0);
   const mExpT  = mExp.reduce((s, e) => s + e.amount, 0);
 
-  const injectPrintStyles = () => {
-    const existing = document.getElementById("pdf-print-style");
-    if (existing) existing.remove();
-    const style = document.createElement("style");
-    style.id = "pdf-print-style";
-    style.textContent = `
-      @media print {
-        body * { visibility: hidden !important; }
-        #pdf-content, #pdf-content * { visibility: visible !important; }
-        #pdf-content { position: fixed; left: 0; top: 0; width: 100%; background: white !important; color: black !important; font-family: Arial, sans-serif; padding: 24px; box-sizing: border-box; }
-        #pdf-content * { color: black !important; background: white !important; border-color: #ddd !important; }
-        .no-print { display: none !important; }
-        @page { margin: 1cm; size: A4; }
-      }
-    `;
-    document.head.appendChild(style);
-  };
-
   const printReport = (id, name) => {
     setGenerating(id);
-    injectPrintStyles();
     setTimeout(() => {
-      document.title = name;
-      window.print();
-      document.title = "Barber Manager";
+      const el = document.getElementById("pdf-content");
+      if (!el) { setGenerating(""); return; }
+
+      const html = el.innerHTML;
+      const win = window.open("", "_blank", "width=900,height=700");
+      win.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8"/>
+          <title>${name}</title>
+          <style>
+            * { box-sizing: border-box; margin: 0; padding: 0; }
+            body { font-family: Arial, sans-serif; color: #111; background: white; padding: 24px; }
+            table { width: 100%; border-collapse: collapse; font-size: 13px; }
+            th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid #eee; }
+            thead tr { background: #f5f5f5; }
+            h1 { font-size: 22px; font-weight: 700; margin-bottom: 2px; }
+            .header { display: flex; justify-content: space-between; border-bottom: 2px solid #c9963b; padding-bottom: 12px; margin-bottom: 20px; }
+            .meta { text-align: right; font-size: 13px; color: #555; }
+            .kpis { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 20px; }
+            .kpi { border: 1px solid #ddd; border-radius: 6px; padding: 10px 14px; text-align: center; }
+            .kpi-label { font-size: 11px; color: #888; text-transform: uppercase; margin-bottom: 4px; }
+            .kpi-val { font-size: 20px; font-weight: 700; }
+            .section-title { font-size: 14px; font-weight: 700; margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 4px; margin-top: 20px; }
+            .total-row { background: #f0f0f0; font-weight: 700; border-top: 2px solid #ddd; }
+            .gold { color: #c9963b; }
+            .stripe { background: #fafafa; }
+            @page { margin: 1cm; size: A4; }
+            @media print { body { padding: 0; } }
+          </style>
+        </head>
+        <body>${html}</body>
+        </html>
+      `);
+      win.document.close();
+      win.onload = () => {
+        setTimeout(() => {
+          win.focus();
+          win.print();
+          win.close();
+        }, 400);
+      };
       setGenerating("");
-    }, 300);
+    }, 200);
   };
 
   // ── REPORT RENDERERS ────────────────────────────────────
