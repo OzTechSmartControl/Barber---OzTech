@@ -691,12 +691,25 @@ function BarbersView({ barbers, setBarbers, attendances, token }) {
         const rows = await api.insert("barbers", body, token);
         const newBarber = toBarber(rows[0]);
         setBarbers(bs=>[...bs, newBarber]);
+
+        // Vincular perfil via UPSERT — funciona mesmo se o trigger ainda não criou o perfil
         if (userId) {
-          await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${userId}`, {
+          // Aguarda o trigger criar o perfil
+          await new Promise(r => setTimeout(r, 800));
+          // Tenta PATCH primeiro (perfil já existe via trigger)
+          const patchRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${userId}`, {
             method: "PATCH",
             headers: hdr(token),
             body: JSON.stringify({ barber_id: newBarber.id, role: "barber" }),
           });
+          // Se PATCH falhar ou não atualizar nada, faz UPSERT
+          if (!patchRes.ok) {
+            await fetch(`${SUPABASE_URL}/rest/v1/profiles`, {
+              method: "POST",
+              headers: { ...hdr(token), Prefer: "resolution=merge-duplicates,return=representation" },
+              body: JSON.stringify({ id: userId, barber_id: newBarber.id, role: "barber" }),
+            });
+          }
         }
       }
       setShowModal(false);
