@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Scissors, Users, Award, Tag, DollarSign,
   Menu, X, Plus, Search, Edit2, Trash2, Check, TrendingUp,
   Phone, LogOut, Lock, Mail, CreditCard, Banknote, Smartphone,
-  BadgePercent, AlertCircle, RefreshCw
+  BadgePercent, AlertCircle, RefreshCw, FileText, Download, Calendar
 } from "lucide-react";
 
 (() => {
@@ -251,7 +251,7 @@ const LoadingScreen = () => (
 );
 
 // ── DASHBOARD ─────────────────────────────────────────────────
-function Dashboard({ attendances, clients, services, barbers, isAdmin, myBarberId }) {
+function Dashboard({ attendances, clients, services, barbers, isAdmin, myBarberId, onGoReports }) {
   const todayStr   = today();
   const monthStr   = month();
   const myAtts     = isAdmin ? attendances : attendances.filter(a => a.barberId === myBarberId);
@@ -951,6 +951,286 @@ function FinancialView({ attendances, expenses, setExpenses, token }) {
   );
 }
 
+
+// ── REPORTS VIEW ─────────────────────────────────────────────
+function ReportsView({ attendances, clients, services, barbers, expenses }) {
+  const [selMonth, setSelMonth] = useState(month());
+  const [generating, setGenerating] = useState("");
+
+  const mAtts  = attendances.filter(a => a.date.startsWith(selMonth));
+  const mExp   = expenses.filter(e => e.date.startsWith(selMonth));
+  const mRev   = mAtts.reduce((s, a) => s + a.price, 0);
+  const mExpT  = mExp.reduce((s, e) => s + e.amount, 0);
+
+  const injectPrintStyles = () => {
+    const existing = document.getElementById("pdf-print-style");
+    if (existing) existing.remove();
+    const style = document.createElement("style");
+    style.id = "pdf-print-style";
+    style.textContent = `
+      @media print {
+        body * { visibility: hidden !important; }
+        #pdf-content, #pdf-content * { visibility: visible !important; }
+        #pdf-content { position: fixed; left: 0; top: 0; width: 100%; background: white !important; color: black !important; font-family: Arial, sans-serif; padding: 24px; box-sizing: border-box; }
+        #pdf-content * { color: black !important; background: white !important; border-color: #ddd !important; }
+        .no-print { display: none !important; }
+        @page { margin: 1cm; size: A4; }
+      }
+    `;
+    document.head.appendChild(style);
+  };
+
+  const printReport = (id, name) => {
+    setGenerating(id);
+    injectPrintStyles();
+    setTimeout(() => {
+      document.title = name;
+      window.print();
+      document.title = "Barber Manager";
+      setGenerating("");
+    }, 300);
+  };
+
+  // ── REPORT RENDERERS ────────────────────────────────────
+  const RevenueReport = () => {
+    const tAtts = attendances.filter(a => a.date === today());
+    const tRev  = tAtts.reduce((s, a) => s + a.price, 0);
+    const byPay = {};
+    mAtts.forEach(a => { byPay[a.payment] = (byPay[a.payment] || 0) + a.price; });
+    const profit = mRev - mExpT;
+    return (
+      <div>
+        <div style={{ display:"flex", justifyContent:"space-between", borderBottom:"2px solid #c9963b", paddingBottom:12, marginBottom:20 }}>
+          <div>
+            <div style={{ fontSize:22, fontWeight:700 }}>Barber Manager</div>
+            <div style={{ fontSize:13, color:"#555" }}>Relatório de Faturamento</div>
+          </div>
+          <div style={{ textAlign:"right", fontSize:13, color:"#555" }}>
+            <div>Mês: {selMonth}</div>
+            <div>Gerado em: {new Date().toLocaleDateString("pt-BR")}</div>
+          </div>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:12, marginBottom:20 }}>
+          {[["Atend. Hoje", tAtts.length],["Receita Hoje", R$(tRev)],["Receita Mês", R$(mRev)],["Lucro Mês", R$(profit)]].map(([l,v])=>(
+            <div key={l} style={{ border:"1px solid #ddd", borderRadius:6, padding:"10px 14px", textAlign:"center" }}>
+              <div style={{ fontSize:11, color:"#888", textTransform:"uppercase", marginBottom:4 }}>{l}</div>
+              <div style={{ fontSize:20, fontWeight:700 }}>{v}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ marginBottom:20 }}>
+          <div style={{ fontSize:14, fontWeight:700, marginBottom:8, borderBottom:"1px solid #eee", paddingBottom:4 }}>Formas de Pagamento</div>
+          <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
+            <thead><tr style={{ background:"#f5f5f5" }}>{["Método","Total","% Receita"].map(h=><th key={h} style={{ padding:"6px 10px", textAlign:"left", fontWeight:600 }}>{h}</th>)}</tr></thead>
+            <tbody>{Object.entries(byPay).map(([m,v])=>(
+              <tr key={m} style={{ borderBottom:"1px solid #eee" }}>
+                <td style={{ padding:"6px 10px" }}>{m}</td>
+                <td style={{ padding:"6px 10px", fontWeight:600 }}>{R$(v)}</td>
+                <td style={{ padding:"6px 10px", color:"#555" }}>{mRev>0?((v/mRev)*100).toFixed(1):0}%</td>
+              </tr>
+            ))}</tbody>
+          </table>
+        </div>
+        <div>
+          <div style={{ fontSize:14, fontWeight:700, marginBottom:8, borderBottom:"1px solid #eee", paddingBottom:4 }}>Despesas do Mês</div>
+          <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
+            <thead><tr style={{ background:"#f5f5f5" }}>{["Descrição","Categoria","Data","Valor"].map(h=><th key={h} style={{ padding:"6px 10px", textAlign:"left", fontWeight:600 }}>{h}</th>)}</tr></thead>
+            <tbody>
+              {mExp.map(e=>(
+                <tr key={e.id} style={{ borderBottom:"1px solid #eee" }}>
+                  <td style={{ padding:"6px 10px" }}>{e.desc}</td>
+                  <td style={{ padding:"6px 10px", color:"#555" }}>{e.category}</td>
+                  <td style={{ padding:"6px 10px", color:"#555" }}>{fDate(e.date)}</td>
+                  <td style={{ padding:"6px 10px", fontWeight:600 }}>{R$(e.amount)}</td>
+                </tr>
+              ))}
+              <tr style={{ background:"#f5f5f5", fontWeight:700 }}>
+                <td colSpan={3} style={{ padding:"8px 10px" }}>TOTAL DESPESAS</td>
+                <td style={{ padding:"8px 10px" }}>{R$(mExpT)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
+  const BarberReport = () => {
+    const stats = barbers.filter(b=>b.status==="active").map(b=>{
+      const bA = mAtts.filter(a=>a.barberId===b.id);
+      const total = bA.reduce((s,a)=>s+a.price,0);
+      const svcMap = {};
+      bA.forEach(a=>{ const s=services.find(sv=>sv.id===a.serviceId); if(s) svcMap[s.name]=(svcMap[s.name]||0)+1; });
+      const topSvc = Object.entries(svcMap).sort((a,b)=>b[1]-a[1])[0];
+      return { b, count:bA.length, total, commission:total*b.commission/100, ticket:bA.length?total/bA.length:0, topSvc:topSvc?`${topSvc[0]} (${topSvc[1]}×)`:"—" };
+    }).sort((a,b)=>b.total-a.total);
+    return (
+      <div>
+        <div style={{ display:"flex", justifyContent:"space-between", borderBottom:"2px solid #c9963b", paddingBottom:12, marginBottom:20 }}>
+          <div>
+            <div style={{ fontSize:22, fontWeight:700 }}>Barber Manager</div>
+            <div style={{ fontSize:13, color:"#555" }}>Relatório por Barbeiro</div>
+          </div>
+          <div style={{ textAlign:"right", fontSize:13, color:"#555" }}>
+            <div>Mês: {selMonth}</div>
+            <div>Gerado em: {new Date().toLocaleDateString("pt-BR")}</div>
+          </div>
+        </div>
+        <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
+          <thead><tr style={{ background:"#f5f5f5" }}>
+            {["#","Barbeiro","Atend.","Total Produzido","Comissão","Ticket Médio","Serviço Top"].map(h=><th key={h} style={{ padding:"8px 10px", textAlign:"left", fontWeight:600 }}>{h}</th>)}
+          </tr></thead>
+          <tbody>
+            {stats.map(({b,count,total,commission,ticket,topSvc},i)=>(
+              <tr key={b.id} style={{ borderBottom:"1px solid #eee", background:i%2===0?"white":"#fafafa" }}>
+                <td style={{ padding:"8px 10px", fontWeight:700, color:"#c9963b" }}>{i+1}</td>
+                <td style={{ padding:"8px 10px", fontWeight:600 }}>{b.name}</td>
+                <td style={{ padding:"8px 10px" }}>{count}</td>
+                <td style={{ padding:"8px 10px", fontWeight:700 }}>{R$(total)}</td>
+                <td style={{ padding:"8px 10px", color:"#c9963b", fontWeight:600 }}>{R$(commission)} <span style={{color:"#888",fontWeight:400}}>({b.commission}%)</span></td>
+                <td style={{ padding:"8px 10px" }}>{R$(ticket)}</td>
+                <td style={{ padding:"8px 10px", color:"#555" }}>{topSvc}</td>
+              </tr>
+            ))}
+            <tr style={{ background:"#f0f0f0", fontWeight:700, borderTop:"2px solid #ddd" }}>
+              <td colSpan={2} style={{ padding:"8px 10px" }}>TOTAL GERAL</td>
+              <td style={{ padding:"8px 10px" }}>{stats.reduce((s,x)=>s+x.count,0)}</td>
+              <td style={{ padding:"8px 10px" }}>{R$(stats.reduce((s,x)=>s+x.total,0))}</td>
+              <td style={{ padding:"8px 10px" }}>{R$(stats.reduce((s,x)=>s+x.commission,0))}</td>
+              <td colSpan={2}></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
+  const ServiceReport = () => {
+    const svcMap = {};
+    mAtts.forEach(a=>{
+      const s = services.find(sv=>sv.id===a.serviceId);
+      if(!s) return;
+      if(!svcMap[s.id]) svcMap[s.id]={ name:s.name, price:s.price, count:0, total:0 };
+      svcMap[s.id].count++;
+      svcMap[s.id].total += a.price;
+    });
+    const rows = Object.values(svcMap).sort((a,b)=>b.total-a.total);
+    const grandTotal = rows.reduce((s,r)=>s+r.total,0);
+    return (
+      <div>
+        <div style={{ display:"flex", justifyContent:"space-between", borderBottom:"2px solid #c9963b", paddingBottom:12, marginBottom:20 }}>
+          <div>
+            <div style={{ fontSize:22, fontWeight:700 }}>Barber Manager</div>
+            <div style={{ fontSize:13, color:"#555" }}>Relatório por Serviço</div>
+          </div>
+          <div style={{ textAlign:"right", fontSize:13, color:"#555" }}>
+            <div>Mês: {selMonth}</div>
+            <div>Gerado em: {new Date().toLocaleDateString("pt-BR")}</div>
+          </div>
+        </div>
+        <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
+          <thead><tr style={{ background:"#f5f5f5" }}>
+            {["#","Serviço","Preço Tabela","Qtd. Realizado","Total Gerado","% Receita"].map(h=><th key={h} style={{ padding:"8px 10px", textAlign:"left", fontWeight:600 }}>{h}</th>)}
+          </tr></thead>
+          <tbody>
+            {rows.map(({name,price,count,total},i)=>(
+              <tr key={name} style={{ borderBottom:"1px solid #eee", background:i%2===0?"white":"#fafafa" }}>
+                <td style={{ padding:"8px 10px", fontWeight:700, color:"#c9963b" }}>{i+1}</td>
+                <td style={{ padding:"8px 10px", fontWeight:600 }}>{name}</td>
+                <td style={{ padding:"8px 10px", color:"#555" }}>{R$(price)}</td>
+                <td style={{ padding:"8px 10px" }}>{count}×</td>
+                <td style={{ padding:"8px 10px", fontWeight:700 }}>{R$(total)}</td>
+                <td style={{ padding:"8px 10px", color:"#555" }}>{grandTotal>0?((total/grandTotal)*100).toFixed(1):0}%</td>
+              </tr>
+            ))}
+            <tr style={{ background:"#f0f0f0", fontWeight:700, borderTop:"2px solid #ddd" }}>
+              <td colSpan={3} style={{ padding:"8px 10px" }}>TOTAL</td>
+              <td style={{ padding:"8px 10px" }}>{rows.reduce((s,r)=>s+r.count,0)}×</td>
+              <td style={{ padding:"8px 10px" }}>{R$(grandTotal)}</td>
+              <td></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
+  const REPORTS = [
+    { id:"revenue",  label:"Faturamento",      desc:"Receitas, despesas, lucro e formas de pagamento", Icon:DollarSign,  color:T.success,  Component:RevenueReport },
+    { id:"barbers",  label:"Por Barbeiro",      desc:"Ranking, produção, comissões e ticket médio",      Icon:Award,       color:T.accent,   Component:BarberReport  },
+    { id:"services", label:"Por Serviço",       desc:"Serviços mais realizados e receita gerada",        Icon:Scissors,    color:T.info,     Component:ServiceReport },
+  ];
+
+  const [preview, setPreview] = useState(null);
+  const active = REPORTS.find(r=>r.id===preview);
+
+  return (
+    <div>
+      <PageHeader title="Relatórios" sub={`Mês selecionado: ${selMonth}`} right={
+        <div style={{ display:"flex", alignItems:"center", gap:"0.75rem" }}>
+          <input type="month" value={selMonth} onChange={e=>setSelMonth(e.target.value)}
+            style={{ background:T.card, border:`1px solid ${T.border}`, borderRadius:8, padding:"0.5rem 0.875rem", color:T.text, fontSize:13, outline:"none", fontFamily:"'DM Sans', sans-serif" }}/>
+        </div>
+      }/>
+
+      {!preview ? (
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:"1rem" }}>
+          {REPORTS.map(({id,label,desc,Icon,color,Component})=>(
+            <Card key={id} style={{ cursor:"pointer", transition:"border-color 0.15s" }} onClick={()=>setPreview(id)}>
+              <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:"1rem" }}>
+                <div style={{ background:color+"18", borderRadius:10, padding:12 }}><Icon size={22} color={color}/></div>
+                <div>
+                  <div style={{ fontWeight:600, color:T.text, fontSize:15 }}>{label}</div>
+                  <div style={{ fontSize:12, color:T.muted, marginTop:2 }}>{desc}</div>
+                </div>
+              </div>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:"1rem" }}>
+                {id==="revenue"  && [["Receita",R$(mRev)],["Despesas",R$(mExpT)],["Lucro",R$(mRev-mExpT)],["Atend.",mAtts.length]].map(([l,v])=>(
+                  <div key={l} style={{ background:T.surface, borderRadius:6, padding:"8px 10px" }}>
+                    <div style={{ fontSize:10, color:T.muted, textTransform:"uppercase" }}>{l}</div>
+                    <div style={{ fontWeight:600, color:T.text, fontSize:13 }}>{v}</div>
+                  </div>
+                ))}
+                {id==="barbers"  && barbers.filter(b=>b.status==="active").slice(0,4).map(b=>{
+                  const bA=mAtts.filter(a=>a.barberId===b.id), total=bA.reduce((s,a)=>s+a.price,0);
+                  return <div key={b.id} style={{ background:T.surface, borderRadius:6, padding:"8px 10px" }}>
+                    <div style={{ fontSize:10, color:T.muted, textTransform:"uppercase", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{b.name}</div>
+                    <div style={{ fontWeight:600, color:T.text, fontSize:13 }}>{R$(total)}</div>
+                  </div>;
+                })}
+                {id==="services" && (() => {
+                  const sm={}; mAtts.forEach(a=>{sm[a.serviceId]=(sm[a.serviceId]||0)+1;});
+                  return Object.entries(sm).sort((a,b)=>b[1]-a[1]).slice(0,4).map(([sid,n])=>{
+                    const s=services.find(sv=>sv.id===+sid);
+                    return s?<div key={sid} style={{ background:T.surface, borderRadius:6, padding:"8px 10px" }}>
+                      <div style={{ fontSize:10, color:T.muted, textTransform:"uppercase", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{s.name}</div>
+                      <div style={{ fontWeight:600, color:T.text, fontSize:13 }}>{n}×</div>
+                    </div>:null;
+                  });
+                })()}
+              </div>
+              <Btn style={{ width:"100%", justifyContent:"center" }}><FileText size={14}/>Visualizar e Imprimir</Btn>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div>
+          <div style={{ display:"flex", gap:"0.75rem", marginBottom:"1.25rem" }} className="no-print">
+            <Btn variant="ghost" onClick={()=>setPreview(null)}><X size={14}/>Voltar</Btn>
+            <Btn onClick={()=>printReport(preview, `${active?.label} - ${selMonth}`)} disabled={generating===preview}>
+              {generating===preview ? <RefreshCw size={14} style={{animation:"spin 1s linear infinite"}}/> : <Download size={14}/>}
+              Imprimir / Salvar PDF
+            </Btn>
+          </div>
+          <Card id="pdf-content" style={{ background:"white", color:"black" }}>
+            {active && <active.Component/>}
+          </Card>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── SIDEBAR ──────────────────────────────────────────────────
 function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, userName, onLogout }) {
   const nav = [
@@ -961,6 +1241,7 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, userName, on
       { id:"barbers",   label:"Barbeiros",     Icon:Award },
       { id:"services",  label:"Serviços",      Icon:Tag },
       { id:"financial", label:"Financeiro",    Icon:DollarSign },
+      { id:"reports",   label:"Relatórios",   Icon:FileText },
     ] : []),
   ];
 
@@ -1032,12 +1313,9 @@ export default function App() {
     setLoading(true);
     try {
       const isAdm = profile.role === "admin";
-      const bid = profile.barber_id;
       const attQuery = isAdm
         ? "select=*&order=date.desc,time.desc"
-        : bid
-          ? `select=*&barber_id=eq.${bid}&order=date.desc,time.desc`
-          : "select=*&barber_id=eq.-1";
+        : `select=*&barber_id=eq.${profile.barber_id}&order=date.desc,time.desc`;
 
       const [brs, cls, svcs, atts, exps] = await Promise.all([
         api.list("barbers",     "select=*&order=name",     tok),
@@ -1047,16 +1325,13 @@ export default function App() {
         isAdm ? api.list("expenses", "select=*&order=date.desc", tok) : Promise.resolve([]),
       ]);
 
-      setBarbers(Array.isArray(brs) ? brs.map(toBarber) : []);
-      setClients(Array.isArray(cls) ? cls.map(toClient) : []);
-      setServices(Array.isArray(svcs) ? svcs.map(toService) : []);
-      setAttendances(Array.isArray(atts) ? atts.map(toAtt) : []);
-      setExpenses(Array.isArray(exps) ? exps.map(toExpense) : []);
+      setBarbers(brs.map(toBarber));
+      setClients(cls.map(toClient));
+      setServices(svcs.map(toService));
+      setAttendances(atts.map(toAtt));
+      setExpenses(exps.map(toExpense));
       setDataLoaded(true);
-    } catch(e) {
-      console.error("loadData error:", e);
-      setAuth(null);
-    }
+    } catch(e) { console.error(e); }
     setLoading(false);
   }, []);
 
@@ -1076,12 +1351,13 @@ export default function App() {
   const tok        = auth.token;
 
   const views = {
-    dashboard:   <Dashboard   attendances={attendances} clients={clients}   services={services}  barbers={barbers}    isAdmin={isAdmin} myBarberId={myBarberId}/>,
+    dashboard:   <Dashboard   attendances={attendances} clients={clients}   services={services}  barbers={barbers}    isAdmin={isAdmin} myBarberId={myBarberId} onGoReports={isAdmin?()=>setView('reports'):undefined}/>,
     attendances: <AttendancesView attendances={attendances} setAttendances={setAttendances} clients={clients} services={services} barbers={barbers} token={tok} isAdmin={isAdmin} myBarberId={myBarberId}/>,
     clients:     <ClientsView clients={clients} setClients={setClients} attendances={attendances} services={services} token={tok} isAdmin={isAdmin}/>,
     barbers:     <BarbersView  barbers={barbers} setBarbers={setBarbers} attendances={attendances} token={tok}/>,
     services:    <ServicesView services={services} setServices={setServices} token={tok}/>,
     financial:   <FinancialView attendances={attendances} expenses={expenses} setExpenses={setExpenses} token={tok}/>,
+    reports:     <ReportsView attendances={attendances} clients={clients} services={services} barbers={barbers} expenses={expenses}/>,
   };
 
   return (
