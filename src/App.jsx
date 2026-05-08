@@ -660,20 +660,44 @@ function BarbersView({ barbers, setBarbers, attendances, token }) {
   const [editing, setEditing]   = useState(null);
   const [saving, setSaving]     = useState(false);
   const [err, setErr]           = useState("");
-  const [form, setForm]         = useState({ name:"", phone:"", commission:40, status:"active" });
+  const [form, setForm]         = useState({ name:"", phone:"", commission:40, status:"active", email:"", password:"" });
   const setF = k => e => setForm(f=>({...f,[k]:e.target.value}));
 
   const save = async () => {
     if (!form.name) return setErr("Nome é obrigatório.");
+    if (!editing && form.email && !form.password) return setErr("Preencha a senha para criar o login.");
+    if (!editing && form.password && form.password.length < 6) return setErr("Senha deve ter no mínimo 6 caracteres.");
     setSaving(true); setErr("");
     try {
-      const body = { name:form.name, phone:form.phone, commission:+form.commission, status:form.status };
+      let userId = editing ? (barbers.find(b=>b.id===editing)?.userId || null) : null;
+
+      if (!editing && form.email && form.password) {
+        const res = await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
+          method: "POST",
+          headers: { apikey: SUPABASE_ANON, "Content-Type": "application/json" },
+          body: JSON.stringify({ email: form.email, password: form.password }),
+        });
+        const data = await res.json();
+        if (data.error || data.msg) throw new Error(data.error?.message || data.msg || "Erro ao criar login");
+        userId = data.user?.id;
+      }
+
+      const body = { name:form.name, phone:form.phone, commission:+form.commission, status:form.status, user_id: userId };
+
       if (editing) {
         await api.update("barbers", editing, body, token);
-        setBarbers(bs=>bs.map(b=>b.id===editing?{...toBarber({...body, id:editing, user_id:null})}:b));
+        setBarbers(bs=>bs.map(b=>b.id===editing?{...b,...toBarber({...body,id:editing,user_id:userId})}:b));
       } else {
         const rows = await api.insert("barbers", body, token);
-        setBarbers(bs=>[...bs, toBarber(rows[0])]);
+        const newBarber = toBarber(rows[0]);
+        setBarbers(bs=>[...bs, newBarber]);
+        if (userId) {
+          await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${userId}`, {
+            method: "PATCH",
+            headers: hdr(token),
+            body: JSON.stringify({ barber_id: newBarber.id, role: "barber" }),
+          });
+        }
       }
       setShowModal(false);
     } catch(e){ setErr(e.message); }
@@ -686,7 +710,7 @@ function BarbersView({ barbers, setBarbers, attendances, token }) {
   return (
     <div>
       <PageHeader title="Barbeiros" sub={`${barbers.filter(b=>b.status==="active").length} ativos`}
-        right={<Btn onClick={()=>{setEditing(null);setForm({name:"",phone:"",commission:40,status:"active"});setShowModal(true);}}><Plus size={15}/>Novo Barbeiro</Btn>}
+        right={<Btn onClick={()=>{setEditing(null);setForm({name:"",phone:"",commission:40,status:"active",email:"",password:""});setShowModal(true);}}><Plus size={15}/>Novo Barbeiro</Btn>}
       />
       <div style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:"1rem" }}>
         {barbers.map(b=>{
@@ -726,9 +750,16 @@ function BarbersView({ barbers, setBarbers, attendances, token }) {
             <FG label="Comissão (%)" half><input style={inputSt} type="number" min="0" max="100" value={form.commission} onChange={setF("commission")}/></FG>
             <FSelect label="Status" value={form.status} onChange={setF("status")}><option value="active">Ativo</option><option value="inactive">Inativo</option></FSelect>
           </Row>
-          <div style={{ background:T.surface, borderRadius:8, padding:"0.875rem", fontSize:12, color:T.muted, marginBottom:"1rem" }}>
-            💡 Para criar o login do barbeiro, vá em <strong style={{color:T.text}}>Authentication → Users</strong> no painel do Supabase e crie a conta com e-mail e senha. Depois vincule o UUID em <strong style={{color:T.text}}>profiles</strong>.
-          </div>
+          {!editing && (
+            <div style={{ borderTop:`1px solid ${T.borderLight}`, paddingTop:"1rem", marginTop:"0.5rem", marginBottom:"1rem" }}>
+              <div style={{ fontSize:11, fontWeight:700, color:T.muted, textTransform:"uppercase", letterSpacing:0.8, marginBottom:"0.75rem" }}>Login de Acesso (opcional)</div>
+              <FInput label="E-mail" type="email" value={form.email} onChange={setF("email")} placeholder="barbeiro@email.com"/>
+              <FInput label="Senha" type="password" value={form.password} onChange={setF("password")} placeholder="Mínimo 6 caracteres"/>
+              <div style={{ background:T.accentGlow, border:`1px solid ${T.accent}33`, borderRadius:8, padding:"0.75rem", fontSize:12, color:T.mutedLight }}>
+                💡 Preencha para criar o acesso do barbeiro ao sistema. Deixe em branco para cadastrar só o perfil agora.
+              </div>
+            </div>
+          )}
           <Row g="0.5rem" style={{ justifyContent:"flex-end" }}>
             <Btn variant="ghost" onClick={()=>setShowModal(false)}>Cancelar</Btn>
             <Btn onClick={save} disabled={saving}>{saving?<RefreshCw size={13} style={{animation:"spin 1s linear infinite"}}/>:<Check size={13}/>} {editing?"Atualizar":"Cadastrar"}</Btn>
