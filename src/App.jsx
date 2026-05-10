@@ -410,7 +410,7 @@ function Dashboard({ attendances, clients, services, barbers, isAdmin, myBarberI
 }
 
 // ── ATTENDANCES ───────────────────────────────────────────────
-function AttendancesView({ attendances, setAttendances, clients, services, barbers, token, isAdmin, myBarberId }) {
+function AttendancesView({ attendances, setAttendances, clients, services, barbers, token, isAdmin, myBarberId, barbershopId }) {
   const [filterDate, setFilterDate]   = useState(today());
   const [filterBarber, setFilterBarber] = useState("");
   const [showModal, setShowModal] = useState(false);
@@ -439,7 +439,7 @@ function AttendancesView({ attendances, setAttendances, clients, services, barbe
     if (!form.clientId||!form.barberId||!form.serviceId) return setErr("Preencha cliente, barbeiro e serviço.");
     setSaving(true); setErr("");
     try {
-      const rows = await api.insert("attendances", fromAtt(form), token);
+      const rows = await api.insert("attendances", { ...fromAtt(form), barbershop_id: barbershopId }, token);
       setAttendances(prev=>[toAtt(rows[0]),...prev]);
       setShowModal(false);
       setForm({ clientId:"", barberId:isAdmin?"":String(myBarberId||""), serviceId:"", price:"", payment:"PIX", date:today(), time:"", notes:"" });
@@ -539,7 +539,7 @@ function AttendancesView({ attendances, setAttendances, clients, services, barbe
 }
 
 // ── CLIENTS ───────────────────────────────────────────────────
-function ClientsView({ clients, setClients, attendances, services, token, isAdmin }) {
+function ClientsView({ clients, setClients, attendances, services, token, isAdmin, barbershopId }) {
   const [search, setSearch]     = useState("");
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing]   = useState(null);
@@ -565,7 +565,7 @@ function ClientsView({ clients, setClients, attendances, services, token, isAdmi
         await api.update("clients", editing, { name:form.name, phone:form.phone, whatsapp:form.whatsapp, birthdate:form.birthdate||null, notes:form.notes, points:+form.points }, token);
         setClients(cs=>cs.map(c=>c.id===editing?{...form,id:editing,points:+form.points}:c));
       } else {
-        const rows = await api.insert("clients", { name:form.name, phone:form.phone, whatsapp:form.whatsapp, birthdate:form.birthdate||null, notes:form.notes, points:+form.points||0 }, token);
+        const rows = await api.insert("clients", { name:form.name, phone:form.phone, whatsapp:form.whatsapp, birthdate:form.birthdate||null, notes:form.notes, points:+form.points||0, barbershop_id: barbershopId }, token);
         setClients(cs=>[toClient(rows[0]),...cs]);
       }
       setShowModal(false);
@@ -671,7 +671,7 @@ function ClientsView({ clients, setClients, attendances, services, token, isAdmi
 }
 
 // ── BARBERS ───────────────────────────────────────────────────
-function BarbersView({ barbers, setBarbers, attendances, token }) {
+function BarbersView({ barbers, setBarbers, attendances, token, barbershopId }) {
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing]   = useState(null);
   const [saving, setSaving]     = useState(false);
@@ -698,7 +698,7 @@ function BarbersView({ barbers, setBarbers, attendances, token }) {
         userId = data.user?.id;
       }
 
-      const body = { name:form.name, phone:form.phone, commission:+form.commission, status:form.status, user_id: userId };
+      const body = { name:form.name, phone:form.phone, commission:+form.commission, status:form.status, user_id: userId, barbershop_id: barbershopId };
 
       if (editing) {
         await api.update("barbers", editing, body, token);
@@ -716,14 +716,14 @@ function BarbersView({ barbers, setBarbers, attendances, token }) {
           const patchRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${userId}`, {
             method: "PATCH",
             headers: hdr(token),
-            body: JSON.stringify({ barber_id: newBarber.id, role: "barber" }),
+            body: JSON.stringify({ barber_id: newBarber.id, role: "barber", barbershop_id: barbershopId }),
           });
           // Se PATCH falhar ou não atualizar nada, faz UPSERT
           if (!patchRes.ok) {
             await fetch(`${SUPABASE_URL}/rest/v1/profiles`, {
               method: "POST",
               headers: { ...hdr(token), Prefer: "resolution=merge-duplicates,return=representation" },
-              body: JSON.stringify({ id: userId, barber_id: newBarber.id, role: "barber" }),
+              body: JSON.stringify({ id: userId, barber_id: newBarber.id, role: "barber", barbershop_id: barbershopId }),
             });
           }
         }
@@ -800,7 +800,7 @@ function BarbersView({ barbers, setBarbers, attendances, token }) {
 }
 
 // ── SERVICES ─────────────────────────────────────────────────
-function ServicesView({ services, setServices, token }) {
+function ServicesView({ services, setServices, token, barbershopId }) {
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing]   = useState(null);
   const [saving, setSaving]     = useState(false);
@@ -812,7 +812,7 @@ function ServicesView({ services, setServices, token }) {
     if (!form.name||!form.price) return setErr("Nome e preço são obrigatórios.");
     setSaving(true); setErr("");
     try {
-      const body = { name:form.name, price:+form.price, duration:+form.duration, active:form.active };
+      const body = { name:form.name, price:+form.price, duration:+form.duration, active:form.active, barbershop_id: barbershopId };
       if (editing) {
         await api.update("services", editing, body, token);
         setServices(ss=>ss.map(s=>s.id===editing?{...body,id:editing}:s));
@@ -880,7 +880,7 @@ function ServicesView({ services, setServices, token }) {
 }
 
 // ── FINANCIAL ────────────────────────────────────────────────
-function FinancialView({ attendances, expenses, setExpenses, token }) {
+function FinancialView({ attendances, expenses, setExpenses, token, barbershopId }) {
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving]     = useState(false);
   const [err, setErr]           = useState("");
@@ -901,7 +901,7 @@ function FinancialView({ attendances, expenses, setExpenses, token }) {
     if (!form.desc||!form.amount) return setErr("Preencha descrição e valor.");
     setSaving(true); setErr("");
     try {
-      const rows = await api.insert("expenses", { description:form.desc, amount:+form.amount, date:form.date, category:form.category }, token);
+      const rows = await api.insert("expenses", { description:form.desc, amount:+form.amount, date:form.date, category:form.category, barbershop_id: barbershopId }, token);
       setExpenses(es=>[toExpense(rows[0]),...es]);
       setShowModal(false);
       setForm({ desc:"", amount:"", date:today(), category:"Aluguel" });
@@ -1355,23 +1355,32 @@ export default function App() {
     setLoading(true);
     try {
       const isAdm = profile.role === "admin";
+      const shopId = profile.barbershop_id;
+
+      if (!shopId && !profile.is_super_admin) {
+        throw new Error("Perfil sem barbershop_id. Finalize o cadastro da barbearia.");
+      }
+
+      const shopFilter = shopId ? `barbershop_id=eq.${shopId}` : "";
+      const withShop = (qs) => shopFilter ? `${qs}&${shopFilter}` : qs;
+
       const attQuery = isAdm
-        ? "select=*&order=date.desc,time.desc"
-        : `select=*&barber_id=eq.${profile.barber_id}&order=date.desc,time.desc`;
+        ? withShop("select=*&order=date.desc,time.desc")
+        : withShop(`select=*&barber_id=eq.${profile.barber_id}&order=date.desc,time.desc`);
 
       const [brs, cls, svcs, atts, exps] = await Promise.all([
-        api.list("barbers",     "select=*&order=name",     tok),
-        api.list("clients",     "select=*&order=name",     tok),
-        api.list("services",    "select=*&order=name",     tok),
-        api.list("attendances", attQuery,                  tok),
-        isAdm ? api.list("expenses", "select=*&order=date.desc", tok) : Promise.resolve([]),
+        api.list("barbers",     withShop("select=*&order=name"), tok),
+        api.list("clients",     withShop("select=*&order=name"), tok),
+        api.list("services",    withShop("select=*&order=name"), tok),
+        api.list("attendances", attQuery, tok),
+        isAdm ? api.list("expenses", withShop("select=*&order=date.desc"), tok) : Promise.resolve([]),
       ]);
 
-      setBarbers(brs.map(toBarber));
-      setClients(cls.map(toClient));
-      setServices(svcs.map(toService));
-      setAttendances(atts.map(toAtt));
-      setExpenses(exps.map(toExpense));
+      setBarbers((brs || []).map(toBarber));
+      setClients((cls || []).map(toClient));
+      setServices((svcs || []).map(toService));
+      setAttendances((atts || []).map(toAtt));
+      setExpenses((exps || []).map(toExpense));
       setDataLoaded(true);
     } catch(e) { console.error(e); }
     setLoading(false);
@@ -1434,14 +1443,15 @@ export default function App() {
   const myBarberId   = auth.profile.barber_id;
   const userName     = barbers.find(b=>b.userId===auth.user?.id)?.name || auth.user?.email || "Usuário";
   const tok          = auth.token;
+  const barbershopId = auth.profile.barbershop_id;
 
   const views = {
     dashboard:   <Dashboard   attendances={attendances} clients={clients}   services={services}  barbers={barbers}    isAdmin={isAdmin} myBarberId={myBarberId} onGoReports={isAdmin?()=>setView('reports'):undefined}/>,
-    attendances: <AttendancesView attendances={attendances} setAttendances={setAttendances} clients={clients} services={services} barbers={barbers} token={tok} isAdmin={isAdmin} myBarberId={myBarberId}/>,
-    clients:     <ClientsView clients={clients} setClients={setClients} attendances={attendances} services={services} token={tok} isAdmin={isAdmin}/>,
-    barbers:     <BarbersView  barbers={barbers} setBarbers={setBarbers} attendances={attendances} token={tok}/>,
-    services:    <ServicesView services={services} setServices={setServices} token={tok}/>,
-    financial:   <FinancialView attendances={attendances} expenses={expenses} setExpenses={setExpenses} token={tok}/>,
+    attendances: <AttendancesView attendances={attendances} setAttendances={setAttendances} clients={clients} services={services} barbers={barbers} token={tok} isAdmin={isAdmin} myBarberId={myBarberId} barbershopId={barbershopId}/>,
+    clients:     <ClientsView clients={clients} setClients={setClients} attendances={attendances} services={services} token={tok} isAdmin={isAdmin} barbershopId={barbershopId}/>,
+    barbers:     <BarbersView  barbers={barbers} setBarbers={setBarbers} attendances={attendances} token={tok} barbershopId={barbershopId}/>,
+    services:    <ServicesView services={services} setServices={setServices} token={tok} barbershopId={barbershopId}/>,
+    financial:   <FinancialView attendances={attendances} expenses={expenses} setExpenses={setExpenses} token={tok} barbershopId={barbershopId}/>,
     reports:     <ReportsView attendances={attendances} clients={clients} services={services} barbers={barbers} expenses={expenses}/>,
     superadmin:  <SuperAdminView token={tok} />,
   };
