@@ -162,7 +162,7 @@ const ProgressBar = ({ step, total }) => (
 // ══════════════════════════════════════════════════════════════
 //  ONBOARDING PRINCIPAL
 // ══════════════════════════════════════════════════════════════
-export default function Onboarding({ onComplete }) {
+export default function Onboarding({ onComplete, courtesyEmail = "" }) {
   const [step,    setStep]    = useState(1);   // 1–5
   const [loading, setLoading] = useState(false);
   const [err,     setErr]     = useState("");
@@ -170,7 +170,8 @@ export default function Onboarding({ onComplete }) {
   const [uid,     setUid]     = useState(null);
 
   // Dados coletados em cada passo
-  const [email,   setEmail]   = useState("");
+  // Pré-preenche o e-mail se veio do fluxo de cortesia
+  const [email,   setEmail]   = useState(courtesyEmail);
   const [pass,    setPass]    = useState("");
   const [pass2,   setPass2]   = useState("");
   const [isLogin, setIsLogin] = useState(false); // toggle cadastro/login
