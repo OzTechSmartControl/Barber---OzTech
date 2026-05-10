@@ -1414,6 +1414,13 @@ export default function App() {
     />
   );
 
+  // E-mail de cortesia validado mas usuário ainda não autenticado → vai direto para o cadastro
+  if (!auth && courtesyEmail) return (
+    <><style>{CSS}</style>
+      <Onboarding onComplete={onLogin} courtesyEmail={courtesyEmail} />
+    </>
+  );
+
   if (!auth) return <><style>{CSS}</style><LoginView onLogin={onLogin} onShowPlans={() => setShowPlans(true)} /></>;
 
   // Usuário logado mas sem barbearia → onboarding
