@@ -1,4 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
+import Onboarding from "./Onboarding";
+import PlansView   from "./PlansView";
+import SuperAdminView from "./SuperAdminView";
 import {
   LayoutDashboard, Scissors, Users, Award, Tag, DollarSign,
   Menu, X, Plus, Search, Edit2, Trash2, Check, TrendingUp,
@@ -162,7 +165,7 @@ const ErrorBar = ({ msg }) => msg ? (
 ) : null;
 
 // ── LOGIN VIEW ────────────────────────────────────────────────
-const LoginView = ({ onLogin }) => {
+const LoginView = ({ onLogin, onShowPlans }) => {
   const [email, setEmail] = useState("");
   const [pass, setPass]   = useState("");
   const [showPass, setShowPass] = useState(false);
@@ -241,6 +244,9 @@ const LoginView = ({ onLogin }) => {
         <div style={{ textAlign: "center", marginTop: "1.5rem", fontSize: 12, color: T.muted }}>
           Acesso restrito a usuários cadastrados
         </div>
+        <button onClick={onShowPlans} style={{ width: "100%", marginTop: "0.75rem", background: "none", border: `1px solid ${T.border}`, borderRadius: 8, padding: "0.6rem", fontSize: 13, fontWeight: 600, color: T.accent, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>
+          Ainda não tem conta? Assinar Plano
+        </button>
       </div>
 
       <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
@@ -1247,7 +1253,7 @@ function ReportsView({ attendances, clients, services, barbers, expenses }) {
 
 
 // ── SIDEBAR ──────────────────────────────────────────────────
-function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, userName, onLogout }) {
+function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin, userName, onLogout }) {
   const nav = [
     { id:"dashboard",   label:"Dashboard",    Icon:LayoutDashboard },
     { id:"attendances", label:"Atendimentos",  Icon:Scissors },
@@ -1256,7 +1262,10 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, userName, on
       { id:"barbers",   label:"Barbeiros",     Icon:Award },
       { id:"services",  label:"Serviços",      Icon:Tag },
       { id:"financial", label:"Financeiro",    Icon:DollarSign },
-      { id:"reports",   label:"Relatórios",   Icon:FileText },
+      { id:"reports",   label:"Relatórios",    Icon:FileText },
+    ] : []),
+    ...(isSuperAdmin ? [
+      { id:"superadmin", label:"Painel Admin", Icon:Lock },
     ] : []),
   ];
 
@@ -1312,17 +1321,35 @@ const CSS = `
 `;
 
 export default function App() {
-  const [auth,       setAuth]       = useState(null);
-  const [dataLoaded, setDataLoaded] = useState(false);
-  const [loading,    setLoading]    = useState(false);
-  const [view,       setView]       = useState("dashboard");
-  const [collapsed,  setCollapsed]  = useState(false);
+  const [auth,         setAuth]         = useState(null);
+  const [dataLoaded,   setDataLoaded]   = useState(false);
+  const [loading,      setLoading]      = useState(false);
+  const [view,         setView]         = useState("dashboard");
+  const [collapsed,    setCollapsed]    = useState(false);
+  const [showPlans,    setShowPlans]    = useState(false);
+  const [expiredMsg,   setExpiredMsg]   = useState("");
+  const [courtesyEmail,setCourtesyEmail]= useState(null); // e-mail validado como cortesia
 
   const [clients,     setClients]     = useState([]);
   const [services,    setServices]    = useState([]);
   const [barbers,     setBarbers]     = useState([]);
   const [attendances, setAttendances] = useState([]);
   const [expenses,    setExpenses]    = useState([]);
+
+  // Detecta retorno do Mercado Pago (?payment=success&plan=...)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const payment = params.get("payment");
+    const plan    = params.get("plan");
+    if (payment === "success" && plan) {
+      window.history.replaceState(null, "", window.location.pathname);
+      // Assinatura criada pelo webhook; usuário já pode prosseguir
+      setShowPlans(false);
+    } else if (payment === "failure") {
+      window.history.replaceState(null, "", window.location.pathname);
+      setShowPlans(true);
+    }
+  }, []);
 
   const loadData = useCallback(async (tok, profile) => {
     setLoading(true);
@@ -1352,18 +1379,54 @@ export default function App() {
 
   const onLogin = useCallback(async (authData) => {
     setAuth(authData);
+    // Verifica acesso ativo (super admin sempre passa)
+    const shopId = authData.profile?.barbershop_id;
+    if (shopId && !authData.profile?.is_super_admin) {
+      try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/has_active_access`, {
+          method: "POST",
+          headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${authData.token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ p_barbershop_id: shopId }),
+        });
+        const hasAccess = await res.json();
+        if (!hasAccess) {
+          setExpiredMsg("Sua assinatura expirou. Renove para continuar usando o sistema.");
+          setShowPlans(true);
+          setLoading(false);
+          return;
+        }
+      } catch { /* se falhar, deixa entrar */ }
+    }
     await loadData(authData.token, authData.profile);
   }, [loadData]);
 
-  const onLogout = () => { setAuth(null); setDataLoaded(false); setView("dashboard"); };
+  const onLogout = () => { setAuth(null); setDataLoaded(false); setView("dashboard"); setShowPlans(false); setExpiredMsg(""); };
 
-  if (!auth)        return <><style>{CSS}</style><LoginView onLogin={onLogin}/></>;
+  // Tela de planos (antes do login ou assinatura expirada)
+  if (showPlans) return (
+    <PlansView
+      onBack={() => { setShowPlans(false); setExpiredMsg(""); }}
+      expiredMessage={expiredMsg}
+      onCourtesyValidated={(email) => {
+        setCourtesyEmail(email);
+        setShowPlans(false);
+      }}
+    />
+  );
+
+  if (!auth) return <><style>{CSS}</style><LoginView onLogin={onLogin} onShowPlans={() => setShowPlans(true)} /></>;
+
+  // Usuário logado mas sem barbearia → onboarding
+  // Passa o e-mail de cortesia se vier desse fluxo
+  if (!auth.profile?.barbershop_id) return <Onboarding onComplete={onLogin} courtesyEmail={courtesyEmail} />;
+
   if (loading||!dataLoaded) return <><style>{CSS}</style><LoadingScreen/></>;
 
-  const isAdmin    = auth.profile.role === "admin";
-  const myBarberId = auth.profile.barber_id;
-  const userName   = barbers.find(b=>b.userId===auth.user?.id)?.name || auth.user?.email || "Usuário";
-  const tok        = auth.token;
+  const isAdmin      = auth.profile.role === "admin";
+  const isSuperAdmin = auth.profile.is_super_admin === true;
+  const myBarberId   = auth.profile.barber_id;
+  const userName     = barbers.find(b=>b.userId===auth.user?.id)?.name || auth.user?.email || "Usuário";
+  const tok          = auth.token;
 
   const views = {
     dashboard:   <Dashboard   attendances={attendances} clients={clients}   services={services}  barbers={barbers}    isAdmin={isAdmin} myBarberId={myBarberId} onGoReports={isAdmin?()=>setView('reports'):undefined}/>,
@@ -1373,12 +1436,13 @@ export default function App() {
     services:    <ServicesView services={services} setServices={setServices} token={tok}/>,
     financial:   <FinancialView attendances={attendances} expenses={expenses} setExpenses={setExpenses} token={tok}/>,
     reports:     <ReportsView attendances={attendances} clients={clients} services={services} barbers={barbers} expenses={expenses}/>,
+    superadmin:  <SuperAdminView token={tok} />,
   };
 
   return (
     <div style={{ display:"flex", height:"100vh", background:T.bg, color:T.text, fontFamily:"'DM Sans', sans-serif", overflow:"hidden" }}>
       <style>{CSS}</style>
-      <Sidebar view={view} setView={setView} collapsed={collapsed} setCollapsed={setCollapsed} isAdmin={isAdmin} userName={userName} onLogout={onLogout}/>
+      <Sidebar view={view} setView={setView} collapsed={collapsed} setCollapsed={setCollapsed} isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} userName={userName} onLogout={onLogout}/>
       <main style={{ flex:1, overflow:"auto", padding:"2rem 2.25rem" }}>
         {views[view] || views.dashboard}
       </main>
