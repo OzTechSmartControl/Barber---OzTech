@@ -81,7 +81,8 @@ export default function PlansView({ onBack, onCourtesyValidated, expiredMessage 
     try {
       const payload = {
         plan_id: plan.id,
-        plan_label: plan.label,
+        plan_label: `Oz.Barber — ${plan.label}`,
+        product_name: "Oz.Barber",
         price: Number(plan.price),
         currency: "BRL",
         return_url: window.location.origin,
@@ -172,7 +173,7 @@ export default function PlansView({ onBack, onCourtesyValidated, expiredMessage 
 
         {/* Cabeçalho */}
         <div style={{ textAlign: "center", marginBottom: "1.75rem" }}>
-          <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 32, letterSpacing: 3, color: T.accent }}>BARBER SAAS</div>
+          <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 32, letterSpacing: 3, color: T.accent }}>OZ.BARBER</div>
           {expiredMessage
             ? <div style={{ fontSize: 13, color: T.danger, marginTop: 6, background: T.dangerBg, borderRadius: 8, padding: "0.5rem 1rem", display: "inline-block" }}>{expiredMessage}</div>
             : <div style={{ fontSize: 14, color: T.muted, marginTop: 4 }}>Escolha seu plano e comece agora</div>}
