@@ -3,7 +3,8 @@ import {
   Plus, Trash2, RefreshCw, Check, X, AlertCircle,
   Gift, Clock, Infinity, Search, ShieldCheck, Building2,
   DollarSign, TrendingUp, Users, Scissors, CreditCard,
-  BarChart3, PieChart, Filter, CalendarDays
+  BarChart3, PieChart, CalendarDays, Bell, Activity,
+  ArrowUpRight, Ban, UserPlus, Wallet
 } from "lucide-react";
 
 const SUPABASE_URL  = "https://kqjzontxfwlwmvbddbnv.supabase.co";
@@ -51,6 +52,7 @@ const hdr = (tok) => ({
 const fDate = (s) => s ? new Date(s).toLocaleDateString("pt-BR") : "—";
 const fDatetime = (s) => s ? new Date(s).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "—";
 const money = (v) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(v || 0));
+const pct = (v) => `${Number(v || 0).toFixed(1).replace(".", ",")}%`;
 
 const StatusBadge = ({ status }) => {
   const map = {
@@ -62,6 +64,7 @@ const StatusBadge = ({ status }) => {
     cancelled: { label: "Cancelado", bg: T.dangerBg, color: T.danger },
     pending: { label: "Pendente", bg: T.warningBg, color: T.warning },
     approved: { label: "Aprovado", bg: T.successBg, color: T.success },
+    none: { label: "Sem assinatura", bg: T.surface, color: T.mutedLight },
   };
   const s = map[status] || { label: status || "Sem status", bg: T.surface, color: T.mutedLight };
   return (
@@ -95,7 +98,7 @@ const MetricCard = ({ label, value, sub, icon: Icon, color = T.accent }) => (
       <div>
         <div style={{ fontSize: 10, color: T.muted, textTransform: "uppercase", letterSpacing: 0.9, marginBottom: 10 }}>{label}</div>
         <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 32, color, lineHeight: 1, letterSpacing: 1 }}>{value}</div>
-        {sub && <div style={{ fontSize: 12, color: T.muted, marginTop: 7 }}>{sub}</div>}
+        {sub && <div style={{ fontSize: 12, color: T.muted, marginTop: 7, lineHeight: 1.35 }}>{sub}</div>}
       </div>
       {Icon && (
         <div style={{ background: color + "18", border: `1px solid ${color}22`, borderRadius: 10, padding: 10 }}>
@@ -127,7 +130,7 @@ const BarList = ({ rows, labelKey, valueKey, valueFormatter = (v) => v }) => {
         <div style={{ color: T.muted, fontSize: 13, padding: "1.5rem", textAlign: "center" }}>Sem dados para exibir</div>
       ) : rows.map((r, idx) => {
         const val = Number(r[valueKey] || 0);
-        const pct = Math.max(4, (val / max) * 100);
+        const width = val <= 0 ? 4 : Math.max(4, (val / max) * 100);
         return (
           <div key={`${r[labelKey]}-${idx}`}>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 6 }}>
@@ -135,7 +138,7 @@ const BarList = ({ rows, labelKey, valueKey, valueFormatter = (v) => v }) => {
               <span style={{ color: T.mutedLight }}>{valueFormatter(val)}</span>
             </div>
             <div style={{ height: 8, background: T.surface, borderRadius: 999, overflow: "hidden", border: `1px solid ${T.border}` }}>
-              <div style={{ width: `${pct}%`, height: "100%", background: T.accent, borderRadius: 999 }} />
+              <div style={{ width: `${width}%`, height: "100%", background: T.accent, borderRadius: 999 }} />
             </div>
           </div>
         );
@@ -144,18 +147,50 @@ const BarList = ({ rows, labelKey, valueKey, valueFormatter = (v) => v }) => {
   );
 };
 
+const TrendList = ({ rows, labelKey, valueKey, valueFormatter = (v) => v }) => {
+  const max = Math.max(1, ...rows.map(r => Number(r[valueKey] || 0)));
+  return (
+    <div style={{ display: "flex", alignItems: "flex-end", gap: 8, height: 150, paddingTop: 16 }}>
+      {rows.length === 0 ? (
+        <div style={{ color: T.muted, fontSize: 13, width: "100%", textAlign: "center" }}>Sem dados para exibir</div>
+      ) : rows.map((r, idx) => {
+        const val = Number(r[valueKey] || 0);
+        const height = val <= 0 ? 6 : Math.max(8, (val / max) * 125);
+        const label = r[labelKey] ? new Date(r[labelKey] + "T12:00:00").toLocaleDateString("pt-BR", { month: "short" }) : "—";
+        return (
+          <div key={`${r[labelKey]}-${idx}`} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+            <div title={valueFormatter(val)} style={{ width: "100%", maxWidth: 36, height, background: T.accent, borderRadius: "8px 8px 2px 2px", opacity: val <= 0 ? 0.35 : 1 }} />
+            <div style={{ color: T.muted, fontSize: 10, textTransform: "uppercase" }}>{label}</div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+const AlertIcon = ({ type }) => {
+  if (type === "overdue_subscription") return <AlertCircle size={14} color={T.warning} />;
+  if (type === "cancelled_subscription") return <Ban size={14} color={T.danger} />;
+  if (type === "new_customer") return <UserPlus size={14} color={T.success} />;
+  return <Bell size={14} color={T.accent} />;
+};
+
 export default function SuperAdminView({ token }) {
-  const [activeTab, setActiveTab] = useState("executive");
+  const [activeTab, setActiveTab] = useState("dashboard");
+
+  const [kpis, setKpis] = useState(null);
+  const [saasOverview, setSaasOverview] = useState([]);
+  const [planDistribution, setPlanDistribution] = useState([]);
+  const [customerGrowth, setCustomerGrowth] = useState([]);
+  const [revenueGrowth, setRevenueGrowth] = useState([]);
+  const [alerts, setAlerts] = useState([]);
 
   const [courtesyList, setCourtesyList] = useState([]);
   const [subscriptionsList, setSubscriptionsList] = useState([]);
-  const [saasOverview, setSaasOverview] = useState([]);
-  const [saasMetrics, setSaasMetrics] = useState(null);
-  const [planDistribution, setPlanDistribution] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState("all"); // all | active | expired | revoked
+  const [filter, setFilter] = useState("all");
   const [planFilter, setPlanFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
 
@@ -177,18 +212,66 @@ export default function SuperAdminView({ token }) {
 
     try {
       const [
-        courtesyRes,
-        subscriptionsRes,
-        metricsRes,
+        kpisRes,
         overviewRes,
         planDistRes,
+        customerGrowthRes,
+        revenueGrowthRes,
+        alertsRes,
+        courtesyRes,
+        subscriptionsRes,
       ] = await Promise.allSettled([
-        fetch(`${SUPABASE_URL}/rest/v1/courtesy_access?select=*,barbershops(name)&order=created_at.desc`, { headers: hdr(token) }),
-        fetch(`${SUPABASE_URL}/rest/v1/subscriptions?select=*&order=created_at.desc`, { headers: hdr(token) }),
-        fetch(`${SUPABASE_URL}/rest/v1/superadmin_saas_metrics?select=*`, { headers: hdr(token) }),
+        fetch(`${SUPABASE_URL}/rest/v1/superadmin_dashboard_kpis?select=*`, { headers: hdr(token) }),
         fetch(`${SUPABASE_URL}/rest/v1/superadmin_saas_overview?select=*&order=barbershop_created_at.desc`, { headers: hdr(token) }),
         fetch(`${SUPABASE_URL}/rest/v1/superadmin_plan_distribution?select=*`, { headers: hdr(token) }),
+        fetch(`${SUPABASE_URL}/rest/v1/superadmin_customer_growth?select=*`, { headers: hdr(token) }),
+        fetch(`${SUPABASE_URL}/rest/v1/superadmin_revenue_growth?select=*`, { headers: hdr(token) }),
+        fetch(`${SUPABASE_URL}/rest/v1/superadmin_alerts?select=*&limit=30`, { headers: hdr(token) }),
+        fetch(`${SUPABASE_URL}/rest/v1/courtesy_access?select=*,barbershops(name)&order=created_at.desc`, { headers: hdr(token) }),
+        fetch(`${SUPABASE_URL}/rest/v1/subscriptions?select=*&order=created_at.desc`, { headers: hdr(token) }),
       ]);
+
+      if (kpisRes.status === "fulfilled" && kpisRes.value.ok) {
+        const data = await kpisRes.value.json();
+        setKpis(Array.isArray(data) ? data[0] : null);
+      } else {
+        setKpis(null);
+      }
+
+      if (overviewRes.status === "fulfilled" && overviewRes.value.ok) {
+        const data = await overviewRes.value.json();
+        setSaasOverview(Array.isArray(data) ? data : []);
+      } else {
+        setSaasOverview([]);
+      }
+
+      if (planDistRes.status === "fulfilled" && planDistRes.value.ok) {
+        const data = await planDistRes.value.json();
+        setPlanDistribution(Array.isArray(data) ? data : []);
+      } else {
+        setPlanDistribution([]);
+      }
+
+      if (customerGrowthRes.status === "fulfilled" && customerGrowthRes.value.ok) {
+        const data = await customerGrowthRes.value.json();
+        setCustomerGrowth(Array.isArray(data) ? data : []);
+      } else {
+        setCustomerGrowth([]);
+      }
+
+      if (revenueGrowthRes.status === "fulfilled" && revenueGrowthRes.value.ok) {
+        const data = await revenueGrowthRes.value.json();
+        setRevenueGrowth(Array.isArray(data) ? data : []);
+      } else {
+        setRevenueGrowth([]);
+      }
+
+      if (alertsRes.status === "fulfilled" && alertsRes.value.ok) {
+        const data = await alertsRes.value.json();
+        setAlerts(Array.isArray(data) ? data : []);
+      } else {
+        setAlerts([]);
+      }
 
       let courtesy = [];
       if (courtesyRes.status === "fulfilled" && courtesyRes.value.ok) {
@@ -204,6 +287,7 @@ export default function SuperAdminView({ token }) {
             }))
           : [];
       }
+      setCourtesyList(courtesy);
 
       let subscriptions = [];
       if (subscriptionsRes.status === "fulfilled" && subscriptionsRes.value.ok) {
@@ -231,38 +315,11 @@ export default function SuperAdminView({ token }) {
             })
           : [];
       }
-
-      let metrics = null;
-      if (metricsRes.status === "fulfilled" && metricsRes.value.ok) {
-        const data = await metricsRes.value.json();
-        metrics = Array.isArray(data) ? data[0] : null;
-      }
-
-      let overview = [];
-      if (overviewRes.status === "fulfilled" && overviewRes.value.ok) {
-        const data = await overviewRes.value.json();
-        overview = Array.isArray(data) ? data : [];
-      }
-
-      let distribution = [];
-      if (planDistRes.status === "fulfilled" && planDistRes.value.ok) {
-        const data = await planDistRes.value.json();
-        distribution = Array.isArray(data) ? data : [];
-      }
-
-      setCourtesyList(courtesy);
       setSubscriptionsList(subscriptions);
-      setSaasMetrics(metrics);
-      setSaasOverview(overview);
-      setPlanDistribution(distribution);
+
     } catch (e) {
       console.error(e);
-      setCourtesyList([]);
-      setSubscriptionsList([]);
-      setSaasMetrics(null);
-      setSaasOverview([]);
-      setPlanDistribution([]);
-      setErr("Erro ao carregar painel administrativo.");
+      setErr("Erro ao carregar painel executivo.");
     }
 
     setLoading(false);
@@ -321,11 +378,6 @@ export default function SuperAdminView({ token }) {
   };
 
   const handleDelete = async (item) => {
-    if (item.source !== "courtesy") {
-      alert("Por segurança, assinaturas pagas não são excluídas por aqui. Cancele/controle a assinatura pelo fluxo de pagamento.");
-      return;
-    }
-
     if (item.status !== "revoked") {
       alert("Somente acessos revogados podem ser excluídos.");
       return;
@@ -350,24 +402,27 @@ export default function SuperAdminView({ token }) {
     }
   };
 
-  const courtesyStats = useMemo(() => ({
-    total: courtesyList.length,
-    active: courtesyList.filter(i => i.status === "active").length,
-    expired: courtesyList.filter(i => i.status === "expired").length,
-    revoked: courtesyList.filter(i => i.status === "revoked").length,
-    used: courtesyList.filter(i => !!i.used_at).length,
-  }), [courtesyList]);
+  const metrics = {
+    total_barbershops: Number(kpis?.total_barbershops || saasOverview.length || 0),
+    active_barbershops: Number(kpis?.active_barbershops || 0),
+    overdue_barbershops: Number(kpis?.overdue_barbershops || 0),
+    cancelled_barbershops: Number(kpis?.cancelled_barbershops || 0),
+    mrr: Number(kpis?.mrr || 0),
+    arr: Number(kpis?.arr || 0),
+    average_ticket: Number(kpis?.average_ticket || 0),
+    total_users: Number(kpis?.total_users || 0),
+    total_barbers: Number(kpis?.total_barbers || 0),
+    total_courtesies: Number(kpis?.total_courtesies || 0),
+    active_courtesies: Number(kpis?.active_courtesies || 0),
+    revoked_courtesies: Number(kpis?.revoked_courtesies || 0),
+    active_subscriptions: Number(kpis?.active_subscriptions || 0),
+    overdue_subscriptions: Number(kpis?.overdue_subscriptions || 0),
+    cancelled_subscriptions: Number(kpis?.cancelled_subscriptions || 0),
+  };
 
-  const filteredCourtesy = courtesyList.filter(item => {
-    const q = search.toLowerCase();
-    const matchSearch = !search ||
-      (item.display_email || item.email || "").toLowerCase().includes(q) ||
-      (item.notes || "").toLowerCase().includes(q) ||
-      (item.display_plan || "").toLowerCase().includes(q) ||
-      (item.source_label || "").toLowerCase().includes(q);
-    const matchFilter = filter === "all" || item.status === filter;
-    return matchSearch && matchFilter;
-  });
+  const churnRate = metrics.total_barbershops > 0
+    ? (metrics.cancelled_barbershops / metrics.total_barbershops) * 100
+    : 0;
 
   const filteredSaas = saasOverview.filter(item => {
     const q = search.toLowerCase();
@@ -382,23 +437,22 @@ export default function SuperAdminView({ token }) {
     return matchSearch && matchPlan && matchStatus;
   });
 
-  const metrics = {
-    total_barbershops: Number(saasMetrics?.total_barbershops || saasOverview.length || 0),
-    active_barbershops: Number(saasMetrics?.active_barbershops || 0),
-    overdue_barbershops: Number(saasMetrics?.overdue_barbershops || 0),
-    cancelled_barbershops: Number(saasMetrics?.cancelled_barbershops || 0),
-    mrr: Number(saasMetrics?.mrr || 0),
-    arr: Number(saasMetrics?.arr || 0),
-    average_ticket: Number(saasMetrics?.average_ticket || 0),
-    total_users: Number(saasMetrics?.total_users || 0),
-    total_barbers: Number(saasMetrics?.total_barbers || 0),
-  };
+  const filteredCourtesy = courtesyList.filter(item => {
+    const q = search.toLowerCase();
+    const matchSearch = !search ||
+      (item.display_email || item.email || "").toLowerCase().includes(q) ||
+      (item.notes || "").toLowerCase().includes(q) ||
+      (item.display_plan || "").toLowerCase().includes(q);
+    const matchFilter = filter === "all" || item.status === filter;
+    return matchSearch && matchFilter;
+  });
 
   const tabs = [
-    { id: "executive", label: "Visão SaaS", Icon: BarChart3 },
+    { id: "dashboard", label: "Dashboard", Icon: BarChart3 },
+    { id: "finance", label: "Financeiro", Icon: DollarSign },
     { id: "clients", label: "Clientes SaaS", Icon: Building2 },
-    { id: "billing", label: "Financeiro", Icon: DollarSign },
     { id: "courtesy", label: "Cortesias", Icon: Gift },
+    { id: "alerts", label: "Alertas", Icon: Bell },
   ];
 
   return (
@@ -409,9 +463,9 @@ export default function SuperAdminView({ token }) {
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
             <ShieldCheck size={22} color={T.accent} />
-            <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 36, letterSpacing: 2.5, margin: 0, color: T.text }}>PAINEL EXECUTIVO SAAS</h1>
+            <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 36, letterSpacing: 2.5, margin: 0, color: T.text }}>CENTRO DE INTELIGÊNCIA SAAS</h1>
           </div>
-          <div style={{ color: T.muted, fontSize: 13 }}>Gestão da plataforma Oz.Barber: tenants, receita, assinaturas e cortesias</div>
+          <div style={{ color: T.muted, fontSize: 13 }}>Dashboard executivo da plataforma Oz.Barber: receita, clientes, crescimento e cortesias</div>
         </div>
 
         <div style={{ display: "flex", gap: 8 }}>
@@ -453,37 +507,99 @@ export default function SuperAdminView({ token }) {
       {loading ? (
         <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 14, padding: "4rem", textAlign: "center", color: T.muted }}>
           <RefreshCw size={24} style={{ animation: "spin 1s linear infinite", marginBottom: 12 }} />
-          <div>Carregando painel executivo…</div>
+          <div>Carregando centro de inteligência…</div>
         </div>
       ) : (
         <>
-          {activeTab === "executive" && (
+          {activeTab === "dashboard" && (
             <>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
                 <MetricCard label="MRR" value={money(metrics.mrr)} sub="Receita recorrente mensal" icon={DollarSign} color={T.success} />
-                <MetricCard label="ARR" value={money(metrics.arr)} sub="Projeção anual" icon={TrendingUp} color={T.accent} />
-                <MetricCard label="Ticket médio" value={money(metrics.average_ticket)} sub="Base ativa pagante" icon={CreditCard} color={T.info} />
-                <MetricCard label="Barbearias" value={metrics.total_barbershops} sub="Clientes SaaS cadastrados" icon={Building2} color={T.text} />
-                <MetricCard label="Ativas" value={metrics.active_barbershops} sub="Com assinatura ativa" icon={Check} color={T.success} />
-                <MetricCard label="Inadimplentes" value={metrics.overdue_barbershops} sub="Vencidas / em atraso" icon={AlertCircle} color={T.warning} />
-                <MetricCard label="Usuários" value={metrics.total_users} sub="Acessos criados" icon={Users} color={T.accent} />
-                <MetricCard label="Barbeiros" value={metrics.total_barbers} sub="Profissionais cadastrados" icon={Scissors} color={T.mutedLight} />
+                <MetricCard label="ARR" value={money(metrics.arr)} sub="Receita anual projetada" icon={TrendingUp} color={T.accent} />
+                <MetricCard label="Clientes ativos" value={metrics.active_barbershops} sub="Assinaturas ativas" icon={Building2} color={T.success} />
+                <MetricCard label="Inadimplentes" value={metrics.overdue_barbershops} sub="Vencidas ou em atraso" icon={AlertCircle} color={T.warning} />
+                <MetricCard label="Churn" value={pct(churnRate)} sub="Canceladas / clientes totais" icon={Ban} color={T.danger} />
+                <MetricCard label="Crescimento mensal" value={customerGrowth.at(-1)?.new_customers || 0} sub="Novas contas no último mês" icon={ArrowUpRight} color={T.info} />
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: "1.5rem" }}>
+                <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 14, padding: "1.25rem" }}>
+                  <SectionTitle icon={TrendingUp} title="Crescimento de Receita" sub="Receita registrada por mês" />
+                  <TrendList rows={revenueGrowth} labelKey="month" valueKey="revenue" valueFormatter={money} />
+                </div>
+
+                <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 14, padding: "1.25rem" }}>
+                  <SectionTitle icon={UserPlus} title="Novos Clientes" sub="Barbearias cadastradas por mês" />
+                  <TrendList rows={customerGrowth} labelKey="month" valueKey="new_customers" valueFormatter={(v) => `${v} cliente(s)`} />
+                </div>
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 14, marginTop: "1.5rem" }}>
                 <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 14, padding: "1.25rem" }}>
-                  <SectionTitle icon={PieChart} title="Distribuição de Planos" sub="Quantidade de barbearias por plano" />
+                  <SectionTitle icon={PieChart} title="Distribuição de Planos" sub="Quantidade de clientes por plano" />
                   <BarList rows={planDistribution} labelKey="plan_name" valueKey="barbershops_count" valueFormatter={(v) => `${v} conta(s)`} />
                 </div>
 
                 <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 14, padding: "1.25rem" }}>
-                  <SectionTitle icon={Gift} title="Cortesias" sub="Acessos doados pelo admin master" />
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                    <MetricCard label="Total" value={courtesyStats.total} color={T.accent} />
-                    <MetricCard label="Ativas" value={courtesyStats.active} color={T.success} />
-                    <MetricCard label="Usadas" value={courtesyStats.used} color={T.info} />
-                    <MetricCard label="Revogadas" value={courtesyStats.revoked} color={T.danger} />
-                  </div>
+                  <SectionTitle icon={Bell} title="Alertas Recentes" sub="Movimentos importantes da plataforma" />
+                  {alerts.length === 0 ? (
+                    <div style={{ color: T.muted, fontSize: 13, padding: "2rem", textAlign: "center" }}>Nenhum alerta encontrado</div>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                      {alerts.slice(0, 6).map((a, idx) => (
+                        <div key={`${a.type}-${a.created_at}-${idx}`} style={{ display: "flex", gap: 10, alignItems: "flex-start", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "0.75rem" }}>
+                          <AlertIcon type={a.type} />
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ color: T.text, fontSize: 13, fontWeight: 600 }}>{a.message}</div>
+                            <div style={{ color: T.muted, fontSize: 11, marginTop: 2 }}>{a.reference || "—"} · {fDatetime(a.created_at)}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+
+          {activeTab === "finance" && (
+            <>
+              <SectionTitle icon={Wallet} title="Financeiro SaaS" sub="Receita da plataforma, não financeiro interno das barbearias" />
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 12 }}>
+                <MetricCard label="Receita mensal" value={money(metrics.mrr)} icon={DollarSign} color={T.success} />
+                <MetricCard label="Receita prevista" value={money(metrics.arr)} sub="ARR projetado" icon={TrendingUp} color={T.accent} />
+                <MetricCard label="Assinaturas ativas" value={metrics.active_subscriptions} icon={CreditCard} color={T.success} />
+                <MetricCard label="Inadimplência" value={metrics.overdue_subscriptions} icon={AlertCircle} color={T.warning} />
+                <MetricCard label="Cancelamentos" value={metrics.cancelled_subscriptions} icon={Ban} color={T.danger} />
+                <MetricCard label="Ticket médio" value={money(metrics.average_ticket)} icon={Activity} color={T.info} />
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: "1.5rem" }}>
+                <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 14, padding: "1.25rem" }}>
+                  <SectionTitle icon={BarChart3} title="Receita por Plano" sub="MRR por categoria" />
+                  <BarList rows={planDistribution} labelKey="plan_name" valueKey="mrr" valueFormatter={money} />
+                </div>
+
+                <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 14, padding: "1.25rem" }}>
+                  <SectionTitle icon={CalendarDays} title="Assinaturas Recentes" sub="Pagamentos capturados pelo webhook" />
+                  {subscriptionsList.length === 0 ? (
+                    <div style={{ color: T.muted, fontSize: 13, padding: "2rem", textAlign: "center" }}>Nenhuma assinatura paga registrada ainda</div>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                      {subscriptionsList.slice(0, 10).map(item => (
+                        <div key={item.id} style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "0.75rem", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10 }}>
+                          <div>
+                            <div style={{ color: T.text, fontSize: 13, fontWeight: 600 }}>{item.display_plan}</div>
+                            <div style={{ color: T.muted, fontSize: 11 }}>{item.display_email}</div>
+                          </div>
+                          <div style={{ textAlign: "right" }}>
+                            <div style={{ color: T.success, fontSize: 13, fontWeight: 700 }}>{money(item.amount)}</div>
+                            <div style={{ color: T.muted, fontSize: 11 }}>{fDate(item.created_at)}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </>
@@ -491,7 +607,7 @@ export default function SuperAdminView({ token }) {
 
           {activeTab === "clients" && (
             <>
-              <SectionTitle icon={Building2} title="Clientes SaaS" sub="Cada linha representa uma barbearia/tenant da plataforma" />
+              <SectionTitle icon={Building2} title="Clientes SaaS" sub="Cada barbearia é um cliente/tenant da plataforma" />
               <div style={{ display: "flex", gap: 10, marginBottom: "1rem", flexWrap: "wrap" }}>
                 <div style={{ flex: 1, minWidth: 220, position: "relative" }}>
                   <Search size={14} color={T.muted} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)" }} />
@@ -546,52 +662,11 @@ export default function SuperAdminView({ token }) {
             </>
           )}
 
-          {activeTab === "billing" && (
-            <>
-              <SectionTitle icon={DollarSign} title="Financeiro SaaS" sub="Receita da plataforma, não financeiro interno das barbearias" />
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 12 }}>
-                <MetricCard label="MRR" value={money(metrics.mrr)} icon={DollarSign} color={T.success} />
-                <MetricCard label="ARR" value={money(metrics.arr)} icon={TrendingUp} color={T.accent} />
-                <MetricCard label="Ticket médio" value={money(metrics.average_ticket)} icon={CreditCard} color={T.info} />
-                <MetricCard label="Canceladas" value={metrics.cancelled_barbershops} icon={X} color={T.danger} />
-              </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: "1.5rem" }}>
-                <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 14, padding: "1.25rem" }}>
-                  <SectionTitle icon={BarChart3} title="Receita por Plano" sub="MRR por categoria" />
-                  <BarList rows={planDistribution} labelKey="plan_name" valueKey="mrr" valueFormatter={money} />
-                </div>
-
-                <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 14, padding: "1.25rem" }}>
-                  <SectionTitle icon={CalendarDays} title="Últimas Assinaturas" sub="Pagamentos capturados pelo webhook" />
-                  {subscriptionsList.length === 0 ? (
-                    <div style={{ color: T.muted, fontSize: 13, padding: "2rem", textAlign: "center" }}>Nenhuma assinatura paga registrada ainda</div>
-                  ) : (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                      {subscriptionsList.slice(0, 8).map(item => (
-                        <div key={item.id} style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "0.75rem", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10 }}>
-                          <div>
-                            <div style={{ color: T.text, fontSize: 13, fontWeight: 600 }}>{item.display_plan}</div>
-                            <div style={{ color: T.muted, fontSize: 11 }}>{item.display_email}</div>
-                          </div>
-                          <div style={{ textAlign: "right" }}>
-                            <div style={{ color: T.success, fontSize: 13, fontWeight: 700 }}>{money(item.amount)}</div>
-                            <div style={{ color: T.muted, fontSize: 11 }}>{fDate(item.created_at)}</div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </>
-          )}
-
           {activeTab === "courtesy" && (
             <>
               <SectionTitle
                 icon={Gift}
-                title="Cortesias & Benefícios"
+                title="Cortesias"
                 sub="Acessos gratuitos doados pelo admin master; não contam como MRR"
                 right={
                   <button onClick={() => { setShowModal(true); setErr(""); }}
@@ -602,10 +677,11 @@ export default function SuperAdminView({ token }) {
               />
 
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: "1.25rem" }}>
-                <MetricCard label="Total" value={courtesyStats.total} color={T.accent} />
-                <MetricCard label="Ativas" value={courtesyStats.active} color={T.success} />
-                <MetricCard label="Expiradas" value={courtesyStats.expired} color={T.warning} />
-                <MetricCard label="Revogadas" value={courtesyStats.revoked} color={T.danger} />
+                <MetricCard label="Total concedidas" value={metrics.total_courtesies} color={T.accent} icon={Gift} />
+                <MetricCard label="Ativas" value={metrics.active_courtesies} color={T.success} icon={Check} />
+                <MetricCard label="Expiradas" value={courtesyList.filter(i => i.status === "expired").length} color={T.warning} icon={Clock} />
+                <MetricCard label="Revogadas" value={metrics.revoked_courtesies} color={T.danger} icon={Ban} />
+                <MetricCard label="Convertidas" value="0" sub="Fase 2: cortesia → assinatura" color={T.info} icon={TrendingUp} />
               </div>
 
               <div style={{ display: "flex", gap: 10, marginBottom: "1.25rem", flexWrap: "wrap" }}>
@@ -681,6 +757,35 @@ export default function SuperAdminView({ token }) {
                         ))}
                       </tbody>
                     </table>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {activeTab === "alerts" && (
+            <>
+              <SectionTitle icon={Bell} title="Alertas Inteligentes" sub="Eventos importantes para acompanhamento da operação SaaS" />
+              <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 14, overflow: "hidden" }}>
+                {alerts.length === 0 ? (
+                  <div style={{ padding: "3rem", textAlign: "center", color: T.muted }}>
+                    <Bell size={32} style={{ marginBottom: 12, opacity: 0.4 }} />
+                    <div>Nenhum alerta encontrado</div>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column" }}>
+                    {alerts.map((a, idx) => (
+                      <div key={`${a.type}-${a.created_at}-${idx}`} style={{ display: "flex", justifyContent: "space-between", gap: 16, padding: "1rem", borderBottom: idx < alerts.length - 1 ? `1px solid ${T.border}` : "none" }}>
+                        <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                          <div style={{ marginTop: 2 }}><AlertIcon type={a.type} /></div>
+                          <div>
+                            <div style={{ color: T.text, fontSize: 14, fontWeight: 700 }}>{a.message}</div>
+                            <div style={{ color: T.muted, fontSize: 12, marginTop: 3 }}>{a.reference || "—"}</div>
+                          </div>
+                        </div>
+                        <div style={{ color: T.muted, fontSize: 12, whiteSpace: "nowrap" }}>{fDatetime(a.created_at)}</div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
