@@ -1437,15 +1437,25 @@ const CSS = `
   @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 `;
 
+
+const safeLoadAuth = () => {
+  try {
+    const raw = localStorage.getItem("ozbarber_auth");
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+
+const safeSaveAuth = (authData) => {
+  try {
+    if (authData) localStorage.setItem("ozbarber_auth", JSON.stringify(authData));
+    else localStorage.removeItem("ozbarber_auth");
+  } catch {}
+};
+
 export default function App() {
-  const [auth,         setAuth]         = useState(() => {
-    try {
-      const saved = localStorage.getItem("ozbarber_auth");
-      return saved ? JSON.parse(saved) : null;
-    } catch {
-      return null;
-    }
-  });
+  const [auth,         setAuth]         = useState(() => safeLoadAuth());
   const [dataLoaded,   setDataLoaded]   = useState(false);
   const [loading,      setLoading]      = useState(false);
   const [view,         setView]         = useState("dashboard");
@@ -1460,6 +1470,11 @@ export default function App() {
   const [barbers,     setBarbers]     = useState([]);
   const [attendances, setAttendances] = useState([]);
   const [expenses,    setExpenses]    = useState([]);
+
+  useEffect(() => {
+    const saved = safeLoadAuth();
+    if (saved && !auth) setAuth(saved);
+  }, []);
 
   // Detecta retorno do Mercado Pago (?payment=success&plan=...)
   useEffect(() => {
@@ -1517,8 +1532,8 @@ export default function App() {
   }, []);
 
   const onLogin = useCallback(async (authData) => {
+    safeSaveAuth(authData);
     setAuth(authData);
-    try { localStorage.setItem("ozbarber_auth", JSON.stringify(authData)); } catch {}
     // Verifica acesso ativo (super admin sempre passa)
     const shopId = authData.profile?.barbershop_id;
     if (shopId && !authData.profile?.is_super_admin) {
@@ -1540,51 +1555,8 @@ export default function App() {
     await loadData(authData.token, authData.profile);
   }, [loadData]);
 
-  useEffect(() => {
-    if (!auth?.token || !auth?.profile || dataLoaded || loading || showPlans) return;
-
-    let cancelled = false;
-
-    const restoreSession = async () => {
-      const shopId = auth.profile?.barbershop_id;
-
-      if (shopId && !auth.profile?.is_super_admin) {
-        try {
-          const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/has_active_access`, {
-            method: "POST",
-            headers: {
-              apikey: SUPABASE_ANON,
-              Authorization: `Bearer ${auth.token}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ p_barbershop_id: shopId }),
-          });
-
-          const hasAccess = await res.json();
-
-          if (!cancelled && !hasAccess) {
-            setExpiredMsg("Sua assinatura expirou. Renove para continuar usando o sistema.");
-            setShowPlans(true);
-            setLoading(false);
-            return;
-          }
-        } catch {
-          // Se a checagem falhar, mantém o comportamento atual e tenta carregar os dados.
-        }
-      }
-
-      if (!cancelled) {
-        await loadData(auth.token, auth.profile);
-      }
-    };
-
-    restoreSession();
-
-    return () => { cancelled = true; };
-  }, [auth, dataLoaded, loading, showPlans, loadData]);
-
   const onLogout = () => {
-    try { localStorage.removeItem("ozbarber_auth"); } catch {}
+    safeSaveAuth(null);
     setAuth(null);
     setShop(null);
     resetTenantTheme();
@@ -1599,15 +1571,18 @@ export default function App() {
     setExpiredMsg("");
   };
 
+  const checkoutAuth = auth || safeLoadAuth();
+
   // Tela de planos (antes do login ou assinatura expirada)
   if (showPlans) return (
     <PlansView
       onBack={() => { setShowPlans(false); setExpiredMsg(""); }}
       expiredMessage={expiredMsg}
-      token={auth?.token}
-      user={auth?.user}
-      profile={auth?.profile}
-      authData={auth}
+      token={checkoutAuth?.token || checkoutAuth?.access_token}
+      user={checkoutAuth?.user}
+      profile={checkoutAuth?.profile}
+      authData={checkoutAuth}
+      session={{ access_token: checkoutAuth?.token || checkoutAuth?.access_token, user: checkoutAuth?.user, profile: checkoutAuth?.profile }}
       onCourtesyValidated={(email) => {
         setCourtesyEmail(email);
         setShowPlans(false);
