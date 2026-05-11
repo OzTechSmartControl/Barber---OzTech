@@ -290,7 +290,7 @@ const LoginView = ({ onLogin, onShowPlans }) => {
               const { error } = await supabase.auth.resetPasswordForEmail(
                 email.trim().toLowerCase(),
                 {
-                  redirectTo: "https://barber-oz-tech.vercel.app/reset-password",
+                  redirectTo: `${window.location.origin}/reset-password`,
                 }
               );
 
@@ -1512,7 +1512,11 @@ const safeSaveAuth = (authData) => {
 export default function App() {
 
   const isResetPasswordRoute =
-    window.location.pathname === "/reset-password";
+    window.location.pathname === "/reset-password" ||
+    window.location.hash.includes("type=recovery") ||
+    window.location.hash.includes("access_token") ||
+    window.location.search.includes("type=recovery") ||
+    window.location.search.includes("code=");
 
   if (isResetPasswordRoute) {
     return <ResetPassword />;
