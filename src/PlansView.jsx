@@ -72,30 +72,62 @@ export default function PlansView({ onBack, onCourtesyValidated, expiredMessage 
   const [err,         setErr]         = useState("");
   const [successMsg,  setSuccessMsg]  = useState("");
 
-  // ── Inicia pagamento MP ───────────────────────────────────────
+  // ── Inicia pagamento Mercado Pago ─────────────────────────────
   const handlePlanSelect = async (plan) => {
     setLoadingPlan(plan.id);
     setErr("");
+    setSuccessMsg("");
+
     try {
+      const payload = {
+        plan_id: plan.id,
+        plan_label: plan.label,
+        price: Number(plan.price),
+        currency: "BRL",
+        return_url: window.location.origin,
+        success_url: `${window.location.origin}/?payment=success&plan=${plan.id}`,
+        failure_url: `${window.location.origin}/?payment=failure&plan=${plan.id}`,
+        pending_url: `${window.location.origin}/?payment=pending&plan=${plan.id}`,
+      };
+
       const res = await fetch(`${SUPABASE_URL}/functions/v1/create-mp-preference`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
           apikey: SUPABASE_ANON,
+          Authorization: `Bearer ${SUPABASE_ANON}`,
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          plan_id:    plan.id,
-          plan_label: plan.label,
-          price:      plan.price,
-          return_url: window.location.origin,
-        }),
+        body: JSON.stringify(payload),
       });
-      const data = await res.json();
-      if (!res.ok || !data.init_point) throw new Error(data.error || "Erro ao criar pagamento.");
-      // Redireciona para o checkout do Mercado Pago
-      window.location.href = data.init_point;
+
+      const text = await res.text();
+      let data = {};
+
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        data = { raw: text };
+      }
+
+      const checkoutUrl =
+        data.init_point ||
+        data.sandbox_init_point ||
+        data.checkout_url ||
+        data.url;
+
+      if (!res.ok) {
+        const detail = data.error || data.message || data.raw || `HTTP ${res.status}`;
+        throw new Error(`Erro ao criar pagamento: ${detail}`);
+      }
+
+      if (!checkoutUrl) {
+        throw new Error("Erro ao criar pagamento: a função não retornou o link do Mercado Pago.");
+      }
+
+      window.location.assign(checkoutUrl);
     } catch (e) {
-      setErr(e.message);
+      console.error("Erro Mercado Pago:", e);
+      setErr(e.message || "Erro ao criar pagamento.");
       setLoadingPlan(null);
     }
   };
