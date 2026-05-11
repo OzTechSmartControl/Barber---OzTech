@@ -1438,7 +1438,14 @@ const CSS = `
 `;
 
 export default function App() {
-  const [auth,         setAuth]         = useState(null);
+  const [auth,         setAuth]         = useState(() => {
+    try {
+      const saved = localStorage.getItem("ozbarber_auth");
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
   const [dataLoaded,   setDataLoaded]   = useState(false);
   const [loading,      setLoading]      = useState(false);
   const [view,         setView]         = useState("dashboard");
@@ -1511,6 +1518,7 @@ export default function App() {
 
   const onLogin = useCallback(async (authData) => {
     setAuth(authData);
+    try { localStorage.setItem("ozbarber_auth", JSON.stringify(authData)); } catch {}
     // Verifica acesso ativo (super admin sempre passa)
     const shopId = authData.profile?.barbershop_id;
     if (shopId && !authData.profile?.is_super_admin) {
@@ -1532,7 +1540,51 @@ export default function App() {
     await loadData(authData.token, authData.profile);
   }, [loadData]);
 
+  useEffect(() => {
+    if (!auth?.token || !auth?.profile || dataLoaded || loading || showPlans) return;
+
+    let cancelled = false;
+
+    const restoreSession = async () => {
+      const shopId = auth.profile?.barbershop_id;
+
+      if (shopId && !auth.profile?.is_super_admin) {
+        try {
+          const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/has_active_access`, {
+            method: "POST",
+            headers: {
+              apikey: SUPABASE_ANON,
+              Authorization: `Bearer ${auth.token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ p_barbershop_id: shopId }),
+          });
+
+          const hasAccess = await res.json();
+
+          if (!cancelled && !hasAccess) {
+            setExpiredMsg("Sua assinatura expirou. Renove para continuar usando o sistema.");
+            setShowPlans(true);
+            setLoading(false);
+            return;
+          }
+        } catch {
+          // Se a checagem falhar, mantém o comportamento atual e tenta carregar os dados.
+        }
+      }
+
+      if (!cancelled) {
+        await loadData(auth.token, auth.profile);
+      }
+    };
+
+    restoreSession();
+
+    return () => { cancelled = true; };
+  }, [auth, dataLoaded, loading, showPlans, loadData]);
+
   const onLogout = () => {
+    try { localStorage.removeItem("ozbarber_auth"); } catch {}
     setAuth(null);
     setShop(null);
     resetTenantTheme();
