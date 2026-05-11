@@ -81,25 +81,62 @@ export default function PlansView({
   const [err,         setErr]         = useState("");
   const [successMsg,  setSuccessMsg]  = useState("");
 
-  const getAccessToken = () =>
-    token ||
-    authData?.token ||
-    authData?.access_token ||
-    session?.access_token ||
-    null;
+  const getSavedAuth = () => {
+    try {
+      const raw =
+        localStorage.getItem("ozbarber_auth") ||
+        localStorage.getItem("authData") ||
+        localStorage.getItem("auth") ||
+        localStorage.getItem("session");
 
-  const getUserId = () =>
-    user?.id ||
-    authData?.user?.id ||
-    session?.user?.id ||
-    profile?.id ||
-    null;
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  };
 
-  const getBarbershopId = () =>
-    profile?.barbershop_id ||
-    authData?.profile?.barbershop_id ||
-    session?.profile?.barbershop_id ||
-    null;
+  const getAccessToken = () => {
+    const saved = getSavedAuth();
+
+    return (
+      token ||
+      authData?.token ||
+      authData?.access_token ||
+      session?.access_token ||
+      saved?.token ||
+      saved?.access_token ||
+      saved?.session?.access_token ||
+      null
+    );
+  };
+
+  const getUserId = () => {
+    const saved = getSavedAuth();
+
+    return (
+      user?.id ||
+      authData?.user?.id ||
+      session?.user?.id ||
+      profile?.id ||
+      saved?.user?.id ||
+      saved?.session?.user?.id ||
+      saved?.profile?.id ||
+      null
+    );
+  };
+
+  const getBarbershopId = () => {
+    const saved = getSavedAuth();
+
+    return (
+      profile?.barbershop_id ||
+      authData?.profile?.barbershop_id ||
+      session?.profile?.barbershop_id ||
+      saved?.profile?.barbershop_id ||
+      saved?.barbershop_id ||
+      null
+    );
+  };
 
   // ── Inicia pagamento Mercado Pago ─────────────────────────────
   const handlePlanSelect = async (plan) => {
