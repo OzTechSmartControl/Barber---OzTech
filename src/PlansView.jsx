@@ -81,7 +81,12 @@ export default function PlansView({ onBack, onCourtesyValidated, expiredMessage 
     try {
       const payload = {
         plan_id: plan.id,
-        plan_label: plan.name,
+        plan_label:
+        plan.id === "monthly"
+          ? "Plano Mensal"
+          : plan.id === "semestral"
+          ? "Plano Semestral"
+          : "Plano Anual",
         product_name: "Oz.Barber",
         price: Number(plan.price),
         currency: "BRL",
