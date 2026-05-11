@@ -175,6 +175,7 @@ export default function Onboarding({ onComplete, courtesyEmail = "" }) {
   const [pass,    setPass]    = useState("");
   const [pass2,   setPass2]   = useState("");
   const [isLogin, setIsLogin] = useState(false); // toggle cadastro/login
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   const [ownerName, setOwnerName] = useState("");
 
@@ -234,13 +235,39 @@ export default function Onboarding({ onComplete, courtesyEmail = "" }) {
         setErr(msg); setLoading(false); return;
       }
       if (!res.access_token) {
-        setErr(isLogin ? "E-mail ou senha incorretos." : "Verifique seu e-mail para confirmar o cadastro."); setLoading(false); return;
+        if (isLogin) {
+          setErr("E-mail ou senha incorretos.");
+        } else {
+          setShowConfirmModal(true);
+        }
+        setLoading(false);
+        return;
       }
       setToken(res.access_token);
       setUid(res.user?.id);
       setStep(2);
     } catch { setErr("Erro de conexão."); }
     setLoading(false);
+  };
+
+  
+
+  // ── Reenviar confirmação de e-mail ─────────────────────────
+  const resendConfirmation = async () => {
+    try {
+      await fetch(`${SUPABASE_URL}/auth/v1/resend`, {
+        method: "POST",
+        headers: { apikey: SUPABASE_ANON, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "signup",
+          email,
+        }),
+      });
+
+      alert("E-mail reenviado com sucesso.");
+    } catch {
+      alert("Erro ao reenviar e-mail.");
+    }
   };
 
   // ── PASSO 5 — Finalizar e salvar tudo ────────────────────────
@@ -250,19 +277,6 @@ export default function Onboarding({ onComplete, courtesyEmail = "" }) {
     try {
       // 1. Cria a barbearia (chama a função do Supabase)
       const shopId = await rpcCreateBarbershop(token, { name: shopName, slug, accent });
-
-      await fetch(
-        `${SUPABASE_URL}/rest/v1/rpc/use_courtesy_access`,
-        {
-          method: "POST",
-          headers: hdr(token),
-          body: JSON.stringify({
-            p_email: email.trim().toLowerCase(),
-            p_barbershop_id: shopId,
-          }),
-        }
-      );
-
 
       // 2. Faz upload do logo (se houver)
       let logoUrl = null;
@@ -302,6 +316,77 @@ export default function Onboarding({ onComplete, courtesyEmail = "" }) {
       <div style={{ position: "fixed", left: 0, top: 0, bottom: 0, width: 4, background: T.accent }} />
 
       <div style={{ width: "100%", maxWidth: 460 }}>
+
+
+      {showConfirmModal && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0,0,0,0.72)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 9999,
+          padding: "1rem"
+        }}>
+          <div style={{
+            width: "100%",
+            maxWidth: 420,
+            background: T.card,
+            border: `1px solid ${T.border}`,
+            borderRadius: 18,
+            padding: "2rem",
+            boxShadow: "0 20px 60px rgba(0,0,0,0.45)",
+            textAlign: "center"
+          }}>
+            <div style={{ fontSize: 28, marginBottom: 14 }}>🚀</div>
+
+            <div style={{
+              fontFamily: "'Bebas Neue', sans-serif",
+              fontSize: 28,
+              letterSpacing: 2,
+              color: T.text,
+              marginBottom: 12
+            }}>
+              Falta só um passo
+            </div>
+
+            <div style={{
+              color: T.text,
+              fontSize: 14,
+              lineHeight: 1.7,
+              marginBottom: "1.75rem"
+            }}>
+              Confirmamos seu cadastro, mas precisamos validar seu e-mail.
+              <br /><br />
+              Clique no link enviado para liberar o acesso ao sistema.
+              <br /><br />
+              Após a confirmação:
+              <br />→ volte ao Oz.Barber
+              <br />→ clique em “Entrar”
+              <br />→ continue o cadastro da sua barbearia
+            </div>
+
+            <Btn
+              onClick={() => {
+                setShowConfirmModal(false);
+                setIsLogin(true);
+              }}
+              style={{ marginBottom: 12 }}
+            >
+              Já confirmei
+            </Btn>
+
+            <Btn
+              variant="ghost"
+              onClick={resendConfirmation}
+            >
+              Reenviar e-mail
+            </Btn>
+          </div>
+        </div>
+      )}
+
         {/* Cabeçalho */}
         <div style={{ textAlign: "center", marginBottom: "2rem" }}>
           <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 34, letterSpacing: 4, color: T.accent }}>BARBER SAAS</div>
