@@ -278,6 +278,17 @@ export default function Onboarding({ onComplete, courtesyEmail = "" }) {
       // 1. Cria a barbearia (chama a função do Supabase)
       const shopId = await rpcCreateBarbershop(token, { name: shopName, slug, accent });
 
+      // Vincula assinatura paga ao novo usuário/barbearia
+      await fetch(`${SUPABASE_URL}/rest/v1/rpc/claim_paid_subscription`, {
+        method: "POST",
+        headers: hdr(token),
+        body: JSON.stringify({
+          p_user_id: uid,
+          p_barbershop_id: shopId,
+          p_email: email,
+        }),
+      });
+
       // 2. Faz upload do logo (se houver)
       let logoUrl = null;
       if (logoFile) {
