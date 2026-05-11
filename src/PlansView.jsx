@@ -64,13 +64,42 @@ const SuccessMsg = ({ msg }) => msg ? (
 ) : null;
 
 // ══════════════════════════════════════════════════════════════
-export default function PlansView({ onBack, onCourtesyValidated, expiredMessage }) {
+export default function PlansView({
+  onBack,
+  onCourtesyValidated,
+  expiredMessage,
+  token,
+  profile,
+  user,
+  authData,
+  session,
+}) {
   const [tab,         setTab]         = useState("plans");   // "plans" | "courtesy"
   const [loadingPlan, setLoadingPlan] = useState(null);
   const [courtEmail,  setCourtEmail]  = useState("");
   const [courtLoading,setCourtLoading]= useState(false);
   const [err,         setErr]         = useState("");
   const [successMsg,  setSuccessMsg]  = useState("");
+
+  const getAccessToken = () =>
+    token ||
+    authData?.token ||
+    authData?.access_token ||
+    session?.access_token ||
+    null;
+
+  const getUserId = () =>
+    user?.id ||
+    authData?.user?.id ||
+    session?.user?.id ||
+    profile?.id ||
+    null;
+
+  const getBarbershopId = () =>
+    profile?.barbershop_id ||
+    authData?.profile?.barbershop_id ||
+    session?.profile?.barbershop_id ||
+    null;
 
   // ── Inicia pagamento Mercado Pago ─────────────────────────────
   const handlePlanSelect = async (plan) => {
@@ -79,14 +108,15 @@ export default function PlansView({ onBack, onCourtesyValidated, expiredMessage 
     setSuccessMsg("");
 
     try {
+      const accessToken = getAccessToken();
+
+      if (!accessToken) {
+        throw new Error("Usuário não identificado. Volte ao login e entre novamente para assinar.");
+      }
+
       const payload = {
         plan_id: plan.id,
-        plan_label:
-        plan.id === "monthly"
-          ? "Plano Mensal"
-          : plan.id === "semestral"
-          ? "Plano Semestral"
-          : "Plano Anual",
+        plan_label: plan.label,
         product_name: "Oz.Barber",
         price: Number(plan.price),
         currency: "BRL",
@@ -94,13 +124,17 @@ export default function PlansView({ onBack, onCourtesyValidated, expiredMessage 
         success_url: `${window.location.origin}/?payment=success&plan=${plan.id}`,
         failure_url: `${window.location.origin}/?payment=failure&plan=${plan.id}`,
         pending_url: `${window.location.origin}/?payment=pending&plan=${plan.id}`,
+
+        // Metadata direta para o webhook identificar corretamente o tenant
+        user_id: getUserId(),
+        barbershop_id: getBarbershopId(),
       };
 
       const res = await fetch(`${SUPABASE_URL}/functions/v1/create-mp-preference`, {
         method: "POST",
         headers: {
           apikey: SUPABASE_ANON,
-          Authorization: `Bearer ${SUPABASE_ANON}`,
+          Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
