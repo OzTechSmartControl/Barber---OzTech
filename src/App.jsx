@@ -3,6 +3,7 @@ import { supabase } from "./supabase";
 import Onboarding from "./Onboarding";
 import PlansView   from "./PlansView";
 import SuperAdminView from "./SuperAdminView";
+import ResetPassword from "./ResetPassword";
 import ozBarberLogo from "./assets/ozbarber-logo.png.png";
 import {
   LayoutDashboard, Scissors, Users, Award, Tag, DollarSign,
@@ -1473,6 +1474,13 @@ const safeSaveAuth = (authData) => {
 };
 
 export default function App() {
+
+  const isResetPasswordRoute =
+    window.location.pathname === "/reset-password";
+
+  if (isResetPasswordRoute) {
+    return <ResetPassword />;
+  }
 
   const [session, setSession] = useState(null);
   const [user, setUser] = useState(null);
