@@ -1323,13 +1323,15 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
   ];
 
   const shopName = shop?.name || "Oz.Barber";
-  const logoUrl = shop?.logo_url || null;
-  const initials = shopName
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map(p => p[0]?.toUpperCase())
-    .join("") || "OZ";
+
+  const isOzBarber =
+    !shop?.logo_url ||
+    shop?.logo_url === "" ||
+    shop?.logo_url === "null";
+
+  const logoUrl = isOzBarber
+    ? "/ozbarber-logo.png"
+    : shop.logo_url;
 
   return (
     <div style={{ width:collapsed?60:216, background:T.sidebar, borderRight:`1px solid ${T.border}`, display:"flex", flexDirection:"column", flexShrink:0, transition:"width 0.2s ease" }}>
@@ -1337,11 +1339,7 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
         {!collapsed && (
           <div style={{ display:"flex", alignItems:"center", gap:10, minWidth:0 }}>
             <div style={{ width:38, height:38, borderRadius:10, background:T.card, border:`1px solid ${T.border}`, display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden", flexShrink:0 }}>
-              {logoUrl ? (
-                <img src={logoUrl} alt={shopName} style={{ width:"100%", height:"100%", objectFit:"contain" }} />
-              ) : (
-                <span style={{ color:T.accent, fontWeight:800, fontSize:13, letterSpacing:0.8 }}>{initials}</span>
-              )}
+              <img src={logoUrl} alt={shopName} style={{ width:"100%", height:"100%", objectFit:"contain" }} />
             </div>
             <div style={{ minWidth:0 }}>
               <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:20, letterSpacing:1.4, color:T.text, lineHeight:1, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", maxWidth:128 }}>
@@ -1355,7 +1353,7 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
         )}
         {collapsed && (
           <div style={{ width:34, height:34, borderRadius:9, background:T.card, border:`1px solid ${T.border}`, display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden" }}>
-            {logoUrl ? <img src={logoUrl} alt={shopName} style={{ width:"100%", height:"100%", objectFit:"contain" }} /> : <span style={{ color:T.accent, fontWeight:800, fontSize:12 }}>{initials}</span>}
+            <img src={logoUrl} alt={shopName} style={{ width:"100%", height:"100%", objectFit:"contain" }} />
           </div>
         )}
         {!collapsed && <button onClick={()=>setCollapsed(true)} style={{ background:"none", border:"none", color:T.muted, cursor:"pointer", display:"flex" }}><Menu size={18}/></button>}
