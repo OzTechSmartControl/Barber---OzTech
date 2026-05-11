@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import Onboarding from "./Onboarding";
 import PlansView   from "./PlansView";
 import SuperAdminView from "./SuperAdminView";
+import ozBarberLogo from "./assets/ozbarber-logo.png.png";
 import {
   LayoutDashboard, Scissors, Users, Award, Tag, DollarSign,
   Menu, X, Plus, Search, Edit2, Trash2, Check, TrendingUp,
@@ -1330,19 +1331,19 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
     shop?.logo_url === "null";
 
   const logoUrl = isOzBarber
-    ? "/ozbarber-logo.png"
+    ? ozBarberLogo
     : shop.logo_url;
 
   return (
-    <div style={{ width:collapsed?60:216, background:T.sidebar, borderRight:`1px solid ${T.border}`, display:"flex", flexDirection:"column", flexShrink:0, transition:"width 0.2s ease" }}>
-      <div style={{ padding:collapsed?"1.25rem 0":"1.4rem 1.25rem", borderBottom:`1px solid ${T.border}`, display:"flex", alignItems:"center", justifyContent:collapsed?"center":"space-between" }}>
+    <div style={{ width:collapsed?66:230, background:T.sidebar, borderRight:`1px solid ${T.border}`, display:"flex", flexDirection:"column", flexShrink:0, transition:"width 0.2s ease" }}>
+      <div style={{ padding:collapsed?"1.25rem 0":"1.2rem 1.1rem", borderBottom:`1px solid ${T.border}`, display:"flex", alignItems:"center", justifyContent:collapsed?"center":"space-between" }}>
         {!collapsed && (
           <div style={{ display:"flex", alignItems:"center", gap:10, minWidth:0 }}>
-            <div style={{ width:56, height:56, borderRadius:12, background:T.card, border:`1px solid ${T.border}`, display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden", flexShrink:0, padding:4 }}>
+            <div style={{ width:64, height:64, minWidth:64, borderRadius:14, background:"transparent", border:"none", display:"flex", alignItems:"center", justifyContent:"center", overflow:"visible", flexShrink:0, padding:0 }}>
               <img src={logoUrl} alt={shopName} style={{ width:"100%", height:"100%", objectFit:"contain", display:"block" }} />
             </div>
             <div style={{ minWidth:0 }}>
-              <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:20, letterSpacing:1.4, color:T.text, lineHeight:1, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", maxWidth:112 }}>
+              <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:20, letterSpacing:1.4, color:T.text, lineHeight:1, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", maxWidth:118 }}>
                 {shopName}
               </div>
               <div style={{ fontSize:10, color:T.muted, textTransform:"uppercase", letterSpacing:1, marginTop:3 }}>
@@ -1352,7 +1353,7 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
           </div>
         )}
         {collapsed && (
-          <div style={{ width:44, height:44, borderRadius:10, background:T.card, border:`1px solid ${T.border}`, display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden", padding:3 }}>
+          <div style={{ width:50, height:50, minWidth:50, borderRadius:12, background:"transparent", border:"none", display:"flex", alignItems:"center", justifyContent:"center", overflow:"visible", padding:0 }}>
             <img src={logoUrl} alt={shopName} style={{ width:"100%", height:"100%", objectFit:"contain", display:"block" }} />
           </div>
         )}
