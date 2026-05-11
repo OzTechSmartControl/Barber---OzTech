@@ -1552,6 +1552,10 @@ export default function App() {
     <PlansView
       onBack={() => { setShowPlans(false); setExpiredMsg(""); }}
       expiredMessage={expiredMsg}
+      token={auth?.token}
+      user={auth?.user}
+      profile={auth?.profile}
+      authData={auth}
       onCourtesyValidated={(email) => {
         setCourtesyEmail(email);
         setShowPlans(false);
