@@ -279,6 +279,42 @@ const LoginView = ({ onLogin, onShowPlans }) => {
           <Btn onClick={submit} disabled={loading} style={{ width: "100%", justifyContent: "center", marginTop: 4 }}>
             {loading ? <><RefreshCw size={14} style={{ animation: "spin 1s linear infinite" }} /> Entrando…</> : "Entrar"}
           </Btn>
+
+          <button
+            onClick={async () => {
+              if (!email) {
+                alert("Digite seu e-mail primeiro.");
+                return;
+              }
+
+              const { error } = await supabase.auth.resetPasswordForEmail(
+                email.trim().toLowerCase(),
+                {
+                  redirectTo: "https://barber-oz-tech.vercel.app/reset-password",
+                }
+              );
+
+              if (error) {
+                alert(error.message);
+                return;
+              }
+
+              alert("Enviamos o link de recuperação para seu e-mail.");
+            }}
+            style={{
+              background: "transparent",
+              border: "none",
+              color: T.accent,
+              cursor: "pointer",
+              marginTop: "1rem",
+              fontSize: 13,
+              fontWeight: 600,
+              width: "100%",
+              fontFamily: "'DM Sans', sans-serif",
+            }}
+          >
+            Esqueci minha senha
+          </button>
         </Card>
 
         <div style={{ textAlign: "center", marginTop: "1.5rem", fontSize: 12, color: T.muted }}>
