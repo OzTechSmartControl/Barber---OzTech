@@ -1338,11 +1338,11 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
       <div style={{ padding:collapsed?"1.25rem 0":"1.4rem 1.25rem", borderBottom:`1px solid ${T.border}`, display:"flex", alignItems:"center", justifyContent:collapsed?"center":"space-between" }}>
         {!collapsed && (
           <div style={{ display:"flex", alignItems:"center", gap:10, minWidth:0 }}>
-            <div style={{ width:38, height:38, borderRadius:10, background:T.card, border:`1px solid ${T.border}`, display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden", flexShrink:0 }}>
-              <img src={logoUrl} alt={shopName} style={{ width:"100%", height:"100%", objectFit:"contain" }} />
+            <div style={{ width:56, height:56, borderRadius:12, background:T.card, border:`1px solid ${T.border}`, display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden", flexShrink:0, padding:4 }}>
+              <img src={logoUrl} alt={shopName} style={{ width:"100%", height:"100%", objectFit:"contain", display:"block" }} />
             </div>
             <div style={{ minWidth:0 }}>
-              <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:20, letterSpacing:1.4, color:T.text, lineHeight:1, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", maxWidth:128 }}>
+              <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:20, letterSpacing:1.4, color:T.text, lineHeight:1, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", maxWidth:112 }}>
                 {shopName}
               </div>
               <div style={{ fontSize:10, color:T.muted, textTransform:"uppercase", letterSpacing:1, marginTop:3 }}>
@@ -1352,8 +1352,8 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
           </div>
         )}
         {collapsed && (
-          <div style={{ width:34, height:34, borderRadius:9, background:T.card, border:`1px solid ${T.border}`, display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden" }}>
-            <img src={logoUrl} alt={shopName} style={{ width:"100%", height:"100%", objectFit:"contain" }} />
+          <div style={{ width:44, height:44, borderRadius:10, background:T.card, border:`1px solid ${T.border}`, display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden", padding:3 }}>
+            <img src={logoUrl} alt={shopName} style={{ width:"100%", height:"100%", objectFit:"contain", display:"block" }} />
           </div>
         )}
         {!collapsed && <button onClick={()=>setCollapsed(true)} style={{ background:"none", border:"none", color:T.muted, cursor:"pointer", display:"flex" }}><Menu size={18}/></button>}
