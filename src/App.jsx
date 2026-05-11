@@ -1038,18 +1038,22 @@ function ReportFooter() {
 function ReportHeader({ title, sub, selMonth, shop }) {
   const reportAccent = shop?.accent_color || T.accent;
   const reportName = shop?.name || "Oz.Barber";
-  const reportLogo = shop?.logo_url || null;
+  const reportLogo =
+    shop?.logo_url && shop.logo_url !== "null" && shop.logo_url !== ""
+      ? shop.logo_url
+      : ozBarberLogo;
 
   return (
     <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", borderBottom:`2px solid ${reportAccent}`, paddingBottom:12, marginBottom:20 }}>
-      <div style={{ display:"flex", alignItems:"center", gap:12, minWidth:0 }}>
-        {reportLogo && (
+      <div style={{ display:"flex", alignItems:"center", gap:14, minWidth:0 }}>
+        <div style={{ width:96, height:54, display:"flex", alignItems:"center", justifyContent:"center", overflow:"visible", flexShrink:0 }}>
           <img
             src={reportLogo}
             alt={reportName}
-            style={{ maxWidth:90, maxHeight:46, objectFit:"contain", display:"block" }}
+            style={{ maxWidth:96, maxHeight:54, width:"auto", height:"auto", objectFit:"contain", display:"block" }}
+            onError={(e) => { e.currentTarget.src = ozBarberLogo; }}
           />
-        )}
+        </div>
         <div style={{ minWidth:0 }}>
           <div style={{ fontSize:22, fontWeight:700, fontFamily:"Arial, sans-serif", color:reportAccent, lineHeight:1.1, wordBreak:"break-word" }}>{reportName}</div>
           <div style={{ fontSize:13, color:"#555", marginTop:3 }}>{title}</div>
