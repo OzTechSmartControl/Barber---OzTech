@@ -147,10 +147,6 @@ export default function PlansView({
     try {
       const accessToken = getAccessToken();
 
-      if (!accessToken) {
-        throw new Error("Usuário não identificado. Volte ao login e entre novamente para assinar.");
-      }
-
       const payload = {
         plan_id: plan.id,
         plan_label: plan.label,
@@ -171,7 +167,6 @@ export default function PlansView({
         method: "POST",
         headers: {
           apikey: SUPABASE_ANON,
-          Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
