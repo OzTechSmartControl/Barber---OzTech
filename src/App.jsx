@@ -192,6 +192,8 @@ const LoginView = ({ onLogin, onShowPlans }) => {
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
+const [session, setSession] = useState(null);
+const [user, setUser] = useState(null);
 
   const submit = async () => {
     if (!email || !pass) return setErr("Preencha e-mail e senha.");
@@ -1455,6 +1457,39 @@ const safeSaveAuth = (authData) => {
 };
 
 export default function App() {
+
+  const [session, setSession] = useState(null);
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const saved = localStorage.getItem("ozbarber_auth");
+
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed?.access_token) {
+          setSession({
+            access_token: parsed.access_token,
+            user: parsed.user,
+          });
+          setUser(parsed.user);
+        }
+      } catch {}
+    }
+
+    const bootstrapAuth = async () => {
+      try {
+        const res = await api.login;
+      } catch {}
+    };
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const [auth,         setAuth]         = useState(() => safeLoadAuth());
   const [dataLoaded,   setDataLoaded]   = useState(false);
   const [loading,      setLoading]      = useState(false);
