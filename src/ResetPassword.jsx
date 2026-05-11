@@ -65,8 +65,10 @@ export default function ResetPassword() {
     setSuccess(true);
     setLoading(false);
 
-    setTimeout(() => {
-      window.location.href = "/";
+    setTimeout(async () => {
+      await supabase.auth.signOut();
+      localStorage.removeItem("ozbarber_auth");
+      window.location.replace("/");
     }, 2500);
   };
 
