@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
+import { supabase } from "./supabase";
 import Onboarding from "./Onboarding";
 import PlansView   from "./PlansView";
 import SuperAdminView from "./SuperAdminView";
@@ -192,22 +193,37 @@ const LoginView = ({ onLogin, onShowPlans }) => {
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
-const [session, setSession] = useState(null);
-const [user, setUser] = useState(null);
-
   const submit = async () => {
     if (!email || !pass) return setErr("Preencha e-mail e senha.");
     setLoading(true); setErr("");
     try {
-      const res = await api.login(email, pass);
-      if (!res.access_token) { setErr("E-mail ou senha incorretos."); setLoading(false); return; }
-      const [user, profile] = await Promise.all([
-        api.getUser(res.access_token),
-        api.getProfile(res.user?.id || "", res.access_token),
-      ]);
-      if (!profile) { setErr("Perfil não encontrado. Contate o administrador."); setLoading(false); return; }
-      onLogin({ token: res.access_token, user, profile });
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password: pass,
+      });
+
+      if (error || !data?.session?.access_token || !data?.user?.id) {
+        setErr("E-mail ou senha incorretos.");
+        setLoading(false);
+        return;
+      }
+
+      const profile = await api.getProfile(data.user.id, data.session.access_token);
+
+      if (!profile) {
+        setErr("Perfil não encontrado. Contate o administrador.");
+        setLoading(false);
+        return;
+      }
+
+      onLogin({
+        token: data.session.access_token,
+        access_token: data.session.access_token,
+        user: data.user,
+        profile,
+      });
     } catch (e) {
+      console.error(e);
       setErr("Erro de conexão. Verifique a URL e chave do Supabase.");
     }
     setLoading(false);
@@ -1461,35 +1477,6 @@ export default function App() {
   const [session, setSession] = useState(null);
   const [user, setUser] = useState(null);
 
-  useEffect(() => {
-    let mounted = true;
-
-    const saved = localStorage.getItem("ozbarber_auth");
-
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (parsed?.access_token) {
-          setSession({
-            access_token: parsed.access_token,
-            user: parsed.user,
-          });
-          setUser(parsed.user);
-        }
-      } catch {}
-    }
-
-    const bootstrapAuth = async () => {
-      try {
-        const res = await api.login;
-      } catch {}
-    };
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
   const [auth,         setAuth]         = useState(() => safeLoadAuth());
   const [dataLoaded,   setDataLoaded]   = useState(false);
   const [loading,      setLoading]      = useState(false);
@@ -1507,8 +1494,62 @@ export default function App() {
   const [expenses,    setExpenses]    = useState([]);
 
   useEffect(() => {
+    let mounted = true;
+
+    const applyAuth = async (sessionData) => {
+      if (!mounted || !sessionData?.access_token || !sessionData?.user?.id) return;
+
+      try {
+        const profile = await api.getProfile(sessionData.user.id, sessionData.access_token);
+        if (!profile) return;
+
+        const authData = {
+          token: sessionData.access_token,
+          access_token: sessionData.access_token,
+          user: sessionData.user,
+          profile,
+        };
+
+        safeSaveAuth(authData);
+        setAuth(authData);
+        setSession({ access_token: sessionData.access_token, user: sessionData.user, profile });
+        setUser(sessionData.user);
+      } catch (e) {
+        console.error("Erro ao restaurar sessão:", e);
+      }
+    };
+
     const saved = safeLoadAuth();
-    if (saved && !auth) setAuth(saved);
+    if (saved?.token || saved?.access_token) {
+      const normalized = {
+        ...saved,
+        token: saved.token || saved.access_token,
+        access_token: saved.access_token || saved.token,
+      };
+      setAuth(normalized);
+      setSession({ access_token: normalized.access_token, user: normalized.user, profile: normalized.profile });
+      setUser(normalized.user || null);
+    }
+
+    supabase.auth.getSession().then(({ data }) => {
+      applyAuth(data?.session);
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      if (newSession) {
+        applyAuth(newSession);
+      } else {
+        safeSaveAuth(null);
+        setAuth(null);
+        setSession(null);
+        setUser(null);
+      }
+    });
+
+    return () => {
+      mounted = false;
+      listener?.subscription?.unsubscribe?.();
+    };
   }, []);
 
   // Detecta retorno do Mercado Pago (?payment=success&plan=...)
@@ -1567,15 +1608,24 @@ export default function App() {
   }, []);
 
   const onLogin = useCallback(async (authData) => {
-    safeSaveAuth(authData);
-    setAuth(authData);
+    const normalizedAuth = {
+      ...authData,
+      token: authData.token || authData.access_token,
+      access_token: authData.access_token || authData.token,
+    };
+
+    safeSaveAuth(normalizedAuth);
+    setAuth(normalizedAuth);
+    setSession({ access_token: normalizedAuth.access_token, user: normalizedAuth.user, profile: normalizedAuth.profile });
+    setUser(normalizedAuth.user || null);
+
     // Verifica acesso ativo (super admin sempre passa)
-    const shopId = authData.profile?.barbershop_id;
+    const shopId = normalizedAuth.profile?.barbershop_id;
     if (shopId && !authData.profile?.is_super_admin) {
       try {
         const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/has_active_access`, {
           method: "POST",
-          headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${authData.token}`, "Content-Type": "application/json" },
+          headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${normalizedAuth.token}`, "Content-Type": "application/json" },
           body: JSON.stringify({ p_barbershop_id: shopId }),
         });
         const hasAccess = await res.json();
@@ -1587,12 +1637,15 @@ export default function App() {
         }
       } catch { /* se falhar, deixa entrar */ }
     }
-    await loadData(authData.token, authData.profile);
+    await loadData(normalizedAuth.token, normalizedAuth.profile);
   }, [loadData]);
 
-  const onLogout = () => {
+  const onLogout = async () => {
+    await supabase.auth.signOut();
     safeSaveAuth(null);
     setAuth(null);
+    setSession(null);
+    setUser(null);
     setShop(null);
     resetTenantTheme();
     setClients([]);
@@ -1606,7 +1659,12 @@ export default function App() {
     setExpiredMsg("");
   };
 
-  const checkoutAuth = auth || safeLoadAuth();
+  const checkoutAuth = auth || safeLoadAuth() || (session?.access_token ? {
+    token: session.access_token,
+    access_token: session.access_token,
+    user: user || session.user,
+    profile: session.profile,
+  } : null);
 
   // Tela de planos (antes do login ou assinatura expirada)
   if (showPlans) return (
