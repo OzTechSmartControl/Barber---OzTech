@@ -81,7 +81,7 @@ export default function PlansView({ onBack, onCourtesyValidated, expiredMessage 
     try {
       const payload = {
         plan_id: plan.id,
-        plan_label: `Oz.Barber — ${plan.label}`,
+        plan_label: plan.name,
         product_name: "Oz.Barber",
         price: Number(plan.price),
         currency: "BRL",
