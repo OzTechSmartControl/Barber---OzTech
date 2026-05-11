@@ -1367,20 +1367,21 @@ function ReportsView({ attendances, clients, services, barbers, expenses, shop }
 
 // ── SIDEBAR ──────────────────────────────────────────────────
 function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin, userName, onLogout, shop }) {
-  const nav = [
-    { id:"dashboard",   label:"Dashboard",    Icon:LayoutDashboard },
-    { id:"attendances", label:"Atendimentos",  Icon:Scissors },
-    { id:"clients",     label:"Clientes",      Icon:Users },
-    ...(isAdmin ? [
-      { id:"barbers",   label:"Barbeiros",     Icon:Award },
-      { id:"services",  label:"Serviços",      Icon:Tag },
-      { id:"financial", label:"Financeiro",    Icon:DollarSign },
-      { id:"reports",   label:"Relatórios",    Icon:FileText },
-    ] : []),
-    ...(isSuperAdmin ? [
-      { id:"superadmin", label:"Painel Admin", Icon:Lock },
-    ] : []),
-  ];
+  const nav = isSuperAdmin
+    ? [
+        { id:"superadmin", label:"Painel Executivo", Icon:Lock },
+      ]
+    : [
+        { id:"dashboard",   label:"Dashboard",    Icon:LayoutDashboard },
+        { id:"attendances", label:"Atendimentos",  Icon:Scissors },
+        { id:"clients",     label:"Clientes",      Icon:Users },
+        ...(isAdmin ? [
+          { id:"barbers",   label:"Barbeiros",     Icon:Award },
+          { id:"services",  label:"Serviços",      Icon:Tag },
+          { id:"financial", label:"Financeiro",    Icon:DollarSign },
+          { id:"reports",   label:"Relatórios",    Icon:FileText },
+        ] : []),
+      ];
 
   const shopName = shop?.name || "Oz.Barber";
 
@@ -1781,27 +1782,35 @@ export default function App() {
 
   const isAdmin      = auth.profile.role === "admin";
   const myBarberId   = auth.profile.barber_id;
-  const userName     = barbers.find(b=>b.userId===auth.user?.id)?.name || auth.user?.email || "Usuário";
   const tok          = auth.token;
   const barbershopId = auth.profile.barbershop_id;
 
-  const views = {
-    dashboard:   <Dashboard   attendances={attendances} clients={clients}   services={services}  barbers={barbers}    isAdmin={isAdmin} myBarberId={myBarberId} onGoReports={isAdmin?()=>setView('reports'):undefined}/>,
-    attendances: <AttendancesView attendances={attendances} setAttendances={setAttendances} clients={clients} services={services} barbers={barbers} token={tok} isAdmin={isAdmin} myBarberId={myBarberId} barbershopId={barbershopId}/>,
-    clients:     <ClientsView clients={clients} setClients={setClients} attendances={attendances} services={services} token={tok} isAdmin={isAdmin} barbershopId={barbershopId}/>,
-    barbers:     <BarbersView  barbers={barbers} setBarbers={setBarbers} attendances={attendances} token={tok} barbershopId={barbershopId}/>,
-    services:    <ServicesView services={services} setServices={setServices} token={tok} barbershopId={barbershopId}/>,
-    financial:   <FinancialView attendances={attendances} expenses={expenses} setExpenses={setExpenses} token={tok} barbershopId={barbershopId}/>,
-    reports:     <ReportsView attendances={attendances} clients={clients} services={services} barbers={barbers} expenses={expenses} shop={shop}/>,
-    superadmin:  <SuperAdminView token={tok} />,
-  };
+  const userName = isSuperAdmin
+    ? (auth.user?.email || "Administrador Master")
+    : (barbers.find(b=>b.userId===auth.user?.id)?.name || auth.user?.email || "Usuário");
+
+  const activeView = isSuperAdmin ? "superadmin" : view;
+
+  const views = isSuperAdmin
+    ? {
+        superadmin: <SuperAdminView token={tok} />,
+      }
+    : {
+        dashboard:   <Dashboard   attendances={attendances} clients={clients}   services={services}  barbers={barbers}    isAdmin={isAdmin} myBarberId={myBarberId} onGoReports={isAdmin?()=>setView('reports'):undefined}/>,
+        attendances: <AttendancesView attendances={attendances} setAttendances={setAttendances} clients={clients} services={services} barbers={barbers} token={tok} isAdmin={isAdmin} myBarberId={myBarberId} barbershopId={barbershopId}/>,
+        clients:     <ClientsView clients={clients} setClients={setClients} attendances={attendances} services={services} token={tok} isAdmin={isAdmin} barbershopId={barbershopId}/>,
+        barbers:     <BarbersView  barbers={barbers} setBarbers={setBarbers} attendances={attendances} token={tok} barbershopId={barbershopId}/>,
+        services:    <ServicesView services={services} setServices={setServices} token={tok} barbershopId={barbershopId}/>,
+        financial:   <FinancialView attendances={attendances} expenses={expenses} setExpenses={setExpenses} token={tok} barbershopId={barbershopId}/>,
+        reports:     <ReportsView attendances={attendances} clients={clients} services={services} barbers={barbers} expenses={expenses} shop={shop}/>,
+      };
 
   return (
     <div style={{ display:"flex", height:"100vh", background:T.bg, color:T.text, fontFamily:"'DM Sans', sans-serif", overflow:"hidden" }}>
       <style>{CSS}</style>
-      <Sidebar view={view} setView={setView} collapsed={collapsed} setCollapsed={setCollapsed} isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} userName={userName} onLogout={onLogout} shop={shop}/>
+      <Sidebar view={activeView} setView={setView} collapsed={collapsed} setCollapsed={setCollapsed} isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} userName={userName} onLogout={onLogout} shop={shop}/>
       <main style={{ flex:1, overflow:"auto", padding:"2rem 2.25rem" }}>
-        {views[view] || views.dashboard}
+        {views[activeView]}
       </main>
     </div>
   );
