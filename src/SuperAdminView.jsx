@@ -35,6 +35,9 @@ const StatusBadge = ({ status }) => {
     active:  { label: "Ativo",    bg: T.successBg, color: T.success },
     expired: { label: "Expirado", bg: T.warningBg, color: T.warning },
     revoked: { label: "Revogado", bg: T.dangerBg,  color: T.danger  },
+    cancelled: { label: "Cancelado", bg: T.dangerBg, color: T.danger },
+    pending: { label: "Pendente", bg: T.warningBg, color: T.warning },
+    approved: { label: "Aprovado", bg: T.successBg, color: T.success },
   };
   const s = map[status] || map.active;
   return (
@@ -84,13 +87,60 @@ export default function SuperAdminView({ token }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(
-        `${SUPABASE_URL}/rest/v1/courtesy_access?select=*,barbershops(name)&order=created_at.desc`,
-        { headers: hdr(token) }
-      );
-      const data = await res.json();
-      setList(Array.isArray(data) ? data : []);
-    } catch { setList([]); }
+      const [courtesyRes, subscriptionsRes] = await Promise.allSettled([
+        fetch(
+          `${SUPABASE_URL}/rest/v1/courtesy_access?select=*,barbershops(name)&order=created_at.desc`,
+          { headers: hdr(token) }
+        ),
+        fetch(
+          `${SUPABASE_URL}/rest/v1/subscriptions?select=*&order=created_at.desc`,
+          { headers: hdr(token) }
+        ),
+      ]);
+
+      let courtesy = [];
+      if (courtesyRes.status === "fulfilled" && courtesyRes.value.ok) {
+        const data = await courtesyRes.value.json();
+        courtesy = Array.isArray(data)
+          ? data.map(item => ({
+              ...item,
+              source: "courtesy",
+              source_label: "Cortesia",
+              display_email: item.email || "—",
+              display_plan: item.type === "unlimited" ? "Indeterminado" : "Prazo determinado",
+              display_shop: item.barbershops?.name || "—",
+            }))
+          : [];
+      }
+
+      let subscriptions = [];
+      if (subscriptionsRes.status === "fulfilled" && subscriptionsRes.value.ok) {
+        const data = await subscriptionsRes.value.json();
+        subscriptions = Array.isArray(data)
+          ? data.map(item => {
+              const planLabel =
+                item.plan_label ||
+                item.plan_name ||
+                (item.plan_id === "monthly" ? "Plano Mensal" : item.plan_id === "semestral" ? "Plano Semestral" : item.plan_id === "annual" ? "Plano Anual" : item.plan_id || "Plano");
+
+              return {
+                ...item,
+                source: "subscription",
+                source_label: "Assinatura",
+                display_email: item.email || item.customer_email || item.payer_email || item.user_email || item.user_id || "—",
+                display_plan: planLabel,
+                display_shop: item.barbershop_name || item.shop_name || item.barbershop_id || "—",
+                created_at: item.created_at || item.createdAt || item.started_at || item.start_date,
+                expires_at: item.expires_at || item.expiresAt || item.current_period_end || item.end_date,
+              };
+            })
+          : [];
+      }
+
+      setList([...courtesy, ...subscriptions]);
+    } catch {
+      setList([]);
+    }
     setLoading(false);
   }, [token]);
 
@@ -143,9 +193,45 @@ export default function SuperAdminView({ token }) {
     setRevoking(null);
   };
 
+  // ── Excluir acesso revogado definitivamente ───────────────────
+  const handleDelete = async (item) => {
+    if (item.source !== "courtesy") {
+      alert("Por segurança, assinaturas pagas não são excluídas por aqui. Cancele/controle a assinatura pelo fluxo de pagamento.");
+      return;
+    }
+
+    if (item.status !== "revoked") {
+      alert("Somente acessos revogados podem ser excluídos.");
+      return;
+    }
+
+    if (!window.confirm("Excluir definitivamente este acesso revogado? Esta ação não pode ser desfeita.")) return;
+
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/courtesy_access?id=eq.${item.id}`, {
+        method: "DELETE",
+        headers: hdr(token),
+      });
+
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        throw new Error(e.message || "Erro ao excluir acesso.");
+      }
+
+      await load();
+    } catch (e) {
+      alert(e.message || "Erro ao excluir acesso.");
+    }
+  };
+
   // ── Filtros ───────────────────────────────────────────────────
   const filtered = list.filter(item => {
-    const matchSearch = !search || item.email.includes(search.toLowerCase()) || (item.notes || "").toLowerCase().includes(search.toLowerCase());
+    const q = search.toLowerCase();
+    const matchSearch = !search ||
+      (item.display_email || item.email || "").toLowerCase().includes(q) ||
+      (item.notes || "").toLowerCase().includes(q) ||
+      (item.display_plan || "").toLowerCase().includes(q) ||
+      (item.source_label || "").toLowerCase().includes(q);
     const matchFilter = filter === "all" || item.status === filter;
     return matchSearch && matchFilter;
   });
@@ -164,9 +250,9 @@ export default function SuperAdminView({ token }) {
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
             <ShieldCheck size={22} color={T.accent} />
-            <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 36, letterSpacing: 2.5, margin: 0, color: T.text }}>PAINEL ADMINISTRATIVO</h1>
+            <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 36, letterSpacing: 2.5, margin: 0, color: T.text }}>PAINEL DO ADMINISTRADOR</h1>
           </div>
-          <div style={{ color: T.muted, fontSize: 13 }}>Gerencie acessos cortesia do sistema</div>
+          <div style={{ color: T.muted, fontSize: 13 }}>Gerencie acessos, assinaturas e permissões do sistema</div>
         </div>
         <button onClick={() => { setShowModal(true); setErr(""); }}
           style={{ background: T.accent, color: "#0a0808", border: "none", borderRadius: 8, padding: "0.6rem 1.25rem", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "'DM Sans', sans-serif" }}>
@@ -213,14 +299,14 @@ export default function SuperAdminView({ token }) {
         ) : filtered.length === 0 ? (
           <div style={{ padding: "3rem", textAlign: "center", color: T.muted }}>
             <Gift size={32} style={{ marginBottom: 12, opacity: 0.4 }} />
-            <div style={{ fontSize: 14 }}>Nenhum acesso cortesia encontrado</div>
+            <div style={{ fontSize: 14 }}>Nenhum acesso encontrado</div>
           </div>
         ) : (
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr>
-                  {["E-mail", "Tipo", "Status", "Criado em", "Expira em", "Usado por", "Ações"].map(col => (
+                  {["E-mail / ID", "Origem", "Plano / Tipo", "Status", "Criado em", "Expira em", "Usado por", "Ações"].map(col => (
                     <th key={col} style={{ textAlign: "left", padding: "0.75rem 1rem", fontSize: 10, fontWeight: 700, color: T.muted, textTransform: "uppercase", letterSpacing: 0.8, borderBottom: `1px solid ${T.border}` }}>{col}</th>
                   ))}
                 </tr>
@@ -229,32 +315,55 @@ export default function SuperAdminView({ token }) {
                 {filtered.map((item, i) => (
                   <tr key={item.id} style={{ borderBottom: i < filtered.length - 1 ? `1px solid ${T.border}` : "none" }}>
                     <td style={{ padding: "0.85rem 1rem", fontSize: 13, color: T.text }}>
-                      <div>{item.email}</div>
+                      <div>{item.display_email || item.email || "—"}</div>
                       {item.notes && <div style={{ fontSize: 11, color: T.muted, marginTop: 2 }}>{item.notes}</div>}
                     </td>
                     <td style={{ padding: "0.85rem 1rem" }}>
+                      <span style={{ background: item.source === "subscription" ? T.accent + "22" : T.successBg, color: item.source === "subscription" ? T.accent : T.success, borderRadius: 5, padding: "2px 8px", fontSize: 11, fontWeight: 700 }}>
+                        {item.source_label}
+                      </span>
+                    </td>
+                    <td style={{ padding: "0.85rem 1rem" }}>
                       <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: T.mutedLight }}>
-                        {item.type === "unlimited" ? <><Infinity size={12} /> Indeterminado</> : <><Clock size={12} /> Prazo determinado</>}
+                        {item.source === "courtesy"
+                          ? (item.type === "unlimited" ? <><Infinity size={12} /> Indeterminado</> : <><Clock size={12} /> Prazo determinado</>)
+                          : <><Clock size={12} /> {item.display_plan}</>}
                       </span>
                     </td>
                     <td style={{ padding: "0.85rem 1rem" }}><StatusBadge status={item.status} /></td>
                     <td style={{ padding: "0.85rem 1rem", fontSize: 12, color: T.muted }}>{fDate(item.created_at)}</td>
                     <td style={{ padding: "0.85rem 1rem", fontSize: 12, color: T.muted }}>
-                      {item.type === "unlimited" ? <span style={{ color: T.success }}>Sem expiração</span> : fDate(item.expires_at)}
+                      {item.source === "courtesy" && item.type === "unlimited" ? <span style={{ color: T.success }}>Sem expiração</span> : fDate(item.expires_at)}
                     </td>
                     <td style={{ padding: "0.85rem 1rem", fontSize: 12, color: T.muted }}>
-                      {item.used_at
-                        ? <div><div style={{ color: T.text, fontSize: 12 }}>{item.barbershops?.name || "—"}</div><div style={{ fontSize: 11 }}>{fDatetime(item.used_at)}</div></div>
-                        : <span style={{ color: T.muted }}>Não utilizado</span>}
+                      {item.source === "courtesy"
+                        ? (item.used_at
+                          ? <div><div style={{ color: T.text, fontSize: 12 }}>{item.display_shop || item.barbershops?.name || "—"}</div><div style={{ fontSize: 11 }}>{fDatetime(item.used_at)}</div></div>
+                          : <span style={{ color: T.muted }}>Não utilizado</span>)
+                        : <div><div style={{ color: T.text, fontSize: 12 }}>{item.display_shop || "—"}</div><div style={{ fontSize: 11 }}>{item.preference_id || item.payment_id || item.id}</div></div>}
                     </td>
                     <td style={{ padding: "0.85rem 1rem" }}>
-                      {item.status === "active" && (
-                        <button onClick={() => handleRevoke(item.id)} disabled={revoking === item.id}
-                          style={{ background: T.dangerBg, border: `1px solid ${T.danger}44`, borderRadius: 6, padding: "4px 10px", fontSize: 12, color: T.danger, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4, fontFamily: "'DM Sans', sans-serif", fontWeight: 600 }}>
-                          {revoking === item.id ? <RefreshCw size={11} style={{ animation: "spin 1s linear infinite" }} /> : <Trash2 size={11} />}
-                          Revogar
-                        </button>
-                      )}
+                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                        {item.source === "courtesy" && item.status === "active" && (
+                          <button onClick={() => handleRevoke(item.id)} disabled={revoking === item.id}
+                            style={{ background: T.dangerBg, border: `1px solid ${T.danger}44`, borderRadius: 6, padding: "4px 10px", fontSize: 12, color: T.danger, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4, fontFamily: "'DM Sans', sans-serif", fontWeight: 600 }}>
+                            {revoking === item.id ? <RefreshCw size={11} style={{ animation: "spin 1s linear infinite" }} /> : <Trash2 size={11} />}
+                            Revogar
+                          </button>
+                        )}
+
+                        {item.source === "courtesy" && item.status === "revoked" && (
+                          <button onClick={() => handleDelete(item)}
+                            style={{ background: "#2a1111", border: `1px solid ${T.danger}55`, borderRadius: 6, padding: "4px 10px", fontSize: 12, color: T.danger, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4, fontFamily: "'DM Sans', sans-serif", fontWeight: 600 }}>
+                            <Trash2 size={11} />
+                            Excluir
+                          </button>
+                        )}
+
+                        {item.source === "subscription" && (
+                          <span style={{ fontSize: 11, color: T.muted }}>Assinatura</span>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
