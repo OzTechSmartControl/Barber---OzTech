@@ -1617,13 +1617,36 @@ export default function App() {
 
   const loadData = useCallback(async (tok, profile) => {
     setLoading(true);
+    setDataLoaded(false);
+
     try {
+      const isSuperAdmin =
+        profile?.is_super_admin === true ||
+        profile?.role === "super_admin";
+
+      // Super admin não deve carregar dados operacionais/financeiros das barbearias.
+      // Isso evita loop em "CARREGANDO" quando as RLS bloqueiam essas tabelas.
+      if (isSuperAdmin) {
+        resetTenantTheme();
+        setShop(null);
+        setClients([]);
+        setServices([]);
+        setBarbers([]);
+        setAttendances([]);
+        setExpenses([]);
+        setView("superadmin");
+        setDataLoaded(true);
+        return;
+      }
+
       const isAdm = profile.role === "admin";
       const shopId = profile.barbershop_id;
 
-      if (!shopId && !profile.is_super_admin) {
+      if (!shopId) {
         throw new Error("Perfil sem barbershop_id. Finalize o cadastro da barbearia.");
       }
+
+      const ensureArray = (value) => Array.isArray(value) ? value : [];
 
       const shopFilter = shopId ? `barbershop_id=eq.${shopId}` : "";
       const withShop = (qs) => shopFilter ? `${qs}&${shopFilter}` : qs;
@@ -1633,7 +1656,7 @@ export default function App() {
         : withShop(`select=*&barber_id=eq.${profile.barber_id}&order=date.desc,time.desc`);
 
       const [shopRows, brs, cls, svcs, atts, exps] = await Promise.all([
-        shopId ? api.list("barbershops", `id=eq.${shopId}&select=*`, tok) : Promise.resolve([]),
+        api.list("barbershops", `id=eq.${shopId}&select=*`, tok),
         api.list("barbers",     withShop("select=*&order=name"), tok),
         api.list("clients",     withShop("select=*&order=name"), tok),
         api.list("services",    withShop("select=*&order=name"), tok),
@@ -1641,18 +1664,22 @@ export default function App() {
         isAdm ? api.list("expenses", withShop("select=*&order=date.desc"), tok) : Promise.resolve([]),
       ]);
 
-      const currentShop = (shopRows || [])[0] || null;
+      const currentShop = ensureArray(shopRows)[0] || null;
       setShop(currentShop);
       applyTenantTheme(currentShop);
 
-      setBarbers((brs || []).map(toBarber));
-      setClients((cls || []).map(toClient));
-      setServices((svcs || []).map(toService));
-      setAttendances((atts || []).map(toAtt));
-      setExpenses((exps || []).map(toExpense));
+      setBarbers(ensureArray(brs).map(toBarber));
+      setClients(ensureArray(cls).map(toClient));
+      setServices(ensureArray(svcs).map(toService));
+      setAttendances(ensureArray(atts).map(toAtt));
+      setExpenses(ensureArray(exps).map(toExpense));
       setDataLoaded(true);
-    } catch(e) { console.error(e); }
-    setLoading(false);
+    } catch(e) {
+      console.error(e);
+      setDataLoaded(true);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   const onLogin = useCallback(async (authData) => {
@@ -1740,14 +1767,19 @@ export default function App() {
 
   if (!auth) return <><style>{CSS}</style><LoginView onLogin={onLogin} onShowPlans={() => setShowPlans(true)} /></>;
 
-  // Usuário logado mas sem barbearia → onboarding
-  // Passa o e-mail de cortesia se vier desse fluxo
-  if (!auth.profile?.barbershop_id) return <Onboarding onComplete={onLogin} courtesyEmail={courtesyEmail} />;
+  const isSuperAdmin =
+    auth.profile?.is_super_admin === true ||
+    auth.profile?.role === "super_admin";
+
+  // Usuário logado mas sem barbearia → onboarding.
+  // Super admin pode entrar sem barbershop_id porque acessa apenas o painel administrativo.
+  if (!auth.profile?.barbershop_id && !isSuperAdmin) {
+    return <Onboarding onComplete={onLogin} courtesyEmail={courtesyEmail} />;
+  }
 
   if (loading||!dataLoaded) return <><style>{CSS}</style><LoadingScreen/></>;
 
   const isAdmin      = auth.profile.role === "admin";
-  const isSuperAdmin = auth.profile.is_super_admin === true;
   const myBarberId   = auth.profile.barber_id;
   const userName     = barbers.find(b=>b.userId===auth.user?.id)?.name || auth.user?.email || "Usuário";
   const tok          = auth.token;
