@@ -4,7 +4,7 @@ const SUPABASE_URL =
   "https://kqjzontxfwlwmvbddbnv.supabase.co";
 
 const SUPABASE_ANON =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInR5cCI6IkpXVCJ9...";
+  "sb_publishable_cTk8su9HL7LcXoPQE-bqVQ_5Idjyf1a";
 
 export const supabase = createClient(
   SUPABASE_URL,
