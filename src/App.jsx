@@ -1026,14 +1026,35 @@ function ReportTable({ cols, rows, totalRow }) {
   );
 }
 
-function ReportHeader({ title, sub, selMonth }) {
+function ReportFooter() {
   return (
-    <div style={{ display:"flex", justifyContent:"space-between", borderBottom:"2px solid #4db8ff", paddingBottom:12, marginBottom:20 }}>
-      <div>
-        <div style={{ fontSize:22, fontWeight:700, fontFamily:"Arial, sans-serif", color:"#1a6fa8" }}>Oz.Barber</div>
-        <div style={{ fontSize:13, color:"#555", marginTop:2 }}>{title}</div>
+    <div className="report-brand-footer" style={{ textAlign:"center", color:"#666", fontSize:11, marginTop:40, paddingTop:10, borderTop:"1px solid #eee" }}>
+      Desenvolvido por OzTech SmartControl
+    </div>
+  );
+}
+
+function ReportHeader({ title, sub, selMonth, shop }) {
+  const reportAccent = shop?.accent_color || T.accent;
+  const reportName = shop?.name || "Oz.Barber";
+  const reportLogo = shop?.logo_url || null;
+
+  return (
+    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", borderBottom:`2px solid ${reportAccent}`, paddingBottom:12, marginBottom:20 }}>
+      <div style={{ display:"flex", alignItems:"center", gap:12, minWidth:0 }}>
+        {reportLogo && (
+          <img
+            src={reportLogo}
+            alt={reportName}
+            style={{ maxWidth:90, maxHeight:46, objectFit:"contain", display:"block" }}
+          />
+        )}
+        <div style={{ minWidth:0 }}>
+          <div style={{ fontSize:22, fontWeight:700, fontFamily:"Arial, sans-serif", color:reportAccent, lineHeight:1.1, wordBreak:"break-word" }}>{reportName}</div>
+          <div style={{ fontSize:13, color:"#555", marginTop:3 }}>{title}</div>
+        </div>
       </div>
-      <div style={{ textAlign:"right", fontSize:12, color:"#555", lineHeight:1.7 }}>
+      <div style={{ textAlign:"right", fontSize:12, color:"#555", lineHeight:1.7, whiteSpace:"nowrap", marginLeft:16 }}>
         <div>Mês: {selMonth}</div>
         <div>Gerado em: {new Date().toLocaleDateString("pt-BR")}</div>
       </div>
@@ -1041,7 +1062,7 @@ function ReportHeader({ title, sub, selMonth }) {
   );
 }
 
-function RevenueReportContent({ attendances, expenses, selMonth }) {
+function RevenueReportContent({ attendances, expenses, selMonth, shop }) {
   const todayStr = new Date().toISOString().slice(0,10);
   const mStr  = selMonth;
   const tAtts = attendances.filter(a => a.date === todayStr);
@@ -1056,7 +1077,7 @@ function RevenueReportContent({ attendances, expenses, selMonth }) {
 
   return (
     <div style={{ fontFamily:"Arial, sans-serif", color:"#111", background:"white", padding:28 }}>
-      <ReportHeader title="Relatório de Faturamento" selMonth={selMonth} />
+      <ReportHeader title="Relatório de Faturamento" selMonth={selMonth} shop={shop} />
       <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:12, marginBottom:20 }}>
         {[["Atend. Hoje", tAtts.length],["Receita Hoje", R$(tRev)],["Receita Mês", R$(mRev)],["Lucro Mês", R$(profit)]].map(([l,v])=>(
           <div key={l} style={{ border:"1px solid #ddd", borderRadius:6, padding:"10px 14px", textAlign:"center" }}>
@@ -1076,11 +1097,12 @@ function RevenueReportContent({ attendances, expenses, selMonth }) {
         rows={mExp.map(e=>[e.desc, e.category, fDate(e.date), {val:R$(e.amount), style:{fontWeight:600}}])}
         totalRow={["TOTAL DESPESAS","","",R$(mExpT)]}
       />
+      <ReportFooter />
     </div>
   );
 }
 
-function BarberReportContent({ attendances, services, barbers, selMonth }) {
+function BarberReportContent({ attendances, services, barbers, selMonth, shop }) {
   const mAtts = attendances.filter(a => a.date.startsWith(selMonth));
   const stats = barbers.filter(b=>b.status==="active").map(b=>{
     const bA = mAtts.filter(a=>a.barberId===b.id);
@@ -1092,15 +1114,15 @@ function BarberReportContent({ attendances, services, barbers, selMonth }) {
 
   return (
     <div style={{ fontFamily:"Arial, sans-serif", color:"#111", background:"white", padding:28 }}>
-      <ReportHeader title="Relatório por Barbeiro" selMonth={selMonth} />
+      <ReportHeader title="Relatório por Barbeiro" selMonth={selMonth} shop={shop} />
       <ReportTable
         cols={["#","Barbeiro","Atend.","Total","Comissão","Ticket Méd.","Serviço Top"]}
         rows={stats.map(({b,count,total,commission,ticket,top},i)=>[
-          {val:i+1, style:{color:"#4db8ff", fontWeight:700}},
+          {val:i+1, style:{color:shop?.accent_color || T.accent, fontWeight:700}},
           {val:b.name, style:{fontWeight:600}},
           count,
           {val:R$(total), style:{fontWeight:700}},
-          {val:R$(commission)+" ("+b.commission+"%)", style:{color:"#4db8ff", fontWeight:600}},
+          {val:R$(commission)+" ("+b.commission+"%)", style:{color:shop?.accent_color || T.accent, fontWeight:600}},
           R$(ticket),
           {val:top, style:{color:"#555"}}
         ])}
@@ -1112,11 +1134,12 @@ function BarberReportContent({ attendances, services, barbers, selMonth }) {
           "","",
         ]}
       />
+      <ReportFooter />
     </div>
   );
 }
 
-function ServiceReportContent({ attendances, services, selMonth }) {
+function ServiceReportContent({ attendances, services, selMonth, shop }) {
   const mAtts = attendances.filter(a => a.date.startsWith(selMonth));
   const sm={};
   mAtts.forEach(a=>{
@@ -1131,11 +1154,11 @@ function ServiceReportContent({ attendances, services, selMonth }) {
 
   return (
     <div style={{ fontFamily:"Arial, sans-serif", color:"#111", background:"white", padding:28 }}>
-      <ReportHeader title="Relatório por Serviço" selMonth={selMonth} />
+      <ReportHeader title="Relatório por Serviço" selMonth={selMonth} shop={shop} />
       <ReportTable
         cols={["#","Serviço","Preço Tabela","Qtd.","Total Gerado","% Receita"]}
         rows={rows.map(({name,price,count,total},i)=>[
-          {val:i+1, style:{color:"#4db8ff", fontWeight:700}},
+          {val:i+1, style:{color:shop?.accent_color || T.accent, fontWeight:700}},
           {val:name, style:{fontWeight:600}},
           {val:R$(price), style:{color:"#555"}},
           count+"×",
@@ -1144,11 +1167,12 @@ function ServiceReportContent({ attendances, services, selMonth }) {
         ])}
         totalRow={["TOTAL","",rows.reduce((s,r)=>s+r.count,0)+"×", R$(gt),"",""]}
       />
+      <ReportFooter />
     </div>
   );
 }
 
-function ReportsView({ attendances, clients, services, barbers, expenses }) {
+function ReportsView({ attendances, clients, services, barbers, expenses, shop }) {
   const [selMonth, setSelMonth] = useState(month());
   const [preview, setPreview]   = useState(null);
   const [printing, setPrinting] = useState(false);
@@ -1170,9 +1194,9 @@ function ReportsView({ attendances, clients, services, barbers, expenses }) {
   };
 
   const contentMap = {
-    revenue:  <RevenueReportContent  attendances={attendances} expenses={expenses}  selMonth={selMonth} />,
-    barbers:  <BarberReportContent   attendances={attendances} services={services}  barbers={barbers}   selMonth={selMonth} />,
-    services: <ServiceReportContent  attendances={attendances} services={services}  selMonth={selMonth} />,
+    revenue:  <RevenueReportContent  attendances={attendances} expenses={expenses}  selMonth={selMonth} shop={shop} />,
+    barbers:  <BarberReportContent   attendances={attendances} services={services}  barbers={barbers}   selMonth={selMonth} shop={shop} />,
+    services: <ServiceReportContent  attendances={attendances} services={services}  selMonth={selMonth} shop={shop} />,
   };
 
   return (
@@ -1197,6 +1221,15 @@ function ReportsView({ attendances, clients, services, barbers, expenses }) {
             background: white !important;
             z-index: 99999 !important;
             padding: 0 !important;
+          }
+          .report-brand-footer {
+            position: fixed !important;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 0.6cm !important;
+            text-align: center !important;
+            border-top: none !important;
+            background: white !important;
           }
           @page { margin: 1.5cm; size: A4; }
         }
@@ -1552,7 +1585,7 @@ export default function App() {
     barbers:     <BarbersView  barbers={barbers} setBarbers={setBarbers} attendances={attendances} token={tok} barbershopId={barbershopId}/>,
     services:    <ServicesView services={services} setServices={setServices} token={tok} barbershopId={barbershopId}/>,
     financial:   <FinancialView attendances={attendances} expenses={expenses} setExpenses={setExpenses} token={tok} barbershopId={barbershopId}/>,
-    reports:     <ReportsView attendances={attendances} clients={clients} services={services} barbers={barbers} expenses={expenses}/>,
+    reports:     <ReportsView attendances={attendances} clients={clients} services={services} barbers={barbers} expenses={expenses} shop={shop}/>,
     superadmin:  <SuperAdminView token={tok} />,
   };
 
