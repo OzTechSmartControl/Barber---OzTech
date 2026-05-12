@@ -3,7 +3,6 @@ import {
   ArrowUpRight,
   Minus,
 } from "lucide-react";
-import { motion } from "framer-motion";
 
 import T from "../../config/theme";
 
@@ -51,18 +50,7 @@ export default function KpiCard({
   const maxSpark = Math.max(1, ...sparkline);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 14, scale: 0.98 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      whileHover={{
-        y: -4,
-        scale: 1.01,
-        borderColor: `${color}55`,
-      }}
-      transition={{
-        duration: 0.22,
-        ease: "easeOut",
-      }}
+    <div
       style={{
         position: "relative",
         overflow: "hidden",
@@ -73,12 +61,58 @@ export default function KpiCard({
         padding: "1.15rem 1.2rem",
         minHeight: 148,
         boxShadow: "0 12px 40px rgba(0,0,0,.20)",
+        transition: "transform .18s ease, border-color .18s ease, box-shadow .18s ease",
+        animation: "kpiFadeIn .28s ease both",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = "translateY(-4px) scale(1.01)";
+        e.currentTarget.style.borderColor = `${color}55`;
+        e.currentTarget.style.boxShadow = `0 18px 55px rgba(0,0,0,.28), 0 0 35px ${color}10`;
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = "translateY(0px) scale(1)";
+        e.currentTarget.style.borderColor = T.border;
+        e.currentTarget.style.boxShadow = "0 12px 40px rgba(0,0,0,.20)";
       }}
     >
-      <motion.div
-        initial={{ opacity: 0.4, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.45, ease: "easeOut" }}
+      <style>
+        {`
+          @keyframes kpiFadeIn {
+            from {
+              opacity: 0;
+              transform: translateY(12px) scale(.98);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0) scale(1);
+            }
+          }
+
+          @keyframes kpiIconPop {
+            from {
+              opacity: 0;
+              transform: scale(.9) rotate(-8deg);
+            }
+            to {
+              opacity: 1;
+              transform: scale(1) rotate(0deg);
+            }
+          }
+
+          @keyframes kpiBarGrow {
+            from {
+              transform: scaleY(.15);
+              opacity: 0;
+            }
+            to {
+              transform: scaleY(1);
+              opacity: 1;
+            }
+          }
+        `}
+      </style>
+
+      <div
         style={{
           position: "absolute",
           top: -40,
@@ -114,10 +148,7 @@ export default function KpiCard({
             {label}
           </div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.28, delay: 0.08 }}
+          <div
             style={{
               fontFamily: "'Bebas Neue', sans-serif",
               fontSize: 38,
@@ -128,7 +159,7 @@ export default function KpiCard({
             }}
           >
             {value}
-          </motion.div>
+          </div>
 
           {(trendValue || subtitle) && (
             <div
@@ -140,10 +171,7 @@ export default function KpiCard({
               }}
             >
               {trendValue && (
-                <motion.div
-                  initial={{ opacity: 0, x: -6 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.25, delay: 0.14 }}
+                <div
                   style={{
                     display: "inline-flex",
                     alignItems: "center",
@@ -159,7 +187,7 @@ export default function KpiCard({
                 >
                   <TrendIcon trend={trend} />
                   {trendValue}
-                </motion.div>
+                </div>
               )}
 
               {subtitle && (
@@ -178,11 +206,7 @@ export default function KpiCard({
         </div>
 
         {Icon && (
-          <motion.div
-            initial={{ opacity: 0, rotate: -8, scale: 0.9 }}
-            animate={{ opacity: 1, rotate: 0, scale: 1 }}
-            whileHover={{ rotate: 4, scale: 1.06 }}
-            transition={{ duration: 0.25, delay: 0.05 }}
+          <div
             style={{
               background: `${color}16`,
               border: `1px solid ${color}22`,
@@ -194,10 +218,11 @@ export default function KpiCard({
               justifyContent: "center",
               flexShrink: 0,
               boxShadow: `0 0 30px ${color}10`,
+              animation: "kpiIconPop .28s ease both",
             }}
           >
             <Icon size={20} color={color} />
-          </motion.div>
+          </div>
         )}
       </div>
 
@@ -215,28 +240,25 @@ export default function KpiCard({
             const h = Math.max(5, (v / maxSpark) * 30);
 
             return (
-              <motion.div
+              <div
                 key={i}
-                initial={{ height: 4, opacity: 0 }}
-                animate={{ height: h, opacity: 1 }}
-                transition={{
-                  duration: 0.32,
-                  delay: 0.03 * i,
-                  ease: "easeOut",
-                }}
                 style={{
                   flex: 1,
+                  height: h,
                   borderRadius: 999,
                   background:
                     i === sparkline.length - 1
                       ? color
                       : `${color}55`,
+                  transformOrigin: "bottom",
+                  animation: `kpiBarGrow .32s ease both`,
+                  animationDelay: `${i * 0.03}s`,
                 }}
               />
             );
           })}
         </div>
       )}
-    </motion.div>
+    </div>
   );
 }

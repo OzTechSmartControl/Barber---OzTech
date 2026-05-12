@@ -472,6 +472,18 @@ export default function SuperAdminView({ section = "dashboard" }) {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
         }
+
+        @keyframes superadminViewFade {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+
+          to {
+            opacity: 1;
+            transform: translateY(0px);
+          }
+        }
       `}</style>
 
       <div
@@ -550,13 +562,21 @@ export default function SuperAdminView({ section = "dashboard" }) {
             flexDirection: "column",
             alignItems: "center",
             gap: 12,
+            animation: "superadminViewFade .22s ease both",
           }}
         >
           <Loader2 size={24} style={{ animation: "spin 1s linear infinite" }} />
           Carregando centro de inteligência…
         </div>
       ) : (
-        currentView
+        <div
+          key={section}
+          style={{
+            animation: "superadminViewFade .22s ease both",
+          }}
+        >
+          {currentView}
+        </div>
       )}
 
       {showCourtesyModal && (
