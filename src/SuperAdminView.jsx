@@ -899,7 +899,7 @@ export default function SuperAdminView({ section = "dashboard" }) {
                   Revogando…
                 </>
               ) : (
-                "Revogar acesso"
+                "Revogar acesso"//teste
               )}
             </button>
           </div>
