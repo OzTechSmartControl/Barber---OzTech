@@ -143,8 +143,14 @@ function ErrorMessage({ message }) {
 }
 
 function normalizeCourtesy(item) {
+  const isExpired =
+    item.status !== "revoked" &&
+    item.expires_at &&
+    new Date(item.expires_at).getTime() < Date.now();
+
   return {
     ...item,
+    status: isExpired ? "expired" : item.status || "active",
     source: "courtesy",
     source_label: "Cortesia",
     display_email: item.email || "—",
@@ -205,8 +211,12 @@ export default function SuperAdminView({ section = "dashboard" }) {
   const [courtesySearch, setCourtesySearch] = useState("");
   const [courtesyFilter, setCourtesyFilter] = useState("all");
   const [showCourtesyModal, setShowCourtesyModal] = useState(false);
+  const [showRevokeModal, setShowRevokeModal] = useState(false);
+  const [revokeId, setRevokeId] = useState("");
+  const [revokeError, setRevokeError] = useState("");
   const [savingCourtesy, setSavingCourtesy] = useState(false);
   const [revoking, setRevoking] = useState(null);
+  const [revokingFromModal, setRevokingFromModal] = useState(false);
   const [courtesyError, setCourtesyError] = useState("");
 
   const [form, setForm] = useState({
@@ -325,10 +335,14 @@ export default function SuperAdminView({ section = "dashboard" }) {
     }
   };
 
-  const revokeCourtesy = async (id) => {
-    const confirmed = window.confirm(
-      "Revogar este acesso? O usuário perderá o acesso imediatamente."
-    );
+  const handleRevoke = async (id, { skipConfirm = false } = {}) => {
+    if (!id) return;
+
+    const confirmed =
+      skipConfirm ||
+      window.confirm(
+        "Revogar este acesso? O usuário perderá o acesso imediatamente."
+      );
 
     if (!confirmed) return;
 
@@ -349,12 +363,13 @@ export default function SuperAdminView({ section = "dashboard" }) {
     } catch (e) {
       console.error(e);
       alert(e.message || "Erro ao revogar cortesia.");
+      throw e;
     } finally {
       setRevoking(null);
     }
   };
 
-  const deleteCourtesy = async (row) => {
+  const handleDelete = async (row) => {
     if (row.status !== "revoked") {
       alert("Somente acessos revogados podem ser excluídos.");
       return;
@@ -436,8 +451,13 @@ export default function SuperAdminView({ section = "dashboard" }) {
             setCourtesyError("");
             setShowCourtesyModal(true);
           }}
-          onRevoke={revokeCourtesy}
-          onDelete={deleteCourtesy}
+          onOpenRevokeModal={() => {
+            setRevokeError("");
+            setRevokeId("");
+            setShowRevokeModal(true);
+          }}
+          onRevoke={handleRevoke}
+          onDelete={handleDelete}
           revoking={revoking}
         />
       );
@@ -464,6 +484,32 @@ export default function SuperAdminView({ section = "dashboard" }) {
     statusFilter,
     subscriptions,
   ]);
+
+  const activeCourtesies = courtesies.filter((item) => item.status === "active");
+  const selectedRevokeCourtesy = activeCourtesies.find(
+    (item) => String(item.id) === String(revokeId)
+  );
+
+  const handleConfirmRevoke = async () => {
+    setRevokeError("");
+
+    if (!revokeId) {
+      setRevokeError("Selecione um acesso ativo para revogar.");
+      return;
+    }
+
+    setRevokingFromModal(true);
+
+    try {
+      await handleRevoke(revokeId, { skipConfirm: true });
+      setShowRevokeModal(false);
+      setRevokeId("");
+    } catch (e) {
+      setRevokeError(e.message || "Erro ao revogar acesso.");
+    } finally {
+      setRevokingFromModal(false);
+    }
+  };
 
   return (
     <div style={{ color: T.text, fontFamily: "'DM Sans', sans-serif" }}>
@@ -727,6 +773,136 @@ export default function SuperAdminView({ section = "dashboard" }) {
                   <Check size={15} />
                   Liberar cortesia
                 </>
+              )}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {showRevokeModal && (
+        <Modal
+          title="REVOGAR ACESSO"
+          onClose={() => {
+            setShowRevokeModal(false);
+            setRevokeError("");
+            setRevokeId("");
+          }}
+        >
+          <ErrorMessage message={revokeError} />
+
+          <div
+            style={{
+              background: T.warningBg || "#f59e0b18",
+              border: `1px solid ${(T.warning || "#f59e0b")}44`,
+              color: T.mutedLight,
+              borderRadius: 12,
+              padding: "0.85rem 1rem",
+              fontSize: 13,
+              marginBottom: "1rem",
+              lineHeight: 1.45,
+            }}
+          >
+            Selecione um acesso ativo para revogar. Após a confirmação, o status será
+            atualizado para <strong style={{ color: T.danger }}>revoked</strong>, a data
+            de revogação será registrada e a listagem será atualizada automaticamente.
+          </div>
+
+          <div style={{ marginBottom: "1rem" }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: T.muted, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.8 }}>
+              Acesso ativo
+            </div>
+
+            <select
+              style={inputSt}
+              value={revokeId}
+              onChange={(e) => {
+                setRevokeError("");
+                setRevokeId(e.target.value);
+              }}
+              disabled={!activeCourtesies.length}
+            >
+              <option value="">
+                {activeCourtesies.length
+                  ? "Selecione um acesso ativo"
+                  : "Nenhum acesso ativo disponível"}
+              </option>
+
+              {activeCourtesies.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.display_email || item.email || "Sem e-mail"}
+                  {item.type === "timed" && item.expires_at
+                    ? ` — expira em ${new Date(item.expires_at).toLocaleDateString("pt-BR")}`
+                    : " — indeterminado"}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {selectedRevokeCourtesy?.notes && (
+            <div
+              style={{
+                color: T.mutedLight,
+                fontSize: 12,
+                marginBottom: "1.25rem",
+                background: T.surface,
+                border: `1px solid ${T.border}`,
+                borderRadius: 10,
+                padding: "0.75rem 0.85rem",
+              }}
+            >
+              <strong style={{ color: T.text }}>Observação:</strong> {selectedRevokeCourtesy.notes}
+            </div>
+          )}
+
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              onClick={() => {
+                setShowRevokeModal(false);
+                setRevokeError("");
+                setRevokeId("");
+              }}
+              style={{
+                flex: 1,
+                background: T.surface,
+                border: `1px solid ${T.border}`,
+                color: T.mutedLight,
+                borderRadius: 10,
+                padding: "0.75rem",
+                fontWeight: 700,
+                cursor: "pointer",
+                fontFamily: "'DM Sans', sans-serif",
+              }}
+            >
+              Cancelar
+            </button>
+
+            <button
+              onClick={handleConfirmRevoke}
+              disabled={!revokeId || revokingFromModal}
+              style={{
+                flex: 2,
+                background: T.dangerBg,
+                border: `1px solid ${T.danger}66`,
+                color: T.danger,
+                borderRadius: 10,
+                padding: "0.75rem",
+                fontWeight: 800,
+                cursor: !revokeId || revokingFromModal ? "not-allowed" : "pointer",
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                gap: 8,
+                fontFamily: "'DM Sans', sans-serif",
+                opacity: !revokeId || revokingFromModal ? 0.65 : 1,
+              }}
+            >
+              {revokingFromModal ? (
+                <>
+                  <Loader2 size={15} style={{ animation: "spin 1s linear infinite" }} />
+                  Revogando…
+                </>
+              ) : (
+                "Revogar acesso"
               )}
             </button>
           </div>

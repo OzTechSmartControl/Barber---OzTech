@@ -52,6 +52,7 @@ export default function CourtesyView({
   filter,
   setFilter,
   onNewCourtesy,
+  onOpenRevokeModal,
   onRevoke,
   onDelete,
   revoking,
@@ -205,24 +206,77 @@ export default function CourtesyView({
         title="Cortesias"
         subtitle="Acessos gratuitos doados pelo admin master; não entram como receita"
         right={
-          <button
-            onClick={onNewCourtesy}
+          <div
             style={{
-              background: T.accent,
-              color: "#0a0808",
-              border: "none",
-              borderRadius: 10,
-              padding: "0.65rem 1rem",
-              fontSize: 13,
-              fontWeight: 800,
-              cursor: "pointer",
               display: "flex",
               alignItems: "center",
-              gap: 7,
+              justifyContent: "flex-end",
+              gap: 10,
+              flexWrap: "wrap",
             }}
           >
-            <Plus size={14} /> Nova cortesia
-          </button>
+            <button
+              onClick={onNewCourtesy}
+              style={{
+                background: `linear-gradient(135deg, ${T.accent}, #7dd3fc)`,
+                color: "#061018",
+                border: `1px solid ${T.accent}`,
+                borderRadius: 12,
+                padding: "0.72rem 1.05rem",
+                fontSize: 13,
+                fontWeight: 900,
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 7,
+                boxShadow: `0 0 0 1px ${T.accentGlow}, 0 0 18px ${T.accentGlow}`,
+                transition: "transform .16s ease, box-shadow .16s ease, filter .16s ease",
+                fontFamily: "'DM Sans', sans-serif",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "translateY(-1px)";
+                e.currentTarget.style.filter = "brightness(1.08)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.filter = "brightness(1)";
+              }}
+            >
+              + Novo acesso cortesia
+            </button>
+
+            <button
+              onClick={onOpenRevokeModal}
+              style={{
+                background: "linear-gradient(135deg, rgba(240,112,112,.18), rgba(245,158,11,.12))",
+                color: T.danger,
+                border: `1px solid ${T.danger}66`,
+                borderRadius: 12,
+                padding: "0.72rem 1.05rem",
+                fontSize: 13,
+                fontWeight: 900,
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 7,
+                boxShadow: `0 0 16px ${T.dangerBg}`,
+                transition: "transform .16s ease, border-color .16s ease, filter .16s ease",
+                fontFamily: "'DM Sans', sans-serif",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "translateY(-1px)";
+                e.currentTarget.style.borderColor = `${T.danger}aa`;
+                e.currentTarget.style.filter = "brightness(1.08)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.borderColor = `${T.danger}66`;
+                e.currentTarget.style.filter = "brightness(1)";
+              }}
+            >
+              Revogar Acesso
+            </button>
+          </div>
         }
       />
 
