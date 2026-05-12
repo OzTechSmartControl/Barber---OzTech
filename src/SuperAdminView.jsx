@@ -1,11 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
+  Bell,
   Check,
   Clock,
   Infinity,
   Loader2,
   RefreshCw,
+  Search,
+  ShieldCheck,
+  Sparkles,
   X,
 } from "lucide-react";
 
@@ -183,6 +187,268 @@ function normalizeSubscription(item) {
     created_at: item.created_at || item.createdAt || item.started_at || item.start_date,
     expires_at: item.expires_at || item.expiresAt || item.current_period_end || item.end_date,
   };
+}
+
+
+const sectionLabels = {
+  dashboard: {
+    title: "Dashboard",
+    subtitle: "Visão executiva da operação SaaS",
+  },
+  clients: {
+    title: "Clientes SaaS",
+    subtitle: "Gestão das barbearias cadastradas na plataforma",
+  },
+  finance: {
+    title: "Financeiro",
+    subtitle: "Receita, MRR, ARR, inadimplência e pagamentos",
+  },
+  subscriptions: {
+    title: "Assinaturas",
+    subtitle: "Planos, recorrência, status e gateway de pagamento",
+  },
+  courtesy: {
+    title: "Cortesias",
+    subtitle: "Acessos gratuitos concedidos pelo admin master",
+  },
+  alerts: {
+    title: "Alertas",
+    subtitle: "Timeline de eventos importantes da plataforma",
+  },
+  analytics: {
+    title: "Analytics",
+    subtitle: "Inteligência SaaS avançada e indicadores futuros",
+  },
+};
+
+function GlobalHeader({ section, loading, onRefresh }) {
+  const meta = sectionLabels[section] || sectionLabels.dashboard;
+
+  return (
+    <div
+      style={{
+        position: "sticky",
+        top: 0,
+        zIndex: 20,
+        margin: "-2rem -2rem 1.75rem",
+        padding: "1.15rem 2rem",
+        background:
+          "linear-gradient(180deg, rgba(11,11,14,.96), rgba(11,11,14,.82))",
+        backdropFilter: "blur(16px)",
+        borderBottom: `1px solid ${T.border}`,
+      }}
+    >
+      <div
+        style={{
+          maxWidth: 1440,
+          margin: "0 auto",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 18,
+        }}
+      >
+        <div style={{ minWidth: 0 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              color: T.muted,
+              fontSize: 11,
+              fontWeight: 800,
+              textTransform: "uppercase",
+              letterSpacing: 1,
+              marginBottom: 7,
+            }}
+          >
+            <ShieldCheck size={13} color={T.accent} />
+            Oz.Barber
+            <span style={{ color: T.muted }}>·</span>
+            <span style={{ color: T.accent }}>Super Admin</span>
+          </div>
+
+          <h1
+            style={{
+              fontFamily: "'Bebas Neue', sans-serif",
+              margin: 0,
+              fontSize: 34,
+              letterSpacing: 2,
+              color: T.text,
+              lineHeight: 1,
+            }}
+          >
+            {meta.title}
+          </h1>
+
+          <div
+            style={{
+              color: T.muted,
+              fontSize: 13,
+              marginTop: 6,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              maxWidth: 620,
+            }}
+          >
+            {meta.subtitle}
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            flexShrink: 0,
+          }}
+        >
+          <div
+            style={{
+              position: "relative",
+              width: 300,
+              maxWidth: "28vw",
+            }}
+          >
+            <Search
+              size={15}
+              color={T.muted}
+              style={{
+                position: "absolute",
+                left: 13,
+                top: "50%",
+                transform: "translateY(-50%)",
+              }}
+            />
+
+            <input
+              placeholder="Buscar no admin..."
+              style={{
+                width: "100%",
+                height: 42,
+                background: "rgba(255,255,255,.035)",
+                border: `1px solid ${T.border}`,
+                borderRadius: 14,
+                padding: "0 14px 0 38px",
+                color: T.text,
+                outline: "none",
+                fontSize: 13,
+                fontFamily: "'DM Sans', sans-serif",
+              }}
+            />
+          </div>
+
+          <button
+            title="Atualizar"
+            onClick={onRefresh}
+            disabled={loading}
+            style={{
+              width: 42,
+              height: 42,
+              borderRadius: 14,
+              border: `1px solid ${T.border}`,
+              background: T.surface,
+              color: loading ? T.muted : T.text,
+              cursor: loading ? "wait" : "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              transition: "all .18s ease",
+            }}
+          >
+            <RefreshCw
+              size={15}
+              style={{
+                animation: loading ? "spin 1s linear infinite" : "none",
+              }}
+            />
+          </button>
+
+          <button
+            title="Notificações"
+            style={{
+              width: 42,
+              height: 42,
+              borderRadius: 14,
+              border: `1px solid ${T.border}`,
+              background: T.surface,
+              color: T.text,
+              cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              position: "relative",
+            }}
+          >
+            <Bell size={15} />
+            <span
+              style={{
+                position: "absolute",
+                top: 10,
+                right: 10,
+                width: 7,
+                height: 7,
+                borderRadius: 999,
+                background: T.accent,
+                boxShadow: `0 0 12px ${T.accent}`,
+              }}
+            />
+          </button>
+
+          <div
+            style={{
+              height: 42,
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              borderRadius: 14,
+              border: `1px solid ${T.border}`,
+              background: "rgba(255,255,255,.035)",
+              padding: "0 0.75rem",
+            }}
+          >
+            <div
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: 10,
+                background: `${T.accent}18`,
+                border: `1px solid ${T.accent}24`,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Sparkles size={14} color={T.accent} />
+            </div>
+
+            <div>
+              <div
+                style={{
+                  color: T.text,
+                  fontSize: 12,
+                  fontWeight: 800,
+                  lineHeight: 1.1,
+                }}
+              >
+                Admin Master
+              </div>
+              <div
+                style={{
+                  color: T.muted,
+                  fontSize: 10,
+                  marginTop: 2,
+                }}
+              >
+                Online
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function SuperAdminView({ section = "dashboard" }) {
@@ -486,53 +752,11 @@ export default function SuperAdminView({ section = "dashboard" }) {
         }
       `}</style>
 
-      <div
-        style={{
-          marginBottom: "1.75rem",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          gap: 16,
-        }}
-      >
-        <div>
-          <h1
-            style={{
-              fontFamily: "'Bebas Neue', sans-serif",
-              margin: 0,
-              fontSize: 38,
-              letterSpacing: 2.2,
-              color: T.text,
-            }}
-          >
-            Centro de Inteligência SaaS
-          </h1>
-          <div style={{ color: T.muted, fontSize: 13, marginTop: 5 }}>
-            Gestão executiva da plataforma Oz.Barber
-          </div>
-        </div>
-
-        <button
-          onClick={loadAll}
-          style={{
-            background: T.surface,
-            color: T.text,
-            border: `1px solid ${T.border}`,
-            borderRadius: 10,
-            padding: "0.65rem 1rem",
-            display: "inline-flex",
-            gap: 8,
-            alignItems: "center",
-            cursor: "pointer",
-            fontSize: 13,
-            fontWeight: 700,
-            fontFamily: "'DM Sans', sans-serif",
-          }}
-        >
-          <RefreshCw size={14} />
-          Atualizar
-        </button>
-      </div>
+      <GlobalHeader
+        section={section}
+        loading={loading}
+        onRefresh={loadAll}
+      />
 
       {err && (
         <div
