@@ -1370,13 +1370,13 @@ function ReportsView({ attendances, clients, services, barbers, expenses, shop }
 function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin, userName, onLogout, shop }) {
   const nav = isSuperAdmin
     ? [
-        { id:"superadmin_dashboard",      label:"Dashboard",     Icon:LayoutDashboard },
-        { id:"superadmin_clients",        label:"Clientes SaaS", Icon:Users },
-        { id:"superadmin_finance",        label:"Financeiro",    Icon:DollarSign },
-        { id:"superadmin_subscriptions",  label:"Assinaturas",   Icon:CreditCard },
-        { id:"superadmin_courtesy",       label:"Cortesias",     Icon:Gift },
-        { id:"superadmin_alerts",         label:"Alertas",       Icon:Bell },
-        { id:"superadmin_analytics",      label:"Analytics",     Icon:TrendingUp },
+        { id:"superadmin_dashboard",      label:"Dashboard",     Icon:LayoutDashboard, desc:"Visão geral" },
+        { id:"superadmin_clients",        label:"Clientes SaaS", Icon:Users,           desc:"Tenants" },
+        { id:"superadmin_finance",        label:"Financeiro",    Icon:DollarSign,     desc:"Receita" },
+        { id:"superadmin_subscriptions",  label:"Assinaturas",   Icon:CreditCard,     desc:"Billing" },
+        { id:"superadmin_courtesy",       label:"Cortesias",     Icon:Gift,           desc:"Acessos" },
+        { id:"superadmin_alerts",         label:"Alertas",       Icon:Bell,           desc:"Eventos" },
+        { id:"superadmin_analytics",      label:"Analytics",     Icon:TrendingUp,     desc:"Inteligência" },
       ]
     : [
         { id:"dashboard",   label:"Dashboard",    Icon:LayoutDashboard },
@@ -1390,9 +1390,10 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
         ] : []),
       ];
 
-  const shopName = shop?.name || "Oz.Barber";
+  const shopName = isSuperAdmin ? "Oz.Barber" : (shop?.name || "Oz.Barber");
 
   const isOzBarber =
+    isSuperAdmin ||
     !shop?.logo_url ||
     shop?.logo_url === "" ||
     shop?.logo_url === "null";
@@ -1402,40 +1403,178 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
     : shop.logo_url;
 
   return (
-    <div style={{ width:collapsed?66:230, background:T.sidebar, borderRight:`1px solid ${T.border}`, display:"flex", flexDirection:"column", flexShrink:0, transition:"width 0.2s ease" }}>
-      <div style={{ padding:collapsed?"1.25rem 0":"1.2rem 1.1rem", borderBottom:`1px solid ${T.border}`, display:"flex", alignItems:"center", justifyContent:collapsed?"center":"space-between" }}>
+    <aside
+      style={{
+        width: collapsed ? 76 : (isSuperAdmin ? 282 : 230),
+        background: isSuperAdmin
+          ? "linear-gradient(180deg, #0f1018 0%, #0b0b11 100%)"
+          : T.sidebar,
+        borderRight: `1px solid ${T.border}`,
+        display: "flex",
+        flexDirection: "column",
+        flexShrink: 0,
+        transition: "width .22s ease",
+        position: "relative",
+        boxShadow: isSuperAdmin ? "18px 0 60px rgba(0,0,0,.18)" : "none",
+      }}
+    >
+      <div
+        style={{
+          padding: collapsed ? "1.15rem 0.75rem" : "1.25rem",
+          borderBottom: `1px solid ${T.border}`,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: collapsed ? "center" : "space-between",
+          minHeight: isSuperAdmin ? 92 : undefined,
+        }}
+      >
         {!collapsed && (
-          <div style={{ display:"flex", alignItems:"center", gap:10, minWidth:0 }}>
-            <div style={{ width:64, height:64, minWidth:64, borderRadius:14, background:"transparent", border:"none", display:"flex", alignItems:"center", justifyContent:"center", overflow:"visible", flexShrink:0, padding:0 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:12, minWidth:0 }}>
+            <div
+              style={{
+                width: isSuperAdmin ? 48 : 64,
+                height: isSuperAdmin ? 48 : 64,
+                minWidth: isSuperAdmin ? 48 : 64,
+                borderRadius: isSuperAdmin ? 16 : 14,
+                background: isSuperAdmin ? `${T.accent}14` : "transparent",
+                border: isSuperAdmin ? `1px solid ${T.accent}24` : "none",
+                display:"flex",
+                alignItems:"center",
+                justifyContent:"center",
+                overflow:"visible",
+                flexShrink:0,
+                padding:0,
+                boxShadow: isSuperAdmin ? `0 0 35px ${T.accent}12` : "none",
+              }}
+            >
               <img src={logoUrl} alt={shopName} style={{ width:"100%", height:"100%", objectFit:"contain", display:"block" }} />
             </div>
+
             <div style={{ minWidth:0 }}>
-              <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:20, letterSpacing:1.4, color:T.text, lineHeight:1, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", maxWidth:118 }}>
+              <div
+                style={{
+                  fontFamily:"'Bebas Neue', sans-serif",
+                  fontSize: isSuperAdmin ? 24 : 20,
+                  letterSpacing:1.5,
+                  color:T.text,
+                  lineHeight:1,
+                  whiteSpace:"nowrap",
+                  overflow:"hidden",
+                  textOverflow:"ellipsis",
+                  maxWidth: isSuperAdmin ? 150 : 118,
+                }}
+              >
                 {shopName}
               </div>
-              <div style={{ fontSize:10, color:T.muted, textTransform:"uppercase", letterSpacing:1, marginTop:3 }}>
-                Ambiente privado
+              <div
+                style={{
+                  fontSize:10,
+                  color:T.muted,
+                  textTransform:"uppercase",
+                  letterSpacing:1,
+                  marginTop:5,
+                }}
+              >
+                {isSuperAdmin ? "Centro SaaS" : "Ambiente privado"}
               </div>
             </div>
           </div>
         )}
+
         {collapsed && (
-          <div style={{ width:50, height:50, minWidth:50, borderRadius:12, background:"transparent", border:"none", display:"flex", alignItems:"center", justifyContent:"center", overflow:"visible", padding:0 }}>
+          <div
+            style={{
+              width:50,
+              height:50,
+              minWidth:50,
+              borderRadius:16,
+              background:isSuperAdmin ? `${T.accent}14` : "transparent",
+              border:isSuperAdmin ? `1px solid ${T.accent}24` : "none",
+              display:"flex",
+              alignItems:"center",
+              justifyContent:"center",
+              overflow:"visible",
+              padding:0,
+            }}
+          >
             <img src={logoUrl} alt={shopName} style={{ width:"100%", height:"100%", objectFit:"contain", display:"block" }} />
           </div>
         )}
-        {!collapsed && <button onClick={()=>setCollapsed(true)} style={{ background:"none", border:"none", color:T.muted, cursor:"pointer", display:"flex" }}><Menu size={18}/></button>}
+
+        {!collapsed && (
+          <button
+            onClick={()=>setCollapsed(true)}
+            style={{
+              background:isSuperAdmin ? `${T.surface}` : "none",
+              border:isSuperAdmin ? `1px solid ${T.border}` : "none",
+              color:T.muted,
+              cursor:"pointer",
+              display:"flex",
+              width:isSuperAdmin ? 34 : "auto",
+              height:isSuperAdmin ? 34 : "auto",
+              alignItems:"center",
+              justifyContent:"center",
+              borderRadius:10,
+            }}
+          >
+            <Menu size={18}/>
+          </button>
+        )}
       </div>
 
       {collapsed && (
-        <button onClick={()=>setCollapsed(false)} style={{ margin:"0.8rem auto 0", background:T.surface, border:`1px solid ${T.border}`, color:T.muted, width:34, height:30, borderRadius:8, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+        <button
+          onClick={()=>setCollapsed(false)}
+          style={{
+            margin:"0.85rem auto 0",
+            background:T.surface,
+            border:`1px solid ${T.border}`,
+            color:T.muted,
+            width:36,
+            height:32,
+            borderRadius:10,
+            cursor:"pointer",
+            display:"flex",
+            alignItems:"center",
+            justifyContent:"center",
+          }}
+        >
           <Menu size={16}/>
         </button>
       )}
 
-      <nav style={{ flex:1, padding:"1rem 0.65rem", overflowY:"auto" }}>
-        {nav.map(({id,label,Icon}) => {
+      {!collapsed && isSuperAdmin && (
+        <div
+          style={{
+            margin: "1rem 1rem 0",
+            padding: "0.85rem",
+            borderRadius: 16,
+            background: "rgba(77,184,255,.08)",
+            border: `1px solid ${T.accent}22`,
+          }}
+        >
+          <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:5 }}>
+            <Lock size={13} color={T.accent} />
+            <span style={{ color:T.accent, fontSize:11, fontWeight:800, letterSpacing:.8, textTransform:"uppercase" }}>
+              Super Admin
+            </span>
+          </div>
+          <div style={{ color:T.mutedLight, fontSize:11, lineHeight:1.45 }}>
+            Controle global da plataforma, clientes, receita e assinaturas.
+          </div>
+        </div>
+      )}
+
+      <nav
+        style={{
+          flex:1,
+          padding: isSuperAdmin ? "1rem 0.85rem" : "1rem 0.65rem",
+          overflowY:"auto",
+        }}
+      >
+        {nav.map(({id,label,Icon,desc}) => {
           const active = view === id;
+
           return (
             <button
               key={id}
@@ -1443,47 +1582,163 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
               title={collapsed ? label : undefined}
               style={{
                 width:"100%",
+                position:"relative",
                 display:"flex",
                 alignItems:"center",
                 justifyContent:collapsed?"center":"flex-start",
-                gap:10,
-                padding:collapsed?"0.75rem 0":"0.75rem 0.8rem",
-                marginBottom:4,
-                borderRadius:9,
-                border:"none",
-                background: active ? T.accentGlow : "transparent",
+                gap: isSuperAdmin ? 12 : 10,
+                padding:collapsed ? "0.82rem 0" : (isSuperAdmin ? "0.82rem 0.9rem" : "0.75rem 0.8rem"),
+                marginBottom: isSuperAdmin ? 8 : 4,
+                borderRadius: isSuperAdmin ? 14 : 9,
+                border: isSuperAdmin
+                  ? `1px solid ${active ? `${T.accent}40` : "transparent"}`
+                  : "none",
+                background: active
+                  ? (isSuperAdmin ? `linear-gradient(90deg, ${T.accent}18, rgba(77,184,255,.06))` : T.accentGlow)
+                  : "transparent",
                 color: active ? T.accent : T.mutedLight,
                 cursor:"pointer",
                 fontFamily:"'DM Sans', sans-serif",
                 fontSize:13,
-                fontWeight: active ? 700 : 500,
-                textAlign:"left"
+                fontWeight: active ? 800 : 600,
+                textAlign:"left",
+                transition:"all .18s ease",
+                boxShadow: active && isSuperAdmin ? `0 10px 30px ${T.accent}08` : "none",
+              }}
+              onMouseEnter={(e) => {
+                if (!active) {
+                  e.currentTarget.style.background = isSuperAdmin ? "rgba(255,255,255,.035)" : T.surface;
+                  e.currentTarget.style.color = T.text;
+                  e.currentTarget.style.transform = "translateX(2px)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!active) {
+                  e.currentTarget.style.background = "transparent";
+                  e.currentTarget.style.color = T.mutedLight;
+                  e.currentTarget.style.transform = "translateX(0)";
+                }
               }}
             >
-              <Icon size={17}/>
-              {!collapsed && <span>{label}</span>}
+              {active && isSuperAdmin && !collapsed && (
+                <span
+                  style={{
+                    position:"absolute",
+                    left:-1,
+                    top:"50%",
+                    transform:"translateY(-50%)",
+                    width:3,
+                    height:24,
+                    borderRadius:999,
+                    background:T.accent,
+                    boxShadow:`0 0 18px ${T.accent}`,
+                  }}
+                />
+              )}
+
+              <span
+                style={{
+                  width: isSuperAdmin ? 34 : "auto",
+                  height: isSuperAdmin ? 34 : "auto",
+                  borderRadius: isSuperAdmin ? 12 : 0,
+                  display:"inline-flex",
+                  alignItems:"center",
+                  justifyContent:"center",
+                  background: isSuperAdmin
+                    ? (active ? `${T.accent}18` : "rgba(255,255,255,.03)")
+                    : "transparent",
+                  border: isSuperAdmin ? `1px solid ${active ? `${T.accent}25` : "rgba(255,255,255,.04)"}` : "none",
+                  flexShrink:0,
+                }}
+              >
+                <Icon size={17}/>
+              </span>
+
+              {!collapsed && (
+                <span style={{ minWidth:0, flex:1 }}>
+                  <span style={{ display:"block", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+                    {label}
+                  </span>
+                  {isSuperAdmin && desc && (
+                    <span
+                      style={{
+                        display:"block",
+                        color: active ? `${T.accent}aa` : T.muted,
+                        fontSize:10,
+                        fontWeight:600,
+                        marginTop:2,
+                        whiteSpace:"nowrap",
+                        overflow:"hidden",
+                        textOverflow:"ellipsis",
+                      }}
+                    >
+                      {desc}
+                    </span>
+                  )}
+                </span>
+              )}
             </button>
           );
         })}
       </nav>
 
-      <div style={{ padding:collapsed?"0.8rem 0.65rem":"1rem", borderTop:`1px solid ${T.border}` }}>
+      <div
+        style={{
+          padding:collapsed?"0.85rem 0.75rem":"1rem",
+          borderTop:`1px solid ${T.border}`,
+          background:isSuperAdmin ? "rgba(255,255,255,.01)" : "transparent",
+        }}
+      >
         {!collapsed && (
-          <div style={{ marginBottom:"0.75rem", minWidth:0 }}>
+          <div
+            style={{
+              marginBottom:"0.85rem",
+              minWidth:0,
+              padding:isSuperAdmin ? "0.75rem" : 0,
+              borderRadius:isSuperAdmin ? 14 : 0,
+              background:isSuperAdmin ? "rgba(255,255,255,.025)" : "transparent",
+              border:isSuperAdmin ? `1px solid rgba(255,255,255,.04)` : "none",
+            }}
+          >
             <div style={{ fontSize:11, color:T.muted, marginBottom:3 }}>Logado como</div>
             <div style={{ fontSize:12, color:T.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{userName}</div>
           </div>
         )}
+
         <button
           onClick={onLogout}
           title="Sair"
-          style={{ width:"100%", display:"flex", alignItems:"center", justifyContent:collapsed?"center":"flex-start", gap:8, padding:"0.65rem 0.7rem", borderRadius:8, border:`1px solid ${T.border}`, background:T.surface, color:T.mutedLight, cursor:"pointer", fontSize:12, fontFamily:"'DM Sans', sans-serif" }}
+          style={{
+            width:"100%",
+            display:"flex",
+            alignItems:"center",
+            justifyContent:collapsed?"center":"flex-start",
+            gap:8,
+            padding:"0.72rem 0.75rem",
+            borderRadius:12,
+            border:`1px solid ${T.border}`,
+            background:T.surface,
+            color:T.mutedLight,
+            cursor:"pointer",
+            fontSize:12,
+            fontWeight:700,
+            fontFamily:"'DM Sans', sans-serif",
+            transition:"all .18s ease",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = `${T.danger}55`;
+            e.currentTarget.style.color = T.danger;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = T.border;
+            e.currentTarget.style.color = T.mutedLight;
+          }}
         >
           <LogOut size={15}/>
           {!collapsed && "Sair"}
         </button>
       </div>
-    </div>
+    </aside>
   );
 }
 
