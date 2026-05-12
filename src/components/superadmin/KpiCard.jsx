@@ -3,6 +3,7 @@ import {
   ArrowUpRight,
   Minus,
 } from "lucide-react";
+import { motion } from "framer-motion";
 
 import T from "../../config/theme";
 
@@ -50,7 +51,18 @@ export default function KpiCard({
   const maxSpark = Math.max(1, ...sparkline);
 
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0, y: 14, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      whileHover={{
+        y: -4,
+        scale: 1.01,
+        borderColor: `${color}55`,
+      }}
+      transition={{
+        duration: 0.22,
+        ease: "easeOut",
+      }}
       style={{
         position: "relative",
         overflow: "hidden",
@@ -61,18 +73,12 @@ export default function KpiCard({
         padding: "1.15rem 1.2rem",
         minHeight: 148,
         boxShadow: "0 12px 40px rgba(0,0,0,.20)",
-        transition: "all .18s ease",
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.transform = "translateY(-3px)";
-        e.currentTarget.style.borderColor = `${color}44`;
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.transform = "translateY(0px)";
-        e.currentTarget.style.borderColor = T.border;
       }}
     >
-      <div
+      <motion.div
+        initial={{ opacity: 0.4, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.45, ease: "easeOut" }}
         style={{
           position: "absolute",
           top: -40,
@@ -108,7 +114,10 @@ export default function KpiCard({
             {label}
           </div>
 
-          <div
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.28, delay: 0.08 }}
             style={{
               fontFamily: "'Bebas Neue', sans-serif",
               fontSize: 38,
@@ -119,7 +128,7 @@ export default function KpiCard({
             }}
           >
             {value}
-          </div>
+          </motion.div>
 
           {(trendValue || subtitle) && (
             <div
@@ -131,7 +140,10 @@ export default function KpiCard({
               }}
             >
               {trendValue && (
-                <div
+                <motion.div
+                  initial={{ opacity: 0, x: -6 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.25, delay: 0.14 }}
                   style={{
                     display: "inline-flex",
                     alignItems: "center",
@@ -147,7 +159,7 @@ export default function KpiCard({
                 >
                   <TrendIcon trend={trend} />
                   {trendValue}
-                </div>
+                </motion.div>
               )}
 
               {subtitle && (
@@ -166,7 +178,11 @@ export default function KpiCard({
         </div>
 
         {Icon && (
-          <div
+          <motion.div
+            initial={{ opacity: 0, rotate: -8, scale: 0.9 }}
+            animate={{ opacity: 1, rotate: 0, scale: 1 }}
+            whileHover={{ rotate: 4, scale: 1.06 }}
+            transition={{ duration: 0.25, delay: 0.05 }}
             style={{
               background: `${color}16`,
               border: `1px solid ${color}22`,
@@ -181,7 +197,7 @@ export default function KpiCard({
             }}
           >
             <Icon size={20} color={color} />
-          </div>
+          </motion.div>
         )}
       </div>
 
@@ -199,23 +215,28 @@ export default function KpiCard({
             const h = Math.max(5, (v / maxSpark) * 30);
 
             return (
-              <div
+              <motion.div
                 key={i}
+                initial={{ height: 4, opacity: 0 }}
+                animate={{ height: h, opacity: 1 }}
+                transition={{
+                  duration: 0.32,
+                  delay: 0.03 * i,
+                  ease: "easeOut",
+                }}
                 style={{
                   flex: 1,
-                  height: h,
                   borderRadius: 999,
                   background:
                     i === sparkline.length - 1
                       ? color
                       : `${color}55`,
-                  transition: "all .2s ease",
                 }}
               />
             );
           })}
         </div>
       )}
-    </div>
+    </motion.div>
   );
 }
