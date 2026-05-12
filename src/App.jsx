@@ -9,7 +9,8 @@ import {
   LayoutDashboard, Scissors, Users, Award, Tag, DollarSign,
   Menu, X, Plus, Search, Edit2, Trash2, Check, TrendingUp,
   Phone, LogOut, Lock, Mail, CreditCard, Banknote, Smartphone,
-  BadgePercent, AlertCircle, RefreshCw, FileText, Download, Calendar
+  BadgePercent, AlertCircle, RefreshCw, FileText, Download, Calendar, Bell, Gift
+
 } from "lucide-react";
 
 (() => {
@@ -1369,7 +1370,13 @@ function ReportsView({ attendances, clients, services, barbers, expenses, shop }
 function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin, userName, onLogout, shop }) {
   const nav = isSuperAdmin
     ? [
-        { id:"superadmin", label:"Painel Executivo", Icon:Lock },
+        { id:"superadmin_dashboard",      label:"Dashboard",     Icon:LayoutDashboard },
+        { id:"superadmin_clients",        label:"Clientes SaaS", Icon:Users },
+        { id:"superadmin_finance",        label:"Financeiro",    Icon:DollarSign },
+        { id:"superadmin_subscriptions",  label:"Assinaturas",   Icon:CreditCard },
+        { id:"superadmin_courtesy",       label:"Cortesias",     Icon:Gift },
+        { id:"superadmin_alerts",         label:"Alertas",       Icon:Bell },
+        { id:"superadmin_analytics",      label:"Analytics",     Icon:TrendingUp },
       ]
     : [
         { id:"dashboard",   label:"Dashboard",    Icon:LayoutDashboard },
@@ -1635,7 +1642,7 @@ export default function App() {
         setBarbers([]);
         setAttendances([]);
         setExpenses([]);
-        setView("superadmin");
+        setView("superadmin_dashboard");
         setDataLoaded(true);
         return;
       }
@@ -1789,11 +1796,17 @@ export default function App() {
     ? (auth.user?.email || "Administrador Master")
     : (barbers.find(b=>b.userId===auth.user?.id)?.name || auth.user?.email || "Usuário");
 
-  const activeView = isSuperAdmin ? "superadmin" : view;
+  const activeView = isSuperAdmin ? view : view;
 
   const views = isSuperAdmin
     ? {
-        superadmin: <SuperAdminView token={tok} />,
+        superadmin_dashboard:     <SuperAdminView token={tok} section="dashboard" />,
+        superadmin_clients:       <SuperAdminView token={tok} section="clients" />,
+        superadmin_finance:       <SuperAdminView token={tok} section="finance" />,
+        superadmin_subscriptions: <SuperAdminView token={tok} section="subscriptions" />,
+        superadmin_courtesy:      <SuperAdminView token={tok} section="courtesy" />,
+        superadmin_alerts:        <SuperAdminView token={tok} section="alerts" />,
+        superadmin_analytics:     <SuperAdminView token={tok} section="analytics" />,
       }
     : {
         dashboard:   <Dashboard   attendances={attendances} clients={clients}   services={services}  barbers={barbers}    isAdmin={isAdmin} myBarberId={myBarberId} onGoReports={isAdmin?()=>setView('reports'):undefined}/>,
@@ -1810,7 +1823,7 @@ export default function App() {
       <style>{CSS}</style>
       <Sidebar view={activeView} setView={setView} collapsed={collapsed} setCollapsed={setCollapsed} isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} userName={userName} onLogout={onLogout} shop={shop}/>
       <main style={{ flex:1, overflow:"auto", padding:"2rem 2.25rem" }}>
-        {views[activeView]}
+        {views[activeView] || views.superadmin_dashboard}
       </main>
     </div>
   );
