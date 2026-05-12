@@ -2061,7 +2061,7 @@ export default function App() {
         superadmin_subscriptions: <SuperAdminView token={tok} section="subscriptions" />,
         superadmin_courtesy:      <SuperAdminView token={tok} section="courtesy" />,
         superadmin_alerts:        <SuperAdminView token={tok} section="alerts" />,
-        superadmin_analytics:     <SuperAdminView token={tok} section="analytics" />,
+        superadmin_analytics:     <SuperAdminView token={tok} section="analytic" />,
       }
     : {
         dashboard:   <Dashboard   attendances={attendances} clients={clients}   services={services}  barbers={barbers}    isAdmin={isAdmin} myBarberId={myBarberId} onGoReports={isAdmin?()=>setView('reports'):undefined}/>,
