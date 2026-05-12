@@ -531,9 +531,6 @@ export default function SuperAdminView({ section = "dashboard" }) {
           }
         }
 
-        .superadmin-view-content > div > :first-child {
-          display: none !important;
-        }
       `}</style>
 
       <div
