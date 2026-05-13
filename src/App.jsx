@@ -305,21 +305,21 @@ const LoginView = ({ onLogin, onShowPlans }) => {
 
   const loginInput = {
     width: "100%",
-    height: 54,
+    height: 42,
     background: "#0d0e14",
     border: `1px solid ${T.border}`,
     borderRadius: 10,
     color: T.text,
     outline: "none",
-    padding: "0 3rem 0 3.1rem",
-    fontSize: 15,
+    padding: "0 2.75rem 0 2.65rem",
+    fontSize: 13,
     fontFamily: "'DM Sans', sans-serif",
     boxShadow: "inset 0 1px 0 rgba(255,255,255,.035)",
   };
 
   const iconSt = {
     position: "absolute",
-    left: 16,
+    left: 13,
     top: "50%",
     transform: "translateY(-50%)",
     color: T.mutedLight,
@@ -351,18 +351,18 @@ const LoginView = ({ onLogin, onShowPlans }) => {
       <div
         style={{
           width: "100%",
-          maxWidth: 620,
+          maxWidth: 400,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
         }}
       >
-        <div style={{ textAlign: "center", marginBottom: "1.35rem" }}>
+        <div style={{ textAlign: "center", marginBottom: "1rem" }}>
           <img
             src="/ozbarber-logo.png"
             alt="Oz.Barber"
             style={{
-              width: 250,
+              width: 230,
               maxWidth: "72vw",
               height: "auto",
               display: "block",
@@ -377,8 +377,8 @@ const LoginView = ({ onLogin, onShowPlans }) => {
             width: "100%",
             background: "linear-gradient(180deg, rgba(26,26,36,.94), rgba(14,16,24,.96))",
             border: `1px solid ${T.accent}66`,
-            borderRadius: 18,
-            padding: "2.35rem 2.5rem",
+            borderRadius: 16,
+            padding: "1.75rem 1.8rem",
             boxShadow: "0 28px 90px rgba(0,0,0,.48), 0 0 42px rgba(77,184,255,.08)",
             backdropFilter: "blur(8px)",
           }}
@@ -387,7 +387,7 @@ const LoginView = ({ onLogin, onShowPlans }) => {
             style={{
               margin: 0,
               color: T.text,
-              fontSize: 32,
+              fontSize: 24,
               lineHeight: 1,
               letterSpacing: -.4,
               fontWeight: 800,
@@ -398,9 +398,9 @@ const LoginView = ({ onLogin, onShowPlans }) => {
 
           <p
             style={{
-              margin: "1rem 0 2rem",
+              margin: ".75rem 0 1.55rem",
               color: T.mutedLight,
-              fontSize: 16,
+              fontSize: 13,
               lineHeight: 1.55,
             }}
           >
@@ -428,7 +428,7 @@ const LoginView = ({ onLogin, onShowPlans }) => {
             </div>
           )}
 
-          <div style={{ marginBottom: "1.1rem" }}>
+          <div style={{ marginBottom: ".85rem" }}>
             <div
               style={{
                 fontSize: 11,
@@ -505,7 +505,7 @@ const LoginView = ({ onLogin, onShowPlans }) => {
             </div>
           </div>
 
-          <div style={{ textAlign: "right", margin: ".35rem 0 1.55rem" }}>
+          <div style={{ textAlign: "right", margin: ".15rem 0 1.05rem" }}>
             <button
               type="button"
               onClick={() => alert("Em breve: recuperação de senha pelo e-mail.")}
@@ -529,12 +529,12 @@ const LoginView = ({ onLogin, onShowPlans }) => {
             disabled={loading}
             style={{
               width: "100%",
-              minHeight: 54,
+              minHeight: 42,
               background: `linear-gradient(135deg, ${T.accent}, #7dd3fc)`,
               color: "#061018",
               border: "none",
               borderRadius: 10,
-              fontSize: 15,
+              fontSize: 13,
               fontWeight: 900,
               cursor: loading ? "wait" : "pointer",
               display: "inline-flex",
@@ -561,7 +561,7 @@ const LoginView = ({ onLogin, onShowPlans }) => {
               display: "flex",
               alignItems: "center",
               gap: 14,
-              margin: "1.7rem 0 1.1rem",
+              margin: "1.25rem 0 .9rem",
               color: T.muted,
               fontSize: 12,
             }}
@@ -599,10 +599,10 @@ const LoginView = ({ onLogin, onShowPlans }) => {
 
         <div
           style={{
-            marginTop: "1.55rem",
+            marginTop: "1.05rem",
             textAlign: "center",
             color: T.mutedLight,
-            fontSize: 15,
+            fontSize: 12,
             letterSpacing: ".2px",
           }}
         >
