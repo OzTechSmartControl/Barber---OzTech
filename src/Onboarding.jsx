@@ -329,11 +329,10 @@ export default function Onboarding({ onComplete, courtesyEmail = "" }) {
         }),
       }).catch(() => null);
 
-      // 3. Se veio do fluxo de cortesia, marca a cortesia como usada pela barbearia criada.
-      // Isso alimenta a coluna "Usado por" no painel de Cortesias.
-      if (courtesyEmail) {
-        await redeemCourtesyAccess(token, courtesyEmail, shopId);
-      }
+      // 3. Tenta vincular cortesia pelo e-mail real do usuário.
+      // Antes isso dependia de courtesyEmail vindo da tela de planos; se o usuário entrasse pelo e-mail/senha,
+      // a cortesia ficava sem used_by_user_id e sem barbershop_id.
+      await redeemCourtesyAccess(token, email || courtesyEmail, shopId);
 
       // 4. Faz upload do logo, se houver. Agora o erro não é mais ignorado silenciosamente.
       let logoUrl = null;

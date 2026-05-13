@@ -73,6 +73,62 @@ const api = {
     fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, { method: "DELETE", headers: hdr(tok) }),
 };
 
+const checkCurrentUserAccess = async (tok, profile) => {
+  const isSuperAdmin =
+    profile?.is_super_admin === true ||
+    profile?.role === "super_admin";
+
+  if (isSuperAdmin) {
+    return { has_access: true, reason: "super_admin" };
+  }
+
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/current_user_access_status`, {
+      method: "POST",
+      headers: hdr(tok),
+      body: JSON.stringify({}),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data && typeof data === "object") return data;
+    }
+  } catch (e) {
+    console.warn("Falha ao validar current_user_access_status:", e);
+  }
+
+  // Fallback antigo, caso a função nova ainda não exista.
+  if (profile?.barbershop_id) {
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/has_active_access`, {
+        method: "POST",
+        headers: hdr(tok),
+        body: JSON.stringify({ p_barbershop_id: profile.barbershop_id }),
+      });
+      const hasAccess = await res.json();
+      return {
+        has_access: !!hasAccess,
+        reason: hasAccess ? "legacy_has_active_access" : "no_active_access",
+      };
+    } catch (e) {
+      console.warn("Falha ao validar has_active_access:", e);
+    }
+  }
+
+  return { has_access: false, reason: "access_check_failed" };
+};
+
+const accessDeniedMessage = (reason) => {
+  if (reason === "courtesy_revoked") {
+    return "Seu acesso cortesia foi revogado. Entre em contato com o suporte ou assine um plano para continuar usando o sistema.";
+  }
+  if (reason === "no_barbershop") {
+    return "Finalize o cadastro da sua barbearia para continuar.";
+  }
+  return "Sua assinatura ou acesso cortesia não está ativo. Renove ou solicite uma nova liberação para continuar.";
+};
+
+
 // ── TRANSFORMS ────────────────────────────────────────────────
 const toAtt  = a => ({ id: a.id, clientId: a.client_id, barberId: a.barber_id, serviceId: a.service_id, price: +a.price, payment: a.payment, date: a.date, time: a.time || "", notes: a.notes || "" });
 const fromAtt = a => ({ client_id: +a.clientId, barber_id: +a.barberId, service_id: +a.serviceId, price: +a.price, payment: a.payment, date: a.date, time: a.time, notes: a.notes });
@@ -1909,6 +1965,15 @@ export default function App() {
         throw new Error("Perfil sem barbershop_id. Finalize o cadastro da barbearia.");
       }
 
+      // Bloqueio efetivo: revogação/expiração precisa ser validada também em sessão restaurada.
+      const accessStatus = await checkCurrentUserAccess(tok, profile);
+      if (!accessStatus?.has_access) {
+        setExpiredMsg(accessDeniedMessage(accessStatus?.reason));
+        setShowPlans(true);
+        setDataLoaded(true);
+        return;
+      }
+
       const ensureArray = (value) => Array.isArray(value) ? value : [];
 
       const shopFilter = shopId ? `barbershop_id=eq.${shopId}` : "";
@@ -1957,23 +2022,15 @@ export default function App() {
     setSession({ access_token: normalizedAuth.access_token, user: normalizedAuth.user, profile: normalizedAuth.profile });
     setUser(normalizedAuth.user || null);
 
-    // Verifica acesso ativo (super admin sempre passa)
-    const shopId = normalizedAuth.profile?.barbershop_id;
-    if (shopId && !authData.profile?.is_super_admin) {
-      try {
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/has_active_access`, {
-          method: "POST",
-          headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${normalizedAuth.token}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ p_barbershop_id: shopId }),
-        });
-        const hasAccess = await res.json();
-        if (!hasAccess) {
-          setExpiredMsg("Sua assinatura expirou. Renove para continuar usando o sistema.");
-          setShowPlans(true);
-          setLoading(false);
-          return;
-        }
-      } catch { /* se falhar, deixa entrar */ }
+    // Verifica acesso ativo (super admin sempre passa). Agora considera cortesia revogada por e-mail/barbearia.
+    if (!normalizedAuth.profile?.is_super_admin && normalizedAuth.profile?.role !== "super_admin") {
+      const accessStatus = await checkCurrentUserAccess(normalizedAuth.token, normalizedAuth.profile);
+      if (!accessStatus?.has_access) {
+        setExpiredMsg(accessDeniedMessage(accessStatus?.reason));
+        setShowPlans(true);
+        setLoading(false);
+        return;
+      }
     }
     await loadData(normalizedAuth.token, normalizedAuth.profile);
   }, [loadData]);

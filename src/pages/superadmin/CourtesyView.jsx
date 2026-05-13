@@ -63,7 +63,7 @@ function normalizeCourtesy(item) {
     display_plan:
       item.type === "unlimited" ? "Indeterminado" : "Prazo determinado",
     display_shop: item.barbershop_name || item.display_shop || item.barbershops?.name || "—",
-    display_used_by: item.used_by_user_email || item.used_by || item.used_by_user_id || "",
+    display_used_by: item.used_by_email || item.used_by_user_email || item.used_by || item.used_by_user_id || "",
   };
 }
 
@@ -162,59 +162,58 @@ function LocalModal({ title, onClose, children }) {
 async function fetchCourtesyRows() {
   const attempts = [];
 
-  const normalizeAttemptRows = (result) => asArray(result?.data);
+  const recordAttempt = (name, result) => {
+    attempts.push({
+      name,
+      error: result?.error?.message || "",
+      count: Array.isArray(result?.data) ? result.data.length : 0,
+    });
+  };
 
-  // Caminho principal: RPC administrativa v12.
-  const v12 = await supabase.rpc("oz_list_courtesy_access_admin");
-  attempts.push(["RPC v12 oz_list_courtesy_access_admin", v12]);
-  const v12Rows = normalizeAttemptRows(v12);
-  if (!v12.error && v12Rows.length > 0) return { rows: v12Rows, error: "" };
+  // 1) Caminho mais confiável: RPC administrativa com SECURITY DEFINER.
+  const rpcMain = await supabase.rpc("list_courtesy_access_for_superadmin");
+  recordAttempt("RPC list_courtesy_access_for_superadmin", rpcMain);
+  if (!rpcMain.error && Array.isArray(rpcMain.data) && rpcMain.data.length > 0) {
+    return { rows: rpcMain.data, error: "" };
+  }
 
-  // Compatibilidade com correções anteriores.
-  const forceRpc = await supabase.rpc("superadmin_courtesy_access_list_force");
-  attempts.push(["RPC force superadmin_courtesy_access_list_force", forceRpc]);
-  const forceRows = normalizeAttemptRows(forceRpc);
-  if (!forceRpc.error && forceRows.length > 0) return { rows: forceRows, error: "" };
+  // 2) Compatibilidade com o nome usado em correções anteriores.
+  const rpcOz = await supabase.rpc("oz_list_courtesy_access_admin");
+  recordAttempt("RPC oz_list_courtesy_access_admin", rpcOz);
+  if (!rpcOz.error && Array.isArray(rpcOz.data) && rpcOz.data.length > 0) {
+    return { rows: rpcOz.data, error: "" };
+  }
 
-  const originalRpc = await supabase.rpc("list_courtesy_access_for_superadmin");
-  attempts.push(["RPC original list_courtesy_access_for_superadmin", originalRpc]);
-  const originalRows = normalizeAttemptRows(originalRpc);
-  if (!originalRpc.error && originalRows.length > 0) return { rows: originalRows, error: "" };
-
+  // 3) View administrativa, se existir.
   const view = await supabase
     .from("superadmin_courtesy_access_overview")
     .select("*")
     .order("created_at", { ascending: false });
-  attempts.push(["VIEW superadmin_courtesy_access_overview", view]);
+  recordAttempt("VIEW superadmin_courtesy_access_overview", view);
   if (!view.error && Array.isArray(view.data) && view.data.length > 0) {
     return { rows: view.data, error: "" };
   }
 
-  // Último recurso: SELECT direto.
-  // Importante: se RLS bloquear, o Supabase pode retornar [] sem erro.
-  // Por isso esse caminho fica por último e não impede os fallbacks acima.
+  // 4) SELECT direto pela policy original. Só aceitamos como sucesso se vier linha.
+  // Antes havia um bug: [] sem erro era tratado como sucesso e bloqueava os fallbacks.
   const direct = await supabase
     .from("courtesy_access")
-    .select("id,email,type,expires_at,notes,status,created_at,revoked_at,revoked_by,used_at,used_by_user_id,barbershop_id,barbershops(name)")
+    .select("id,email,type,expires_at,notes,status,created_at,revoked_at,revoked_by,used_at,used_by_user_id,barbershop_id,barbershops(name,logo_url)")
     .order("created_at", { ascending: false });
-  attempts.push(["Tabela direta courtesy_access", direct]);
+  recordAttempt("SELECT direto courtesy_access", direct);
   if (!direct.error && Array.isArray(direct.data) && direct.data.length > 0) {
     return { rows: direct.data, error: "" };
   }
 
-  const messages = attempts
-    .map(([name, result]) => {
-      if (result?.error) return `${name}: ${result.error.message || JSON.stringify(result.error)}`;
-      const count = Array.isArray(result?.data) ? result.data.length : 0;
-      return `${name}: retornou ${count} registro(s)`;
-    })
+  const details = attempts
+    .map((a) => `${a.name}: ${a.error ? `ERRO: ${a.error}` : `${a.count} registro(s)`}`)
     .join(" | ");
 
   return {
     rows: [],
     error:
-      messages ||
-      "A consulta retornou 0 registros. Execute o SQL 12_fix_courtesy_access_listagem_final.sql no Supabase e clique em Atualizar lista.",
+      details ||
+      "A listagem retornou vazia. Execute o SQL 15_fix_cortesias_fluxo_completo.sql e clique em Atualizar lista.",
   };
 }
 
@@ -665,7 +664,7 @@ export default function CourtesyView({
         columns={columns}
         rows={filtered}
         emptyTitle="Nenhuma cortesia encontrada"
-        emptySubtitle="Crie uma nova cortesia, execute o SQL 10 ou ajuste os filtros."
+        emptySubtitle={localError || "Crie uma nova cortesia ou ajuste os filtros."}
       />
 
       {showRevokeModal && (
