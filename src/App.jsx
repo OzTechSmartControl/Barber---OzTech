@@ -9,7 +9,8 @@ import {
   LayoutDashboard, Scissors, Users, Award, Tag, DollarSign,
   Menu, X, Plus, Search, Edit2, Trash2, Check, TrendingUp,
   Phone, LogOut, Lock, Mail, CreditCard, Banknote, Smartphone,
-  BadgePercent, AlertCircle, RefreshCw, FileText, Download, Calendar, Bell, Gift
+  BadgePercent, AlertCircle, RefreshCw, FileText, Download, Calendar, Bell, Gift,
+  Settings, Upload, Palette, Image
 
 } from "lucide-react";
 
@@ -1422,6 +1423,332 @@ function ReportsView({ attendances, clients, services, barbers, expenses, shop }
 }
 
 
+
+// ── CONFIGURAÇÕES DA BARBEARIA ────────────────────────────────
+const BRAND_COLOR_PRESETS = [
+  { label: "Azul", hex: "#4db8ff" },
+  { label: "Verde", hex: "#43d18a" },
+  { label: "Laranja", hex: "#f59e0b" },
+  { label: "Roxo", hex: "#a78bfa" },
+  { label: "Rosa", hex: "#f472b6" },
+  { label: "Vermelho", hex: "#f07070" },
+  { label: "Branco", hex: "#ece8e0" },
+];
+
+const uploadBrandLogo = async (tok, file, shopId) => {
+  if (!file) return null;
+
+  const rawExt = file.name.split(".").pop() || "png";
+  const ext = rawExt.toLowerCase().replace(/[^a-z0-9]/g, "") || "png";
+  const path = `${shopId}/logo-admin-${Date.now()}.${ext}`;
+
+  const r = await fetch(`${SUPABASE_URL}/storage/v1/object/logos/${path}`, {
+    method: "POST",
+    headers: {
+      apikey: SUPABASE_ANON,
+      Authorization: `Bearer ${tok}`,
+      "Content-Type": file.type || "application/octet-stream",
+      "x-upsert": "true",
+      "cache-control": "3600",
+    },
+    body: file,
+  });
+
+  if (!r.ok) {
+    const text = await r.text().catch(() => "");
+    throw new Error(text || "Erro no upload da logo.");
+  }
+
+  return `${SUPABASE_URL}/storage/v1/object/public/logos/${path}?v=${Date.now()}`;
+};
+
+function SettingsView({ token, shop, onShopUpdated }) {
+  const [accent, setAccent] = useState(() => normalizeHex(shop?.accent_color));
+  const [logoFile, setLogoFile] = useState(null);
+  const [logoPreview, setLogoPreview] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+  const [ok, setOk] = useState("");
+
+  useEffect(() => {
+    setAccent(normalizeHex(shop?.accent_color));
+    setLogoFile(null);
+    setLogoPreview("");
+    setErr("");
+    setOk("");
+  }, [shop?.id, shop?.accent_color]);
+
+  useEffect(() => {
+    if (!logoFile) {
+      setLogoPreview("");
+      return;
+    }
+
+    const url = URL.createObjectURL(logoFile);
+    setLogoPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [logoFile]);
+
+  const currentLogo = logoPreview || shop?.logo_url || "";
+  const hasLogo = currentLogo && currentLogo !== "null";
+
+  const handleSave = async () => {
+    if (!shop?.id) {
+      setErr("Barbearia não encontrada. Saia e entre novamente.");
+      return;
+    }
+
+    setSaving(true);
+    setErr("");
+    setOk("");
+
+    try {
+      let logoUrl = shop?.logo_url || null;
+
+      if (logoFile) {
+        logoUrl = await uploadBrandLogo(token, logoFile, shop.id);
+      }
+
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/oz_update_barbershop_branding`, {
+        method: "POST",
+        headers: hdr(token),
+        body: JSON.stringify({
+          p_barbershop_id: shop.id,
+          p_phone: shop.phone || null,
+          p_address: shop.address || null,
+          p_accent_color: normalizeHex(accent),
+          p_logo_url: logoUrl || null,
+        }),
+      });
+
+      if (!r.ok) {
+        const e = await r.json().catch(() => ({}));
+        throw new Error(e.message || "Erro ao salvar configurações.");
+      }
+
+      const updatedShop = await r.json().catch(() => null);
+
+      if (!updatedShop?.id) {
+        throw new Error("Configurações enviadas, mas a barbearia não foi atualizada.");
+      }
+
+      applyTenantTheme(updatedShop);
+      onShopUpdated?.(updatedShop);
+      setLogoFile(null);
+      setOk("Configurações salvas com sucesso.");
+    } catch (e) {
+      console.error(e);
+      setErr(e.message || "Erro ao salvar configurações.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div>
+      <PageHeader
+        title="Configurações"
+        sub="Personalize a identidade visual da sua barbearia"
+        right={
+          <Btn onClick={handleSave} disabled={saving}>
+            {saving ? <RefreshCw size={14} style={{ animation:"spin 1s linear infinite" }} /> : <Check size={14} />}
+            {saving ? "Salvando..." : "Salvar alterações"}
+          </Btn>
+        }
+      />
+
+      <div style={{ display:"grid", gridTemplateColumns:"minmax(0, 1.1fr) minmax(320px, .9fr)", gap:"1.25rem", alignItems:"start" }}>
+        <Card>
+          <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:"1.25rem" }}>
+            <div style={{ background:T.accentGlow, borderRadius:12, padding:10, display:"flex" }}>
+              <Image size={19} color={T.accent} />
+            </div>
+            <div>
+              <div style={{ color:T.text, fontWeight:800, fontSize:15 }}>Logo da barbearia</div>
+              <div style={{ color:T.muted, fontSize:12, marginTop:2 }}>Atualize a marca que aparece no menu lateral e ambiente do cliente.</div>
+            </div>
+          </div>
+
+          <div
+            style={{
+              border:`1px dashed ${T.border}`,
+              background:T.surface,
+              borderRadius:14,
+              padding:"1.25rem",
+              display:"flex",
+              alignItems:"center",
+              gap:"1rem",
+              flexWrap:"wrap",
+            }}
+          >
+            <div
+              style={{
+                width:110,
+                height:110,
+                borderRadius:18,
+                background:T.card,
+                border:`1px solid ${T.border}`,
+                display:"flex",
+                alignItems:"center",
+                justifyContent:"center",
+                overflow:"hidden",
+                flexShrink:0,
+              }}
+            >
+              {hasLogo ? (
+                <img src={currentLogo} alt="Logo da barbearia" style={{ width:"100%", height:"100%", objectFit:"contain", padding:8 }} />
+              ) : (
+                <Image size={28} color={T.muted} />
+              )}
+            </div>
+
+            <div style={{ flex:1, minWidth:220 }}>
+              <div style={{ color:T.text, fontWeight:800, marginBottom:6 }}>
+                {logoFile ? logoFile.name : "Selecionar nova logo"}
+              </div>
+              <div style={{ color:T.muted, fontSize:12, lineHeight:1.5, marginBottom:12 }}>
+                Formatos recomendados: PNG, JPG, WEBP ou SVG. Dê preferência para imagem quadrada ou horizontal com fundo transparente.
+              </div>
+
+              <label
+                style={{
+                  display:"inline-flex",
+                  alignItems:"center",
+                  gap:8,
+                  background:T.card,
+                  border:`1px solid ${T.border}`,
+                  color:T.text,
+                  borderRadius:10,
+                  padding:"0.65rem 0.95rem",
+                  cursor:"pointer",
+                  fontSize:13,
+                  fontWeight:800,
+                }}
+              >
+                <Upload size={14} />
+                Escolher arquivo
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                  onChange={(e) => setLogoFile(e.target.files?.[0] || null)}
+                  style={{ display:"none" }}
+                />
+              </label>
+            </div>
+          </div>
+        </Card>
+
+        <Card>
+          <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:"1.25rem" }}>
+            <div style={{ background:`${accent}18`, borderRadius:12, padding:10, display:"flex" }}>
+              <Palette size={19} color={accent} />
+            </div>
+            <div>
+              <div style={{ color:T.text, fontWeight:800, fontSize:15 }}>Cor principal</div>
+              <div style={{ color:T.muted, fontSize:12, marginTop:2 }}>Define o destaque visual do ambiente da barbearia.</div>
+            </div>
+          </div>
+
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(4, 1fr)", gap:10, marginBottom:"1rem" }}>
+            {BRAND_COLOR_PRESETS.map((c) => {
+              const active = normalizeHex(accent) === c.hex;
+              return (
+                <button
+                  key={c.hex}
+                  onClick={() => setAccent(c.hex)}
+                  style={{
+                    border:`1px solid ${active ? c.hex : T.border}`,
+                    background: active ? `${c.hex}18` : T.surface,
+                    color: active ? c.hex : T.mutedLight,
+                    borderRadius:12,
+                    padding:"0.75rem 0.45rem",
+                    cursor:"pointer",
+                    fontSize:11,
+                    fontWeight:800,
+                    fontFamily:"'DM Sans', sans-serif",
+                    display:"flex",
+                    flexDirection:"column",
+                    alignItems:"center",
+                    gap:7,
+                  }}
+                >
+                  <span style={{ width:24, height:24, borderRadius:999, background:c.hex, boxShadow:`0 0 14px ${c.hex}55` }} />
+                  {c.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <FG label="Cor personalizada">
+            <div style={{ display:"flex", gap:10 }}>
+              <input
+                type="color"
+                value={normalizeHex(accent)}
+                onChange={(e) => setAccent(e.target.value)}
+                style={{
+                  width:54,
+                  height:42,
+                  border:"none",
+                  background:"transparent",
+                  cursor:"pointer",
+                }}
+              />
+              <input
+                value={accent}
+                onChange={(e) => setAccent(e.target.value)}
+                placeholder="#4db8ff"
+                style={inputSt}
+              />
+            </div>
+          </FG>
+
+          <div style={{ marginTop:"1rem", border:`1px solid ${T.border}`, borderRadius:14, overflow:"hidden" }}>
+            <div style={{ background:`linear-gradient(90deg, ${normalizeHex(accent)}, ${normalizeHex(accent)}55)`, height:8 }} />
+            <div style={{ padding:"1rem", background:T.surface }}>
+              <div style={{ color:T.text, fontWeight:800, marginBottom:4 }}>Prévia</div>
+              <div style={{ color:T.muted, fontSize:12 }}>Botões, destaques e alguns elementos do painel usarão esta cor.</div>
+              <button
+                type="button"
+                style={{
+                  marginTop:12,
+                  background:normalizeHex(accent),
+                  color:"#08090c",
+                  border:"none",
+                  borderRadius:10,
+                  padding:"0.65rem 1rem",
+                  fontWeight:900,
+                  cursor:"default",
+                  fontFamily:"'DM Sans', sans-serif",
+                }}
+              >
+                Botão de exemplo
+              </button>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {(err || ok) && (
+        <div
+          style={{
+            marginTop:"1rem",
+            background: err ? T.dangerBg : T.successBg,
+            color: err ? T.danger : T.success,
+            border:`1px solid ${err ? T.danger : T.success}44`,
+            borderRadius:12,
+            padding:"0.85rem 1rem",
+            fontSize:13,
+            fontWeight:700,
+          }}
+        >
+          {err || ok}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 // ── SIDEBAR ──────────────────────────────────────────────────
 function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin, userName, onLogout, shop }) {
   const nav = isSuperAdmin
@@ -1443,6 +1770,7 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
           { id:"services",  label:"Serviços",      Icon:Tag },
           { id:"financial", label:"Financeiro",    Icon:DollarSign },
           { id:"reports",   label:"Relatórios",    Icon:FileText },
+          { id:"settings",  label:"Configurações", Icon:Settings },
         ] : []),
       ];
 
@@ -2128,6 +2456,7 @@ export default function App() {
         services:    <ServicesView services={services} setServices={setServices} token={tok} barbershopId={barbershopId}/>,
         financial:   <FinancialView attendances={attendances} expenses={expenses} setExpenses={setExpenses} token={tok} barbershopId={barbershopId}/>,
         reports:     <ReportsView attendances={attendances} clients={clients} services={services} barbers={barbers} expenses={expenses} shop={shop}/>,
+        settings:    <SettingsView token={tok} shop={shop} onShopUpdated={(updatedShop) => { setShop(updatedShop); applyTenantTheme(updatedShop); }} />,
       };
 
   return (
