@@ -227,6 +227,34 @@ export default function SuperAdminView({ section = "dashboard" }) {
     notes: "",
   });
 
+  const loadCourtesyRows = async () => {
+    // 1) Tentativa normal via tabela.
+    //    Quando a RLS de SELECT estiver correta, este caminho já retorna os registros.
+    const direct = await supabase
+      .from("courtesy_access")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (!direct.error && Array.isArray(direct.data) && direct.data.length > 0) {
+      return direct.data;
+    }
+
+    // 2) Fallback via RPC SECURITY DEFINER.
+    //    Este fallback resolve o caso em que os KPIs contam as cortesias,
+    //    mas a listagem da tabela retorna vazia por bloqueio de RLS/SELECT.
+    const viaRpc = await supabase.rpc("superadmin_courtesy_access_list");
+
+    if (!viaRpc.error && Array.isArray(viaRpc.data)) {
+      return viaRpc.data;
+    }
+
+    // Se o SELECT direto retornou erro, ele é mais útil para diagnóstico.
+    if (direct.error) throw direct.error;
+    if (viaRpc.error) throw viaRpc.error;
+
+    return [];
+  };
+
   const loadAll = async () => {
     setLoading(true);
     setErr("");
@@ -240,7 +268,6 @@ export default function SuperAdminView({ section = "dashboard" }) {
         alertsRes,
         clientsRes,
         subscriptionsRes,
-        courtesyRes,
       ] = await Promise.all([
         supabase.from("superadmin_dashboard_kpis").select("*").maybeSingle(),
         supabase.from("superadmin_customer_growth").select("*"),
@@ -259,10 +286,6 @@ export default function SuperAdminView({ section = "dashboard" }) {
           .from("subscriptions")
           .select("*")
           .order("created_at", { ascending: false }),
-        supabase
-          .from("courtesy_access")
-          .select("*,barbershops(name)")
-          .order("created_at", { ascending: false }),
       ]);
 
       if (metricsRes.error) throw metricsRes.error;
@@ -272,7 +295,8 @@ export default function SuperAdminView({ section = "dashboard" }) {
       if (alertsRes.error) throw alertsRes.error;
       if (clientsRes.error) throw clientsRes.error;
       if (subscriptionsRes.error) throw subscriptionsRes.error;
-      if (courtesyRes.error) throw courtesyRes.error;
+
+      const courtesyRows = await loadCourtesyRows();
 
       setMetrics({ ...defaultMetrics, ...(metricsRes.data || {}) });
       setCustomerGrowth(customerGrowthRes.data || []);
@@ -280,14 +304,13 @@ export default function SuperAdminView({ section = "dashboard" }) {
       setPlanDistribution(planDistributionRes.data || []);
       setAlerts(alertsRes.data || []);
       setClients(clientsRes.data || []);
-      const courtesyRows = courtesyRes.data || [];
       setSubscriptions((subscriptionsRes.data || []).map(normalizeSubscription));
       setCourtesies(courtesyRows.map(normalizeCourtesy));
 
       const totalCourtesiesFromKpi = Number((metricsRes.data || {}).total_courtesies || 0);
       if (section === "courtesy" && totalCourtesiesFromKpi > 0 && courtesyRows.length === 0) {
         setErr(
-          "Existem cortesias contabilizadas nos KPIs, mas a listagem retornou 0 registros. Execute a correção RLS de SELECT da tabela courtesy_access no Supabase."
+          "Existem cortesias contabilizadas nos KPIs, mas a listagem retornou 0 registros. Execute o SQL 07_fix_courtesy_access_listagem_rpc.sql no Supabase."
         );
       }
     } catch (e) {
