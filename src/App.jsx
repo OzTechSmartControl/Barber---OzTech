@@ -1463,6 +1463,10 @@ const uploadBrandLogo = async (tok, file, shopId) => {
 };
 
 function SettingsView({ token, shop, onShopUpdated }) {
+  const [name, setName] = useState(shop?.name || "");
+  const [phone, setPhone] = useState(shop?.phone || "");
+  const [address, setAddress] = useState(shop?.address || "");
+  const [whatsapp, setWhatsapp] = useState(shop?.whatsapp || "");
   const [accent, setAccent] = useState(() => normalizeHex(shop?.accent_color));
   const [logoFile, setLogoFile] = useState(null);
   const [logoPreview, setLogoPreview] = useState("");
@@ -1471,12 +1475,16 @@ function SettingsView({ token, shop, onShopUpdated }) {
   const [ok, setOk] = useState("");
 
   useEffect(() => {
+    setName(shop?.name || "");
+    setPhone(shop?.phone || "");
+    setAddress(shop?.address || "");
+    setWhatsapp(shop?.whatsapp || "");
     setAccent(normalizeHex(shop?.accent_color));
     setLogoFile(null);
     setLogoPreview("");
     setErr("");
     setOk("");
-  }, [shop?.id, shop?.accent_color]);
+  }, [shop?.id, shop?.name, shop?.phone, shop?.address, shop?.whatsapp, shop?.accent_color]);
 
   useEffect(() => {
     if (!logoFile) {
@@ -1498,6 +1506,11 @@ function SettingsView({ token, shop, onShopUpdated }) {
       return;
     }
 
+    if (!name.trim()) {
+      setErr("Informe o nome da barbearia.");
+      return;
+    }
+
     setSaving(true);
     setErr("");
     setOk("");
@@ -1514,8 +1527,10 @@ function SettingsView({ token, shop, onShopUpdated }) {
         headers: hdr(token),
         body: JSON.stringify({
           p_barbershop_id: shop.id,
-          p_phone: shop.phone || null,
-          p_address: shop.address || null,
+          p_name: name.trim(),
+          p_phone: phone.trim() || null,
+          p_address: address.trim() || null,
+          p_whatsapp: whatsapp.trim() || null,
           p_accent_color: normalizeHex(accent),
           p_logo_url: logoUrl || null,
         }),
@@ -1548,7 +1563,7 @@ function SettingsView({ token, shop, onShopUpdated }) {
     <div>
       <PageHeader
         title="Configurações"
-        sub="Personalize a identidade visual da sua barbearia"
+        sub="Gerencie os dados e a identidade visual da sua barbearia"
         right={
           <Btn onClick={handleSave} disabled={saving}>
             {saving ? <RefreshCw size={14} style={{ animation:"spin 1s linear infinite" }} /> : <Check size={14} />}
@@ -1556,6 +1571,56 @@ function SettingsView({ token, shop, onShopUpdated }) {
           </Btn>
         }
       />
+
+      <Card style={{ marginBottom:"1.25rem" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:"1.25rem" }}>
+          <div style={{ background:T.accentGlow, borderRadius:12, padding:10, display:"flex" }}>
+            <Scissors size={19} color={T.accent} />
+          </div>
+          <div>
+            <div style={{ color:T.text, fontWeight:800, fontSize:15 }}>Dados da barbearia</div>
+            <div style={{ color:T.muted, fontSize:12, marginTop:2 }}>Atualize as informações principais exibidas no ambiente administrativo.</div>
+          </div>
+        </div>
+
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(220px, 1fr))", gap:"1rem" }}>
+          <FG label="Nome da barbearia">
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Ex: Barbearia Mauá"
+              style={inputSt}
+            />
+          </FG>
+
+          <FG label="Telefone">
+            <input
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="(11) 99999-9999"
+              style={inputSt}
+            />
+          </FG>
+
+          <FG label="WhatsApp">
+            <input
+              value={whatsapp}
+              onChange={(e) => setWhatsapp(e.target.value)}
+              placeholder="(11) 99999-9999"
+              style={inputSt}
+            />
+          </FG>
+
+          <FG label="Endereço">
+            <input
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              placeholder="Rua, número, bairro, cidade"
+              style={inputSt}
+            />
+          </FG>
+        </div>
+      </Card>
 
       <div style={{ display:"grid", gridTemplateColumns:"minmax(0, 1.1fr) minmax(320px, .9fr)", gap:"1.25rem", alignItems:"start" }}>
         <Card>
@@ -1747,6 +1812,7 @@ function SettingsView({ token, shop, onShopUpdated }) {
     </div>
   );
 }
+
 
 
 // ── SIDEBAR ──────────────────────────────────────────────────
