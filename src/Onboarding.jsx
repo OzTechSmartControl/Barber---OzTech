@@ -162,6 +162,23 @@ const redeemCourtesyAccess = async (tok, email, shopId) => {
   }
 };
 
+
+const getAuthUser = async (tok) => {
+  if (!tok) return null;
+
+  const r = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+    headers: hdr(tok),
+  });
+
+  if (!r.ok) return null;
+
+  return r.json().catch(() => null);
+};
+
+const userEmailConfirmed = (user) => {
+  return Boolean(user?.email_confirmed_at || user?.confirmed_at || user?.email_confirmed);
+};
+
 // ── SHARED UI ─────────────────────────────────────────────────
 const inputSt = {
   width: "100%", background: T.surface, border: `1px solid ${T.border}`,
@@ -285,8 +302,8 @@ export default function Onboarding({ onComplete, courtesyEmail = "" }) {
     setLoading(true);
     try {
       const res = isLogin
-        ? await apiAuth.login(email, pass)
-        : await apiAuth.signUp(email, pass);
+        ? await apiAuth.login(email.trim().toLowerCase(), pass)
+        : await apiAuth.signUp(email.trim().toLowerCase(), pass);
 
       if (res.error || res.error_description) {
         const msg = res.error_description || res.msg || "Erro na autenticação.";
@@ -327,6 +344,50 @@ export default function Onboarding({ onComplete, courtesyEmail = "" }) {
       alert("Erro ao reenviar e-mail.");
     }
   };
+
+
+  // ── Confere confirmação real do e-mail antes de continuar ────
+  const confirmEmailAndContinue = async () => {
+    setErr("");
+
+    if (!email || !pass) {
+      setErr("Informe o e-mail e a senha cadastrados para verificar a confirmação.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const res = await apiAuth.login(email.trim().toLowerCase(), pass);
+
+      if (res.error || res.error_description || !res.access_token) {
+        setErr("Ainda não identificamos a confirmação do seu e-mail. Clique no link enviado e tente novamente.");
+        setLoading(false);
+        return;
+      }
+
+      const authUser = await getAuthUser(res.access_token);
+
+      if (!userEmailConfirmed(authUser)) {
+        setErr("Seu e-mail ainda não está confirmado. Clique no link enviado para sua caixa de entrada e tente novamente.");
+        setLoading(false);
+        return;
+      }
+
+      window.history.replaceState(null, "", window.location.pathname);
+      setToken(res.access_token);
+      setUid(authUser?.id || res.user?.id);
+      setShowConfirmModal(false);
+      setIsLogin(true);
+      setStep(2);
+    } catch (e) {
+      console.error(e);
+      setErr("Erro ao verificar confirmação. Tente novamente.");
+    }
+
+    setLoading(false);
+  };
+
 
   // ── PASSO 5 — Finalizar e salvar tudo ────────────────────────
   const submitFinal = async () => {
@@ -437,20 +498,17 @@ export default function Onboarding({ onComplete, courtesyEmail = "" }) {
               <br /><br />
               Clique no link enviado para liberar o acesso ao sistema.
               <br /><br />
-              Após a confirmação:
-              <br />→ volte ao Oz.Barber
-              <br />→ clique em “Entrar”
-              <br />→ continue o cadastro da sua barbearia
+              Após clicar no link do e-mail, volte para esta tela e clique em “Verificar confirmação”.
+              <br /><br />
+              O cadastro só continuará quando o Supabase confirmar seu e-mail de verdade.
             </div>
 
             <Btn
-              onClick={() => {
-                setShowConfirmModal(false);
-                setIsLogin(true);
-              }}
+              onClick={confirmEmailAndContinue}
+              disabled={loading}
               style={{ marginBottom: 12 }}
             >
-              Já confirmei
+              {loading ? <><RefreshCw size={14} style={{ animation: "spin 1s linear infinite" }} /> Verificando…</> : "Verificar confirmação"}
             </Btn>
 
             <Btn

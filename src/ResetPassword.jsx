@@ -17,24 +17,47 @@ export default function ResetPassword() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
+  const [booting, setBooting] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    const hash = window.location.hash;
+    const hydrateSession = async () => {
+      try {
+        const hash = window.location.hash;
+        const search = window.location.search;
 
-    if (hash.includes("access_token")) {
-      const params = new URLSearchParams(hash.replace("#", ""));
-      const access_token = params.get("access_token");
-      const refresh_token = params.get("refresh_token");
+        if (hash.includes("access_token")) {
+          const params = new URLSearchParams(hash.replace("#", ""));
+          const access_token = params.get("access_token");
+          const refresh_token = params.get("refresh_token");
 
-      if (access_token && refresh_token) {
-        supabase.auth.setSession({
-          access_token,
-          refresh_token,
-        });
+          if (access_token && refresh_token) {
+            const { error } = await supabase.auth.setSession({
+              access_token,
+              refresh_token,
+            });
+
+            if (error) throw error;
+
+            // Remove os tokens da URL para o App não voltar para esta tela em loop.
+            window.history.replaceState({}, document.title, "/reset-password");
+          }
+        } else if (search.includes("code=")) {
+          // Compatível com links PKCE do Supabase.
+          const { error } = await supabase.auth.exchangeCodeForSession(window.location.href);
+          if (error) throw error;
+          window.history.replaceState({}, document.title, "/reset-password");
+        }
+      } catch (e) {
+        console.error(e);
+        setError("Não foi possível validar o link. Solicite um novo e-mail de acesso.");
+      } finally {
+        setBooting(false);
       }
-    }
+    };
+
+    hydrateSession();
   }, []);
 
   const handleReset = async () => {
@@ -52,6 +75,14 @@ export default function ResetPassword() {
 
     setLoading(true);
 
+    const { data: sessionData } = await supabase.auth.getSession();
+
+    if (!sessionData?.session?.access_token) {
+      setError("Sessão expirada. Solicite um novo link de acesso.");
+      setLoading(false);
+      return;
+    }
+
     const { error } = await supabase.auth.updateUser({
       password,
     });
@@ -65,11 +96,12 @@ export default function ResetPassword() {
     setSuccess(true);
     setLoading(false);
 
-    setTimeout(async () => {
-      await supabase.auth.signOut();
+    // Mantém a sessão ativa. O App vai detectar o usuário logado e, se ainda não houver
+    // barbearia vinculada, direciona para o onboarding automaticamente.
+    setTimeout(() => {
       localStorage.removeItem("ozbarber_auth");
       window.location.replace("/");
-    }, 2500);
+    }, 1500);
   };
 
   return (
@@ -95,11 +127,11 @@ export default function ResetPassword() {
         }}
       >
         <h1 style={{ color: T.text, marginBottom: 8, fontSize: 28 }}>
-          Redefinir senha
+          Criar acesso
         </h1>
 
-        <p style={{ color: T.muted, marginBottom: "2rem" }}>
-          Digite sua nova senha.
+        <p style={{ color: T.muted, marginBottom: "2rem", lineHeight: 1.5 }}>
+          Defina sua senha para continuar o cadastro da sua barbearia.
         </p>
 
         {error && (
@@ -136,7 +168,7 @@ export default function ResetPassword() {
             }}
           >
             <CheckCircle size={18} />
-            Senha alterada com sucesso.
+            Senha criada com sucesso. Redirecionando para o cadastro da barbearia…
           </div>
         )}
 
@@ -161,6 +193,7 @@ export default function ResetPassword() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Digite sua nova senha"
+              disabled={booting || success}
               style={{
                 width: "100%",
                 height: 48,
@@ -170,6 +203,7 @@ export default function ResetPassword() {
                 background: "#0f0f15",
                 color: T.text,
                 outline: "none",
+                opacity: booting || success ? 0.65 : 1,
               }}
             />
           </div>
@@ -196,6 +230,8 @@ export default function ResetPassword() {
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
               placeholder="Confirme sua nova senha"
+              disabled={booting || success}
+              onKeyDown={(e) => e.key === "Enter" && !booting && !success && handleReset()}
               style={{
                 width: "100%",
                 height: 48,
@@ -205,6 +241,7 @@ export default function ResetPassword() {
                 background: "#0f0f15",
                 color: T.text,
                 outline: "none",
+                opacity: booting || success ? 0.65 : 1,
               }}
             />
           </div>
@@ -212,7 +249,7 @@ export default function ResetPassword() {
 
         <button
           onClick={handleReset}
-          disabled={loading}
+          disabled={loading || booting || success}
           style={{
             width: "100%",
             height: 48,
@@ -221,10 +258,11 @@ export default function ResetPassword() {
             background: T.accent,
             color: "#000",
             fontWeight: 700,
-            cursor: "pointer",
+            cursor: loading || booting || success ? "wait" : "pointer",
+            opacity: loading || booting || success ? 0.7 : 1,
           }}
         >
-          {loading ? "Salvando..." : "Salvar nova senha"}
+          {booting ? "Validando link..." : loading ? "Salvando..." : success ? "Redirecionando..." : "Criar senha e continuar"}
         </button>
       </div>
     </div>
