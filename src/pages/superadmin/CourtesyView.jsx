@@ -18,7 +18,6 @@ import {
 import { supabase } from "../../supabase";
 import T from "../../config/theme";
 import { fDate, fDatetime } from "../../utils/formatters";
-import DataTable from "../../components/superadmin/DataTable";
 import KpiCard from "../../components/superadmin/KpiCard";
 import SectionHeader from "../../components/superadmin/SectionHeader";
 
@@ -35,19 +34,6 @@ const inputSt = {
   fontFamily: "'DM Sans', sans-serif",
 };
 
-function asArray(value) {
-  if (Array.isArray(value)) return value;
-  if (typeof value === "string") {
-    try {
-      const parsed = JSON.parse(value);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
-  }
-  return [];
-}
-
 function normalizeCourtesy(item) {
   const isExpired =
     item.status !== "revoked" &&
@@ -57,13 +43,10 @@ function normalizeCourtesy(item) {
   return {
     ...item,
     status: isExpired ? "expired" : item.status || "active",
-    source: "courtesy",
-    source_label: "Cortesia",
-    display_email: item.display_email || item.email || "—",
-    display_plan:
-      item.type === "unlimited" ? "Indeterminado" : "Prazo determinado",
-    display_shop: item.barbershop_name || item.display_shop || item.barbershops?.name || "—",
-    display_used_by: item.used_by_email || item.used_by_user_email || item.used_by || item.used_by_user_id || "",
+    display_email: item.email || item.display_email || "—",
+    display_plan: item.type === "unlimited" ? "Indeterminado" : "Prazo determinado",
+    display_shop: item.barbershop_name || item.barbershops?.name || "—",
+    display_used_by: item.used_by_email || item.used_by_user_email || item.used_by_user_id || "",
   };
 }
 
@@ -73,7 +56,6 @@ function StatusBadge({ status }) {
     expired: { label: "Expirada", color: T.warning, bg: T.warningBg },
     revoked: { label: "Revogada", color: T.danger, bg: T.dangerBg },
   };
-
   const s = map[status] || { label: status || "—", color: T.mutedLight, bg: T.surface };
 
   return (
@@ -138,7 +120,6 @@ function LocalModal({ title, onClose, children }) {
           >
             {title}
           </h3>
-
           <button
             onClick={onClose}
             style={{
@@ -152,7 +133,6 @@ function LocalModal({ title, onClose, children }) {
             <X size={18} />
           </button>
         </div>
-
         <div style={{ padding: "1.5rem" }}>{children}</div>
       </div>
     </div>
@@ -162,7 +142,7 @@ function LocalModal({ title, onClose, children }) {
 async function fetchCourtesyRows() {
   const attempts = [];
 
-  const recordAttempt = (name, result) => {
+  const addAttempt = (name, result) => {
     attempts.push({
       name,
       error: result?.error?.message || "",
@@ -170,80 +150,70 @@ async function fetchCourtesyRows() {
     });
   };
 
-  // 1) Caminho mais confiável: RPC administrativa com SECURITY DEFINER.
-  const rpcMain = await supabase.rpc("list_courtesy_access_for_superadmin");
-  recordAttempt("RPC list_courtesy_access_for_superadmin", rpcMain);
-  if (!rpcMain.error && Array.isArray(rpcMain.data) && rpcMain.data.length > 0) {
-    return { rows: rpcMain.data, error: "" };
+  const forced = await supabase.rpc("oz_force_list_courtesy_access_admin");
+  addAttempt("RPC oz_force_list_courtesy_access_admin", forced);
+  if (!forced.error && Array.isArray(forced.data)) {
+    return {
+      rows: forced.data,
+      debug: attempts,
+      error: forced.data.length ? "" : "RPC principal retornou 0 registros.",
+    };
   }
 
-  // 2) Compatibilidade com o nome usado em correções anteriores.
-  const rpcOz = await supabase.rpc("oz_list_courtesy_access_admin");
-  recordAttempt("RPC oz_list_courtesy_access_admin", rpcOz);
-  if (!rpcOz.error && Array.isArray(rpcOz.data) && rpcOz.data.length > 0) {
-    return { rows: rpcOz.data, error: "" };
+  const rpc1 = await supabase.rpc("list_courtesy_access_for_superadmin");
+  addAttempt("RPC list_courtesy_access_for_superadmin", rpc1);
+  if (!rpc1.error && Array.isArray(rpc1.data)) {
+    return {
+      rows: rpc1.data,
+      debug: attempts,
+      error: rpc1.data.length ? "" : "RPC alternativa retornou 0 registros.",
+    };
   }
 
-  // 3) View administrativa, se existir.
-  const view = await supabase
-    .from("superadmin_courtesy_access_overview")
-    .select("*")
-    .order("created_at", { ascending: false });
-  recordAttempt("VIEW superadmin_courtesy_access_overview", view);
-  if (!view.error && Array.isArray(view.data) && view.data.length > 0) {
-    return { rows: view.data, error: "" };
-  }
-
-  // 4) SELECT direto pela policy original. Só aceitamos como sucesso se vier linha.
-  // Antes havia um bug: [] sem erro era tratado como sucesso e bloqueava os fallbacks.
-  const direct = await supabase
-    .from("courtesy_access")
-    .select("id,email,type,expires_at,notes,status,created_at,revoked_at,revoked_by,used_at,used_by_user_id,barbershop_id,barbershops(name,logo_url)")
-    .order("created_at", { ascending: false });
-  recordAttempt("SELECT direto courtesy_access", direct);
-  if (!direct.error && Array.isArray(direct.data) && direct.data.length > 0) {
-    return { rows: direct.data, error: "" };
+  const rpc2 = await supabase.rpc("oz_list_courtesy_access_admin");
+  addAttempt("RPC oz_list_courtesy_access_admin", rpc2);
+  if (!rpc2.error && Array.isArray(rpc2.data)) {
+    return {
+      rows: rpc2.data,
+      debug: attempts,
+      error: rpc2.data.length ? "" : "RPC compatível retornou 0 registros.",
+    };
   }
 
   const details = attempts
     .map((a) => `${a.name}: ${a.error ? `ERRO: ${a.error}` : `${a.count} registro(s)`}`)
     .join(" | ");
 
-  return {
-    rows: [],
-    error:
-      details ||
-      "A listagem retornou vazia. Execute o SQL 15_fix_cortesias_fluxo_completo.sql e clique em Atualizar lista.",
-  };
+  return { rows: [], debug: attempts, error: details || "Nenhuma tentativa executada." };
 }
 
 export default function CourtesyView({
   metrics = {},
   courtesyList = [],
-  search,
-  setSearch,
-  filter,
-  setFilter,
+  search = "",
+  setSearch = () => {},
+  filter = "all",
+  setFilter = () => {},
   onNewCourtesy,
-  onRevoke,
-  onDelete,
   onSendInvite,
-  revoking,
   sendingInvite,
 }) {
   const [localRows, setLocalRows] = useState([]);
   const [localLoading, setLocalLoading] = useState(false);
   const [localError, setLocalError] = useState("");
+  const [debug, setDebug] = useState([]);
   const [showRevokeModal, setShowRevokeModal] = useState(false);
   const [selectedRevokeId, setSelectedRevokeId] = useState("");
-  const [localRevoking, setLocalRevoking] = useState(false);
+  const [actionLoading, setActionLoading] = useState("");
 
   const reloadLocalRows = async () => {
     setLocalLoading(true);
     setLocalError("");
     try {
       const result = await fetchCourtesyRows();
-      setLocalRows(result.rows.map(normalizeCourtesy));
+      const normalized = (result.rows || []).map(normalizeCourtesy);
+      setLocalRows(normalized);
+      setDebug(result.debug || []);
       setLocalError(result.error || "");
     } catch (e) {
       console.error(e);
@@ -263,16 +233,15 @@ export default function CourtesyView({
   }, [localRows, courtesyList]);
 
   const filtered = rows.filter((item) => {
-    const q = (search || "").toLowerCase();
-
+    const q = (search || "").toLowerCase().trim();
     const matchSearch =
-      !search ||
+      !q ||
       (item.display_email || item.email || "").toLowerCase().includes(q) ||
       (item.notes || "").toLowerCase().includes(q) ||
-      (item.display_plan || "").toLowerCase().includes(q);
+      (item.display_plan || "").toLowerCase().includes(q) ||
+      (item.display_shop || "").toLowerCase().includes(q);
 
     const matchFilter = filter === "all" || item.status === filter;
-
     return matchSearch && matchFilter;
   });
 
@@ -286,190 +255,71 @@ export default function CourtesyView({
     revoked_courtesies: rows.length ? revokedRows.length : metrics.revoked_courtesies || 0,
   };
 
-  const handleRevokeClick = async (id) => {
-    if (!id || !onRevoke) return;
-    await onRevoke(id);
-    await reloadLocalRows();
+  const handleRevoke = async (id) => {
+    if (!id) return;
+    if (!window.confirm("Revogar este acesso? O usuário perderá o acesso imediatamente.")) return;
+
+    setActionLoading(id);
+    try {
+      const { error } = await supabase.rpc("oz_revoke_courtesy_access_admin", { p_id: id });
+      if (error) throw error;
+      await reloadLocalRows();
+    } catch (e) {
+      alert(e.message || "Erro ao revogar acesso.");
+    } finally {
+      setActionLoading("");
+    }
   };
 
-  const handleDeleteClick = async (row) => {
-    if (!onDelete) return;
-    await onDelete(row);
-    await reloadLocalRows();
-  };
-
-  const handleConfirmLocalRevoke = async () => {
-    if (!selectedRevokeId) {
-      setLocalError("Selecione uma cortesia ativa para revogar.");
+  const handleDelete = async (row) => {
+    if (!row?.id) return;
+    if (row.status !== "revoked") {
+      alert("Somente acessos revogados podem ser excluídos.");
       return;
     }
+    if (!window.confirm("Excluir definitivamente este acesso revogado? Esta ação não pode ser desfeita.")) return;
 
-    setLocalRevoking(true);
+    setActionLoading(row.id);
     try {
-      await handleRevokeClick(selectedRevokeId);
-      setShowRevokeModal(false);
-      setSelectedRevokeId("");
+      const { error } = await supabase.rpc("oz_delete_revoked_courtesy_admin", { p_id: row.id });
+      if (error) throw error;
+      await reloadLocalRows();
+    } catch (e) {
+      alert(e.message || "Erro ao excluir acesso revogado.");
     } finally {
-      setLocalRevoking(false);
+      setActionLoading("");
     }
   };
 
-  const columns = [
-    {
-      key: "email",
-      label: "Cliente",
-      render: (row) => (
-        <div>
-          <div style={{ color: T.text, fontWeight: 800 }}>
-            {row.display_email || row.email || "—"}
-          </div>
-          {row.notes && (
-            <div style={{ color: T.muted, fontSize: 11, marginTop: 3 }}>
-              {row.notes}
-            </div>
-          )}
-        </div>
-      ),
-    },
-    {
-      key: "type",
-      label: "Duração",
-      nowrap: true,
-      render: (row) =>
-        row.type === "unlimited" ? (
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: T.mutedLight }}>
-            <Infinity size={12} /> Indeterminado
-          </span>
-        ) : (
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: T.mutedLight }}>
-            <Clock size={12} /> Prazo
-          </span>
-        ),
-    },
-    {
-      key: "status",
-      label: "Status",
-      nowrap: true,
-      render: (row) => <StatusBadge status={row.status} />,
-    },
-    {
-      key: "created_at",
-      label: "Criado em",
-      nowrap: true,
-      muted: true,
-      render: (row) => fDate(row.created_at),
-    },
-    {
-      key: "expires_at",
-      label: "Expiração",
-      nowrap: true,
-      muted: true,
-      render: (row) =>
-        row.type === "unlimited" ? (
-          <span style={{ color: T.success }}>Sem expiração</span>
-        ) : (
-          fDate(row.expires_at)
-        ),
-    },
-    {
-      key: "used_at",
-      label: "Usado por",
-      muted: true,
-      render: (row) =>
-        row.used_at ? (
-          <div>
-            <div style={{ color: T.text, fontSize: 12 }}>
-              {row.display_shop || row.barbershops?.name || row.display_used_by || "—"}
-            </div>
-            {row.display_used_by && (
-              <div style={{ color: T.muted, fontSize: 11 }}>
-                {row.display_used_by}
-              </div>
-            )}
-            <div style={{ color: T.muted, fontSize: 11 }}>
-              {fDatetime(row.used_at)}
-            </div>
-          </div>
-        ) : (
-          "Não utilizado"
-        ),
-    },
-    {
-      key: "actions",
-      label: "Ações",
-      nowrap: true,
-      render: (row) => (
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {row.status === "active" && (
-            <>
-              <button
-                onClick={() => onSendInvite?.(row)}
-                disabled={sendingInvite === row.id}
-                style={{
-                  background: `${T.accent}18`,
-                  border: `1px solid ${T.accent}55`,
-                  borderRadius: 8,
-                  padding: "5px 10px",
-                  color: T.accent,
-                  fontSize: 12,
-                  fontWeight: 800,
-                  cursor: sendingInvite === row.id ? "wait" : "pointer",
-                  display: "inline-flex",
-                  gap: 5,
-                  alignItems: "center",
-                  opacity: sendingInvite === row.id ? 0.7 : 1,
-                }}
-              >
-                <Mail size={12} /> {sendingInvite === row.id ? "Enviando" : "Enviar e-mail"}
-              </button>
+  const handleConfirmModalRevoke = async () => {
+    if (!selectedRevokeId) {
+      alert("Selecione um acesso ativo.");
+      return;
+    }
+    await handleRevoke(selectedRevokeId);
+    setShowRevokeModal(false);
+    setSelectedRevokeId("");
+  };
 
-              <button
-                onClick={() => handleRevokeClick(row.id)}
-                disabled={revoking === row.id}
-                style={{
-                  background: T.dangerBg,
-                  border: `1px solid ${T.danger}44`,
-                  borderRadius: 8,
-                  padding: "5px 10px",
-                  color: T.danger,
-                  fontSize: 12,
-                  fontWeight: 800,
-                  cursor: revoking === row.id ? "wait" : "pointer",
-                  display: "inline-flex",
-                  gap: 5,
-                  alignItems: "center",
-                  opacity: revoking === row.id ? 0.7 : 1,
-                }}
-              >
-                <Trash2 size={12} /> Revogar
-              </button>
-            </>
-          )}
+  const cellStyle = {
+    padding: "0.9rem 1rem",
+    borderBottom: `1px solid ${T.border}`,
+    fontSize: 13,
+    color: T.text,
+    verticalAlign: "top",
+  };
 
-          {row.status === "revoked" && (
-            <button
-              onClick={() => handleDeleteClick(row)}
-              style={{
-                background: "#2a1111",
-                border: `1px solid ${T.danger}55`,
-                borderRadius: 8,
-                padding: "5px 10px",
-                color: T.danger,
-                fontSize: 12,
-                fontWeight: 800,
-                cursor: "pointer",
-                display: "inline-flex",
-                gap: 5,
-                alignItems: "center",
-              }}
-            >
-              <Trash2 size={12} /> Excluir
-            </button>
-          )}
-        </div>
-      ),
-    },
-  ];
+  const thStyle = {
+    padding: "0.85rem 1rem",
+    borderBottom: `1px solid ${T.border}`,
+    fontSize: 10,
+    fontWeight: 800,
+    color: T.muted,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+    textAlign: "left",
+    whiteSpace: "nowrap",
+  };
 
   return (
     <div>
@@ -478,15 +328,7 @@ export default function CourtesyView({
         title="Cortesias"
         subtitle="Acessos gratuitos doados pelo admin master; não entram como receita"
         right={
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "flex-end",
-              gap: 10,
-              flexWrap: "wrap",
-            }}
-          >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
             <button
               onClick={onNewCourtesy}
               style={{
@@ -535,14 +377,7 @@ export default function CourtesyView({
         }
       />
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-          gap: 14,
-          marginBottom: "1.25rem",
-        }}
-      >
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 14, marginBottom: "1.25rem" }}>
         <KpiCard label="Total concedidas" value={displayMetrics.total_courtesies} icon={Gift} tone="accent" />
         <KpiCard label="Ativas" value={displayMetrics.active_courtesies} icon={Check} tone="success" />
         <KpiCard label="Expiradas" value={expiredRows.length} icon={Clock} tone="warning" />
@@ -550,50 +385,9 @@ export default function CourtesyView({
         <KpiCard label="Convertidas" value="0" subtitle="Fase 2" icon={TrendingUp} tone="info" />
       </div>
 
-      {localError && displayMetrics.total_courtesies > 0 && rows.length === 0 && (
-        <div
-          style={{
-            background: T.warningBg || "rgba(245, 158, 11, 0.12)",
-            border: `1px solid ${T.warning || "#f59e0b"}55`,
-            borderRadius: 12,
-            padding: "0.85rem 1rem",
-            color: T.warning || "#f59e0b",
-            fontSize: 13,
-            marginBottom: "1rem",
-            display: "flex",
-            gap: 8,
-            alignItems: "flex-start",
-          }}
-        >
-          <AlertCircle size={16} style={{ marginTop: 1 }} />
-          <div>
-            <div style={{ fontWeight: 800, marginBottom: 4 }}>
-              Existem cortesias no banco, mas a listagem ainda retornou vazia.
-            </div>
-            <div>{localError}</div>
-          </div>
-        </div>
-      )}
-
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          marginBottom: "1rem",
-          flexWrap: "wrap",
-        }}
-      >
+      <div style={{ display: "flex", gap: 10, marginBottom: "1rem", flexWrap: "wrap" }}>
         <div style={{ flex: 1, minWidth: 240, position: "relative" }}>
-          <Search
-            size={14}
-            color={T.muted}
-            style={{
-              position: "absolute",
-              left: 11,
-              top: "50%",
-              transform: "translateY(-50%)",
-            }}
-          />
+          <Search size={14} color={T.muted} style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)" }} />
           <input
             style={{ ...inputSt, paddingLeft: 34 }}
             placeholder="Buscar por e-mail, motivo ou observação…"
@@ -601,22 +395,6 @@ export default function CourtesyView({
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-
-        {localLoading && (
-          <div
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 7,
-              color: T.muted,
-              fontSize: 12,
-              padding: "0.55rem 0.25rem",
-            }}
-          >
-            <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} />
-            Carregando lista
-          </div>
-        )}
 
         {[
           ["all", "Todos"],
@@ -654,18 +432,174 @@ export default function CourtesyView({
             border: `1px solid ${T.border}`,
             background: T.surface,
             color: T.text,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 7,
           }}
         >
+          {localLoading && <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} />}
           Atualizar lista
         </button>
       </div>
 
-      <DataTable
-        columns={columns}
-        rows={filtered}
-        emptyTitle="Nenhuma cortesia encontrada"
-        emptySubtitle={localError || "Crie uma nova cortesia ou ajuste os filtros."}
-      />
+      {(localError || debug.length > 0) && (
+        <div
+          style={{
+            background: localError ? T.warningBg || "rgba(245, 158, 11, 0.12)" : "rgba(56,189,248,.08)",
+            border: `1px solid ${localError ? T.warning || "#f59e0b" : T.accent}55`,
+            borderRadius: 12,
+            padding: "0.75rem 1rem",
+            color: localError ? T.warning || "#f59e0b" : T.mutedLight,
+            fontSize: 12,
+            marginBottom: "1rem",
+            display: "flex",
+            gap: 8,
+            alignItems: "flex-start",
+          }}
+        >
+          <AlertCircle size={15} style={{ marginTop: 1 }} />
+          <div>
+            {localError && <div style={{ fontWeight: 800, marginBottom: 4 }}>{localError}</div>}
+            <div>
+              Fonte da listagem:{" "}
+              {debug.map((a) => `${a.name} = ${a.error ? `erro: ${a.error}` : `${a.count} registro(s)`}`).join(" | ")}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 18, overflow: "hidden" }}>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr>
+                <th style={thStyle}>Cliente</th>
+                <th style={thStyle}>Duração</th>
+                <th style={thStyle}>Status</th>
+                <th style={thStyle}>Criado em</th>
+                <th style={thStyle}>Expiração</th>
+                <th style={thStyle}>Usado por</th>
+                <th style={thStyle}>Ações</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {!filtered.length ? (
+                <tr>
+                  <td colSpan={7} style={{ ...cellStyle, textAlign: "center", color: T.muted, padding: "2.5rem 1rem" }}>
+                    Nenhuma cortesia encontrada.
+                  </td>
+                </tr>
+              ) : (
+                filtered.map((row) => (
+                  <tr key={row.id}>
+                    <td style={cellStyle}>
+                      <div style={{ fontWeight: 800 }}>{row.display_email || row.email || "—"}</div>
+                      {row.notes && <div style={{ color: T.muted, fontSize: 11, marginTop: 3 }}>{row.notes}</div>}
+                    </td>
+                    <td style={{ ...cellStyle, whiteSpace: "nowrap", color: T.mutedLight }}>
+                      {row.type === "unlimited" ? (
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                          <Infinity size={12} /> Indeterminado
+                        </span>
+                      ) : (
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                          <Clock size={12} /> Prazo
+                        </span>
+                      )}
+                    </td>
+                    <td style={cellStyle}><StatusBadge status={row.status} /></td>
+                    <td style={{ ...cellStyle, whiteSpace: "nowrap", color: T.mutedLight }}>{fDate(row.created_at)}</td>
+                    <td style={{ ...cellStyle, whiteSpace: "nowrap", color: T.mutedLight }}>
+                      {row.type === "unlimited" ? <span style={{ color: T.success }}>Sem expiração</span> : fDate(row.expires_at)}
+                    </td>
+                    <td style={cellStyle}>
+                      {row.used_at ? (
+                        <div>
+                          <div style={{ fontWeight: 700 }}>{row.display_shop || "—"}</div>
+                          {row.display_used_by && <div style={{ color: T.muted, fontSize: 11 }}>{row.display_used_by}</div>}
+                          <div style={{ color: T.muted, fontSize: 11 }}>{fDatetime(row.used_at)}</div>
+                        </div>
+                      ) : (
+                        <span style={{ color: T.muted }}>Não utilizado</span>
+                      )}
+                    </td>
+                    <td style={cellStyle}>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        {row.status === "active" && (
+                          <>
+                            <button
+                              onClick={() => onSendInvite?.(row)}
+                              disabled={sendingInvite === row.id}
+                              style={{
+                                background: `${T.accent}18`,
+                                border: `1px solid ${T.accent}55`,
+                                borderRadius: 8,
+                                padding: "5px 10px",
+                                color: T.accent,
+                                fontSize: 12,
+                                fontWeight: 800,
+                                cursor: sendingInvite === row.id ? "wait" : "pointer",
+                                display: "inline-flex",
+                                gap: 5,
+                                alignItems: "center",
+                              }}
+                            >
+                              <Mail size={12} /> {sendingInvite === row.id ? "Enviando" : "Enviar e-mail"}
+                            </button>
+
+                            <button
+                              onClick={() => handleRevoke(row.id)}
+                              disabled={actionLoading === row.id}
+                              style={{
+                                background: T.dangerBg,
+                                border: `1px solid ${T.danger}44`,
+                                borderRadius: 8,
+                                padding: "5px 10px",
+                                color: T.danger,
+                                fontSize: 12,
+                                fontWeight: 800,
+                                cursor: actionLoading === row.id ? "wait" : "pointer",
+                                display: "inline-flex",
+                                gap: 5,
+                                alignItems: "center",
+                              }}
+                            >
+                              <Ban size={12} /> Revogar
+                            </button>
+                          </>
+                        )}
+
+                        {row.status === "revoked" && (
+                          <button
+                            onClick={() => handleDelete(row)}
+                            disabled={actionLoading === row.id}
+                            style={{
+                              background: "#2a1111",
+                              border: `1px solid ${T.danger}55`,
+                              borderRadius: 8,
+                              padding: "5px 10px",
+                              color: T.danger,
+                              fontSize: 12,
+                              fontWeight: 800,
+                              cursor: actionLoading === row.id ? "wait" : "pointer",
+                              display: "inline-flex",
+                              gap: 5,
+                              alignItems: "center",
+                            }}
+                          >
+                            <Trash2 size={12} /> Excluir
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       {showRevokeModal && (
         <LocalModal
@@ -676,14 +610,10 @@ export default function CourtesyView({
           }}
         >
           <div style={{ color: T.mutedLight, fontSize: 13, marginBottom: "1rem", lineHeight: 1.5 }}>
-            Selecione uma cortesia ativa. Após confirmar, o status será alterado para revogada e o acesso será removido imediatamente.
+            Selecione uma cortesia ativa. Após confirmar, o status será alterado para revogada e o acesso será bloqueado.
           </div>
 
-          <select
-            style={inputSt}
-            value={selectedRevokeId}
-            onChange={(e) => setSelectedRevokeId(e.target.value)}
-          >
+          <select style={inputSt} value={selectedRevokeId} onChange={(e) => setSelectedRevokeId(e.target.value)}>
             <option value="">Selecione um acesso ativo...</option>
             {activeRows.map((item) => (
               <option key={item.id} value={item.id}>
@@ -717,8 +647,8 @@ export default function CourtesyView({
             </button>
 
             <button
-              onClick={handleConfirmLocalRevoke}
-              disabled={localRevoking || !selectedRevokeId}
+              onClick={handleConfirmModalRevoke}
+              disabled={!selectedRevokeId || actionLoading}
               style={{
                 flex: 1,
                 background: T.dangerBg,
@@ -727,12 +657,12 @@ export default function CourtesyView({
                 borderRadius: 10,
                 padding: "0.75rem",
                 fontWeight: 900,
-                cursor: localRevoking || !selectedRevokeId ? "not-allowed" : "pointer",
-                opacity: localRevoking || !selectedRevokeId ? 0.7 : 1,
+                cursor: !selectedRevokeId || actionLoading ? "not-allowed" : "pointer",
+                opacity: !selectedRevokeId || actionLoading ? 0.7 : 1,
                 fontFamily: "'DM Sans', sans-serif",
               }}
             >
-              {localRevoking ? "Revogando..." : "Confirmar revogação"}
+              Confirmar revogação
             </button>
           </div>
         </LocalModal>
