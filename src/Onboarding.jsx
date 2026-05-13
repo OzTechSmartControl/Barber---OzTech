@@ -181,26 +181,47 @@ const userEmailConfirmed = (user) => {
 
 // ── SHARED UI ─────────────────────────────────────────────────
 const inputSt = {
-  width: "100%", background: T.surface, border: `1px solid ${T.border}`,
-  borderRadius: 8, padding: "0.65rem 0.875rem", color: T.text, fontSize: 14,
-  outline: "none", boxSizing: "border-box", fontFamily: "'DM Sans', sans-serif",
+  width: "100%",
+  height: 48,
+  background: "#0d0e14",
+  border: `1px solid ${T.border}`,
+  borderRadius: 10,
+  padding: "0 1rem",
+  color: T.text,
+  fontSize: 14,
+  outline: "none",
+  boxSizing: "border-box",
+  fontFamily: "'DM Sans', sans-serif",
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,.03)",
 };
 
 const Btn = ({ children, onClick, disabled, variant = "primary", style }) => {
   const v = {
-    primary: { background: T.accent, color: "#0a0808", border: "none" },
-    ghost:   { background: T.surface, color: T.text, border: `1px solid ${T.border}` },
+    primary: { background: `linear-gradient(135deg, ${T.accent}, #7dd3fc)`, color: "#061018", border: "none" },
+    ghost:   { background: "#0d0e14", color: T.text, border: `1px solid ${T.border}` },
     google:  { background: "#fff", color: "#1a1a1a", border: "1px solid #ddd" },
   };
   return (
     <button
       onClick={onClick} disabled={disabled}
       style={{
-        ...v[variant], borderRadius: 8, padding: "0.65rem 1.25rem", fontSize: 14,
-        fontWeight: 600, cursor: disabled ? "not-allowed" : "pointer",
-        display: "inline-flex", alignItems: "center", justifyContent: "center",
-        gap: 8, fontFamily: "'DM Sans', sans-serif", opacity: disabled ? 0.5 : 1,
-        width: "100%", ...style,
+        ...v[variant],
+        borderRadius: 10,
+        minHeight: 48,
+        padding: "0.75rem 1.25rem",
+        fontSize: 14,
+        fontWeight: 800,
+        cursor: disabled ? "not-allowed" : "pointer",
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 8,
+        fontFamily: "'DM Sans', sans-serif",
+        opacity: disabled ? 0.6 : 1,
+        width: "100%",
+        boxShadow: variant === "primary" ? `0 0 26px ${T.accent}24` : "none",
+        transition: "transform .18s ease, box-shadow .18s ease",
+        ...style,
       }}
     >
       {children}
@@ -215,22 +236,25 @@ const ErrMsg = ({ msg }) => msg ? (
 ) : null;
 
 const Label = ({ c }) => (
-  <div style={{ fontSize: 11, fontWeight: 600, color: T.muted, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.8 }}>{c}</div>
+  <div style={{ fontSize: 11, fontWeight: 800, color: T.mutedLight, marginBottom: 8, textTransform: "uppercase", letterSpacing: 1.4 }}>{c}</div>
 );
 
 // ── BARRA DE PROGRESSO ────────────────────────────────────────
 const ProgressBar = ({ step, total }) => (
   <div style={{ marginBottom: "2rem" }}>
-    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 14, gap: 6 }}>
       {Array.from({ length: total }).map((_, i) => (
         <div key={i} style={{
-          flex: 1, height: 3, borderRadius: 99, marginRight: i < total - 1 ? 4 : 0,
-          background: i < step ? T.accent : T.border,
+          flex: 1,
+          height: 4,
+          borderRadius: 99,
+          background: i < step ? T.accent : "#2b2c3a",
+          boxShadow: i < step ? `0 0 14px ${T.accent}33` : "none",
           transition: "background 0.3s",
         }} />
       ))}
     </div>
-    <div style={{ fontSize: 12, color: T.muted }}>Passo {step} de {total}</div>
+    <div style={{ fontSize: 13, color: T.mutedLight }}>Passo {step} de {total}</div>
   </div>
 );
 
@@ -473,11 +497,28 @@ export default function Onboarding({ onComplete, courtesyEmail = "", initialToke
 
   // ── LAYOUT EXTERNO ────────────────────────────────────────────
   return (
-    <div style={{ display: "flex", minHeight: "100vh", alignItems: "center", justifyContent: "center", background: T.bg, fontFamily: "'DM Sans', sans-serif", padding: "2rem 1rem" }}>
-      <style>{`*{box-sizing:border-box} input::placeholder,textarea::placeholder{color:${T.muted}} @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
-      <div style={{ position: "fixed", left: 0, top: 0, bottom: 0, width: 4, background: T.accent }} />
+    <div
+      style={{
+        minHeight: "100vh",
+        width: "100vw",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background:
+          "radial-gradient(circle at 50% 12%, rgba(77,184,255,.10), transparent 28%), radial-gradient(circle at 50% 52%, rgba(77,184,255,.06), transparent 34%), #08090c",
+        fontFamily: "'DM Sans', sans-serif",
+        padding: "2rem 1rem",
+        overflowX: "hidden",
+      }}
+    >
+      <style>{`
+        html, body, #root { margin:0; min-height:100%; width:100%; background:#08090c; }
+        *{box-sizing:border-box}
+        input::placeholder,textarea::placeholder{color:${T.muted}}
+        @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+      `}</style>
 
-      <div style={{ width: "100%", maxWidth: 460 }}>
+      <div style={{ width: "100%", maxWidth: 620, display:"flex", flexDirection:"column", alignItems:"center" }}>
 
 
       {showConfirmModal && (
@@ -546,18 +587,38 @@ export default function Onboarding({ onComplete, courtesyEmail = "", initialToke
         </div>
       )}
 
-        {/* Cabeçalho */}
-        <div style={{ textAlign: "center", marginBottom: "2rem" }}>
-          <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 34, letterSpacing: 4, color: T.accent }}>BARBER SAAS</div>
-          <div style={{ fontSize: 13, color: T.muted, marginTop: 4 }}>Configure sua barbearia em minutos</div>
+        {/* Logo */}
+        <div style={{ textAlign: "center", marginBottom: "1.4rem" }}>
+          <img
+            src="/ozbarber-logo.png"
+            alt="Oz.Barber"
+            style={{
+              width: 250,
+              maxWidth: "72vw",
+              height: "auto",
+              display: "block",
+              margin: "0 auto",
+              filter: "drop-shadow(0 0 24px rgba(77,184,255,.22))",
+            }}
+          />
         </div>
 
-        <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 16, padding: "2rem" }}>
+        <div
+          style={{
+            width: "100%",
+            background: "linear-gradient(180deg, rgba(26,26,36,.94), rgba(14,16,24,.96))",
+            border: `1px solid ${T.accent}66`,
+            borderRadius: 18,
+            padding: "2.35rem 2.5rem",
+            boxShadow: "0 28px 90px rgba(0,0,0,.48), 0 0 42px rgba(77,184,255,.08)",
+            backdropFilter: "blur(8px)",
+          }}
+        >
 
           {/* ── PASSO 1: Criar conta ─── */}
           {step === 1 && (
             <>
-              <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 26, letterSpacing: 2, color: T.text, marginBottom: 6 }}>
+              <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 30, letterSpacing: 3, color: T.text, marginBottom: 6 }}>
                 {isLogin ? "ENTRAR" : "CRIAR CONTA"}
               </div>
               <div style={{ fontSize: 13, color: T.muted, marginBottom: "1.5rem" }}>
@@ -613,7 +674,7 @@ export default function Onboarding({ onComplete, courtesyEmail = "", initialToke
           {step === 2 && (
             <>
               <ProgressBar step={1} total={4} />
-              <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 26, letterSpacing: 2, color: T.text, marginBottom: 6 }}>SEU NOME</div>
+              <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 30, letterSpacing: 3, color: T.text, marginBottom: 6 }}>SEU NOME</div>
               <div style={{ fontSize: 13, color: T.muted, marginBottom: "1.5rem" }}>Como você quer ser chamado no sistema?</div>
               <ErrMsg msg={err} />
               <div style={{ marginBottom: "1.5rem" }}>
@@ -630,7 +691,7 @@ export default function Onboarding({ onComplete, courtesyEmail = "", initialToke
           {step === 3 && (
             <>
               <ProgressBar step={2} total={4} />
-              <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 26, letterSpacing: 2, color: T.text, marginBottom: 6 }}>SUA BARBEARIA</div>
+              <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 30, letterSpacing: 3, color: T.text, marginBottom: 6 }}>SUA BARBEARIA</div>
               <div style={{ fontSize: 13, color: T.muted, marginBottom: "1.5rem" }}>Como se chama a sua barbearia?</div>
               <ErrMsg msg={err} />
               <div style={{ marginBottom: "0.75rem" }}>
@@ -659,7 +720,7 @@ export default function Onboarding({ onComplete, courtesyEmail = "", initialToke
           {step === 4 && (
             <>
               <ProgressBar step={3} total={4} />
-              <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 26, letterSpacing: 2, color: T.text, marginBottom: 6 }}>IDENTIDADE VISUAL</div>
+              <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 30, letterSpacing: 3, color: T.text, marginBottom: 6 }}>IDENTIDADE VISUAL</div>
               <div style={{ fontSize: 13, color: T.muted, marginBottom: "1.5rem" }}>Logo e cor de destaque da sua barbearia</div>
               <ErrMsg msg={err} />
 
@@ -712,7 +773,7 @@ export default function Onboarding({ onComplete, courtesyEmail = "", initialToke
           {step === 5 && (
             <>
               <ProgressBar step={4} total={4} />
-              <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 26, letterSpacing: 2, color: T.text, marginBottom: 6 }}>CONTATO</div>
+              <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 30, letterSpacing: 3, color: T.text, marginBottom: 6 }}>CONTATO</div>
               <div style={{ fontSize: 13, color: T.muted, marginBottom: "1.5rem" }}>Informações de contato da barbearia</div>
               <ErrMsg msg={err} />
 
@@ -722,7 +783,7 @@ export default function Onboarding({ onComplete, courtesyEmail = "", initialToke
               </div>
               <div style={{ marginBottom: "1.5rem" }}>
                 <Label c="Endereço (opcional)" />
-                <textarea style={{ ...inputSt, resize: "vertical", minHeight: 72 }} placeholder="Rua, número, bairro, cidade" value={address} onChange={e => setAddress(e.target.value)} />
+                <textarea style={{ ...inputSt, resize: "vertical", minHeight: 88, paddingTop: 12 }} placeholder="Rua, número, bairro, cidade" value={address} onChange={e => setAddress(e.target.value)} />
               </div>
 
               {/* Resumo antes de finalizar */}
@@ -755,6 +816,18 @@ export default function Onboarding({ onComplete, courtesyEmail = "", initialToke
             </>
           )}
 
+        </div>
+
+        <div
+          style={{
+            marginTop: "1.55rem",
+            textAlign: "center",
+            color: T.mutedLight,
+            fontSize: 15,
+            letterSpacing: ".2px",
+          }}
+        >
+          Desenvolvido por OzTech SmartControl
         </div>
       </div>
     </div>
