@@ -63,6 +63,7 @@ function normalizeCourtesy(item) {
     display_plan:
       item.type === "unlimited" ? "Indeterminado" : "Prazo determinado",
     display_shop: item.barbershop_name || item.display_shop || item.barbershops?.name || "—",
+    display_used_by: item.used_by_user_email || item.used_by || item.used_by_user_id || "",
   };
 }
 
@@ -159,31 +160,61 @@ function LocalModal({ title, onClose, children }) {
 }
 
 async function fetchCourtesyRows() {
-  // Caminho 1: leitura direta da tabela com a policy original:
-  // profiles.is_super_admin = true.
+  const attempts = [];
+
+  const normalizeAttemptRows = (result) => asArray(result?.data);
+
+  // Caminho principal: RPC administrativa v12.
+  const v12 = await supabase.rpc("oz_list_courtesy_access_admin");
+  attempts.push(["RPC v12 oz_list_courtesy_access_admin", v12]);
+  const v12Rows = normalizeAttemptRows(v12);
+  if (!v12.error && v12Rows.length > 0) return { rows: v12Rows, error: "" };
+
+  // Compatibilidade com correções anteriores.
+  const forceRpc = await supabase.rpc("superadmin_courtesy_access_list_force");
+  attempts.push(["RPC force superadmin_courtesy_access_list_force", forceRpc]);
+  const forceRows = normalizeAttemptRows(forceRpc);
+  if (!forceRpc.error && forceRows.length > 0) return { rows: forceRows, error: "" };
+
+  const originalRpc = await supabase.rpc("list_courtesy_access_for_superadmin");
+  attempts.push(["RPC original list_courtesy_access_for_superadmin", originalRpc]);
+  const originalRows = normalizeAttemptRows(originalRpc);
+  if (!originalRpc.error && originalRows.length > 0) return { rows: originalRows, error: "" };
+
+  const view = await supabase
+    .from("superadmin_courtesy_access_overview")
+    .select("*")
+    .order("created_at", { ascending: false });
+  attempts.push(["VIEW superadmin_courtesy_access_overview", view]);
+  if (!view.error && Array.isArray(view.data) && view.data.length > 0) {
+    return { rows: view.data, error: "" };
+  }
+
+  // Último recurso: SELECT direto.
+  // Importante: se RLS bloquear, o Supabase pode retornar [] sem erro.
+  // Por isso esse caminho fica por último e não impede os fallbacks acima.
   const direct = await supabase
     .from("courtesy_access")
-    .select("id,email,type,expires_at,notes,status,created_at,revoked_at,used_at,used_by_user_id,barbershop_id,barbershops(name)")
+    .select("id,email,type,expires_at,notes,status,created_at,revoked_at,revoked_by,used_at,used_by_user_id,barbershop_id,barbershops(name)")
     .order("created_at", { ascending: false });
-
-  if (!direct.error && Array.isArray(direct.data)) {
+  attempts.push(["Tabela direta courtesy_access", direct]);
+  if (!direct.error && Array.isArray(direct.data) && direct.data.length > 0) {
     return { rows: direct.data, error: "" };
   }
 
-  // Caminho 2: fallback via RPC criada pelo SQL 11.
-  const rpc = await supabase.rpc("list_courtesy_access_for_superadmin");
-  const rpcRows = asArray(rpc.data);
-
-  if (!rpc.error && rpcRows.length >= 0) {
-    return { rows: rpcRows, error: "" };
-  }
+  const messages = attempts
+    .map(([name, result]) => {
+      if (result?.error) return `${name}: ${result.error.message || JSON.stringify(result.error)}`;
+      const count = Array.isArray(result?.data) ? result.data.length : 0;
+      return `${name}: retornou ${count} registro(s)`;
+    })
+    .join(" | ");
 
   return {
     rows: [],
     error:
-      direct.error?.message ||
-      rpc.error?.message ||
-      "Não foi possível carregar a listagem de cortesias. Execute o SQL 11_fix_courtesy_access_original_rules.sql no Supabase.",
+      messages ||
+      "A consulta retornou 0 registros. Execute o SQL 12_fix_courtesy_access_listagem_final.sql no Supabase e clique em Atualizar lista.",
   };
 }
 
@@ -349,8 +380,13 @@ export default function CourtesyView({
         row.used_at ? (
           <div>
             <div style={{ color: T.text, fontSize: 12 }}>
-              {row.display_shop || row.barbershops?.name || "—"}
+              {row.display_shop || row.barbershops?.name || row.display_used_by || "—"}
             </div>
+            {row.display_used_by && (
+              <div style={{ color: T.muted, fontSize: 11 }}>
+                {row.display_used_by}
+              </div>
+            )}
             <div style={{ color: T.muted, fontSize: 11 }}>
               {fDatetime(row.used_at)}
             </div>

@@ -241,38 +241,53 @@ export default function SuperAdminView({ section = "dashboard" }) {
   };
 
   const loadCourtesyRows = async () => {
-    // Caminho 1: SELECT direto, usando a policy original:
-    // profiles.is_super_admin = true.
+    const attempts = [];
+
+    const normalizeAttemptRows = (result) => asArray(result?.data);
+
+    // Caminho principal: RPC administrativa v12.
+    // Ela usa SECURITY DEFINER e valida o usuário por profiles.is_super_admin OU pelo e-mail do auth.users.
+    const v12 = await supabase.rpc("oz_list_courtesy_access_admin");
+    attempts.push(["RPC v12 oz_list_courtesy_access_admin", v12]);
+    const v12Rows = normalizeAttemptRows(v12);
+    if (!v12.error && v12Rows.length > 0) return v12Rows;
+
+    // Compatibilidade com correções anteriores, caso alguma já exista no banco.
+    const forceRpc = await supabase.rpc("superadmin_courtesy_access_list_force");
+    attempts.push(["RPC force superadmin_courtesy_access_list_force", forceRpc]);
+    const forceRows = normalizeAttemptRows(forceRpc);
+    if (!forceRpc.error && forceRows.length > 0) return forceRows;
+
+    const originalRpc = await supabase.rpc("list_courtesy_access_for_superadmin");
+    attempts.push(["RPC original list_courtesy_access_for_superadmin", originalRpc]);
+    const originalRows = normalizeAttemptRows(originalRpc);
+    if (!originalRpc.error && originalRows.length > 0) return originalRows;
+
+    const view = await supabase
+      .from("superadmin_courtesy_access_overview")
+      .select("*")
+      .order("created_at", { ascending: false });
+    attempts.push(["VIEW superadmin_courtesy_access_overview", view]);
+    if (!view.error && Array.isArray(view.data) && view.data.length > 0) return view.data;
+
+    // Último recurso: SELECT direto. Se retornar [] por RLS, não é suficiente para a listagem.
     const direct = await supabase
       .from("courtesy_access")
-      .select("id,email,type,expires_at,notes,status,created_at,revoked_at,used_at,used_by_user_id,barbershop_id,barbershops(name)")
+      .select("id,email,type,expires_at,notes,status,created_at,revoked_at,revoked_by,used_at,used_by_user_id,barbershop_id,barbershops(name)")
       .order("created_at", { ascending: false });
+    attempts.push(["Tabela direta courtesy_access", direct]);
+    if (!direct.error && Array.isArray(direct.data) && direct.data.length > 0) return direct.data;
 
-    if (!direct.error && Array.isArray(direct.data)) {
-      return {
-        rows: direct.data,
-        error: "",
-      };
-    }
+    const messages = attempts
+      .map(([name, result]) => {
+        if (result?.error) return `${name}: ${result.error.message || JSON.stringify(result.error)}`;
+        const count = Array.isArray(result?.data) ? result.data.length : 0;
+        return `${name}: retornou ${count} registro(s)`;
+      })
+      .join(" | ");
 
-    // Caminho 2: fallback via RPC criada no SQL 11.
-    const viaRpc = await supabase.rpc("list_courtesy_access_for_superadmin");
-    const rpcRows = asArray(viaRpc.data);
-
-    if (!viaRpc.error && rpcRows.length >= 0) {
-      return {
-        rows: rpcRows,
-        error: "",
-      };
-    }
-
-    return {
-      rows: [],
-      error:
-        direct.error?.message ||
-        viaRpc.error?.message ||
-        "Não foi possível carregar a listagem de cortesias.",
-    };
+    console.warn("Diagnóstico listagem cortesias:", messages);
+    return [];
   };
 
   const loadAll = async () => {
@@ -316,8 +331,7 @@ export default function SuperAdminView({ section = "dashboard" }) {
       if (clientsRes.error) throw clientsRes.error;
       if (subscriptionsRes.error) throw subscriptionsRes.error;
 
-      const courtesyResult = await loadCourtesyRows();
-      const courtesyRows = courtesyResult.rows || [];
+      const courtesyRows = await loadCourtesyRows();
 
       setMetrics({ ...defaultMetrics, ...(metricsRes.data || {}) });
       setCustomerGrowth(customerGrowthRes.data || []);
@@ -331,8 +345,7 @@ export default function SuperAdminView({ section = "dashboard" }) {
       const totalCourtesiesFromKpi = Number((metricsRes.data || {}).total_courtesies || 0);
       if (section === "courtesy" && totalCourtesiesFromKpi > 0 && courtesyRows.length === 0) {
         setErr(
-          courtesyResult.error ||
-            "Existem cortesias contabilizadas nos KPIs, mas a listagem retornou 0 registros. Execute o SQL 11_fix_courtesy_access_original_rules.sql e clique em Atualizar."
+          "Existem cortesias contabilizadas nos KPIs, mas a listagem retornou 0 registros. Execute o SQL 12_fix_courtesy_access_listagem_final.sql no Supabase, faça deploy dos arquivos e depois clique em Atualizar."
         );
       }
     } catch (e) {
@@ -401,11 +414,8 @@ export default function SuperAdminView({ section = "dashboard" }) {
     setSavingCourtesy(true);
 
     try {
-      const { data: userRes } = await supabase.auth.getUser();
-
       const body = {
         email,
-        granted_by: userRes?.user?.id || null,
         type: form.type,
         expires_at:
           form.type === "timed" ? new Date(form.expires_at).toISOString() : null,
@@ -457,14 +467,11 @@ export default function SuperAdminView({ section = "dashboard" }) {
     setRevoking(id);
 
     try {
-      const { data: userRes } = await supabase.auth.getUser();
-
       const { error } = await supabase
         .from("courtesy_access")
         .update({
           status: "revoked",
           revoked_at: new Date().toISOString(),
-          revoked_by: userRes?.user?.id || null,
         })
         .eq("id", id);
 

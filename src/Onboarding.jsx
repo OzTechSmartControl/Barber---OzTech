@@ -84,24 +84,64 @@ const updateProfile = async (tok, uid, data) => {
 
 // Atualiza a barbearia recém-criada com telefone, endereço e logo
 const updateBarbershop = async (tok, shopId, data) => {
-  await fetch(`${SUPABASE_URL}/rest/v1/barbershops?id=eq.${shopId}`, {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/barbershops?id=eq.${shopId}`, {
     method: "PATCH",
     headers: { ...hdr(tok), Prefer: "return=representation" },
     body: JSON.stringify(data),
   });
+
+  if (!r.ok) {
+    const e = await r.json().catch(() => ({}));
+    throw new Error(e.message || "Erro ao atualizar dados da barbearia.");
+  }
+
+  return r.json().catch(() => null);
 };
 
 // Upload de logo no Supabase Storage (bucket "logos")
 const uploadLogo = async (tok, file, shopId) => {
-  const ext  = file.name.split(".").pop();
+  if (!file) return null;
+
+  const rawExt = file.name.split(".").pop() || "png";
+  const ext = rawExt.toLowerCase().replace(/[^a-z0-9]/g, "") || "png";
   const path = `${shopId}/logo.${ext}`;
-  const r    = await fetch(`${SUPABASE_URL}/storage/v1/object/logos/${path}`, {
+
+  const r = await fetch(`${SUPABASE_URL}/storage/v1/object/logos/${path}`, {
     method: "POST",
-    headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${tok}`, "Content-Type": file.type },
+    headers: {
+      apikey: SUPABASE_ANON,
+      Authorization: `Bearer ${tok}`,
+      "Content-Type": file.type || "application/octet-stream",
+      "x-upsert": "true",
+      "cache-control": "3600",
+    },
     body: file,
   });
-  if (!r.ok) throw new Error("Erro no upload do logo");
-  return `${SUPABASE_URL}/storage/v1/object/public/logos/${path}`;
+
+  if (!r.ok) {
+    const text = await r.text().catch(() => "");
+    throw new Error(text || "Erro no upload do logo.");
+  }
+
+  return `${SUPABASE_URL}/storage/v1/object/public/logos/${path}?v=${Date.now()}`;
+};
+
+const redeemCourtesyAccess = async (tok, email, shopId) => {
+  if (!email || !shopId) return;
+
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/redeem_courtesy`, {
+    method: "POST",
+    headers: hdr(tok),
+    body: JSON.stringify({
+      p_email: String(email).trim().toLowerCase(),
+      p_barbershop_id: shopId,
+    }),
+  });
+
+  if (!r.ok) {
+    const e = await r.json().catch(() => ({}));
+    throw new Error(e.message || "Erro ao vincular cortesia à barbearia.");
+  }
 };
 
 // ── SHARED UI ─────────────────────────────────────────────────
@@ -275,10 +315,10 @@ export default function Onboarding({ onComplete, courtesyEmail = "" }) {
     if (!phone) return setErr("Informe um telefone de contato.");
     setLoading(true); setErr("");
     try {
-      // 1. Cria a barbearia (chama a função do Supabase)
+      // 1. Cria a barbearia e vincula o perfil admin.
       const shopId = await rpcCreateBarbershop(token, { name: shopName, slug, accent });
 
-      // Vincula assinatura paga ao novo usuário/barbearia
+      // 2. Vincula assinatura paga, se existir. Não bloqueia o fluxo de cortesia.
       await fetch(`${SUPABASE_URL}/rest/v1/rpc/claim_paid_subscription`, {
         method: "POST",
         headers: hdr(token),
@@ -287,26 +327,32 @@ export default function Onboarding({ onComplete, courtesyEmail = "" }) {
           p_barbershop_id: shopId,
           p_email: email,
         }),
-      });
+      }).catch(() => null);
 
-      // 2. Faz upload do logo (se houver)
-      let logoUrl = null;
-      if (logoFile) {
-        try { logoUrl = await uploadLogo(token, logoFile, shopId); }
-        catch { /* logo é opcional, não bloqueia */ }
+      // 3. Se veio do fluxo de cortesia, marca a cortesia como usada pela barbearia criada.
+      // Isso alimenta a coluna "Usado por" no painel de Cortesias.
+      if (courtesyEmail) {
+        await redeemCourtesyAccess(token, courtesyEmail, shopId);
       }
 
-      // 3. Atualiza a barbearia com telefone, endereço e logo
+      // 4. Faz upload do logo, se houver. Agora o erro não é mais ignorado silenciosamente.
+      let logoUrl = null;
+      if (logoFile) {
+        logoUrl = await uploadLogo(token, logoFile, shopId);
+      }
+
+      // 5. Atualiza a barbearia com telefone, endereço e logo.
       await updateBarbershop(token, shopId, {
         phone,
         address,
+        accent_color: accent,
         ...(logoUrl && { logo_url: logoUrl }),
       });
 
-      // 4. Atualiza o perfil do admin com o nome do dono
+      // 6. Atualiza o perfil do admin com o nome do dono.
       await updateProfile(token, uid, { full_name: ownerName });
 
-      // 5. Busca o perfil completo e devolve para o App
+      // 7. Busca o perfil completo e devolve para o App.
       const profile = await fetch(
         `${SUPABASE_URL}/rest/v1/profiles?id=eq.${uid}&select=*`,
         { headers: hdr(token) }
@@ -316,7 +362,9 @@ export default function Onboarding({ onComplete, courtesyEmail = "" }) {
         .then(r => r.json());
 
       onComplete({ token, user, profile });
-    } catch (e) { setErr(e.message || "Erro ao salvar. Tente novamente."); }
+    } catch (e) {
+      setErr(e.message || "Erro ao salvar. Tente novamente.");
+    }
     setLoading(false);
   };
 
