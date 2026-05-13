@@ -1855,7 +1855,7 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
   return (
     <aside
       style={{
-        width: collapsed ? 76 : (isSuperAdmin ? 282 : 230),
+        width: collapsed ? 76 : (isSuperAdmin ? 282 : 255),
         background: isSuperAdmin
           ? "linear-gradient(180deg, #0f1018 0%, #0b0b11 100%)"
           : T.sidebar,
@@ -1879,12 +1879,12 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
         }}
       >
         {!collapsed && (
-          <div style={{ display:"flex", alignItems:"center", gap:12, minWidth:0 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:10, minWidth:0, flex:1 }}>
             <div
               style={{
-                width: isSuperAdmin ? 48 : 64,
-                height: isSuperAdmin ? 48 : 64,
-                minWidth: isSuperAdmin ? 48 : 64,
+                width: isSuperAdmin ? 48 : 56,
+                height: isSuperAdmin ? 48 : 56,
+                minWidth: isSuperAdmin ? 48 : 56,
                 borderRadius: isSuperAdmin ? 16 : 14,
                 background: isSuperAdmin ? `${T.accent}14` : "transparent",
                 border: isSuperAdmin ? `1px solid ${T.accent}24` : "none",
@@ -1904,14 +1904,14 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
               <div
                 style={{
                   fontFamily:"'Bebas Neue', sans-serif",
-                  fontSize: isSuperAdmin ? 24 : 20,
+                  fontSize: isSuperAdmin ? 24 : 19,
                   letterSpacing:1.5,
                   color:T.text,
                   lineHeight:1,
                   whiteSpace:"nowrap",
                   overflow:"hidden",
                   textOverflow:"ellipsis",
-                  maxWidth: isSuperAdmin ? 150 : 118,
+                  maxWidth: isSuperAdmin ? 150 : 158,
                 }}
               >
                 {shopName}
@@ -1923,6 +1923,10 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
                   textTransform:"uppercase",
                   letterSpacing:1,
                   marginTop:5,
+                  whiteSpace:"nowrap",
+                  overflow:"hidden",
+                  textOverflow:"ellipsis",
+                  maxWidth: isSuperAdmin ? 150 : 158,
                 }}
               >
                 {isSuperAdmin ? "Centro SaaS" : "Ambiente privado"}
