@@ -227,9 +227,37 @@ export default function SuperAdminView({ section = "dashboard" }) {
     notes: "",
   });
 
+  const asArray = (value) => {
+    if (Array.isArray(value)) return value;
+    if (typeof value === "string") {
+      try {
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  };
+
   const loadCourtesyRows = async () => {
-    // 1) Tentativa normal via tabela.
-    //    Quando a RLS de SELECT estiver correta, este caminho já retorna os registros.
+    // Caminho principal: RPC SECURITY DEFINER v2.
+    // Essa função consulta a tabela por dentro do banco e valida o super admin
+    // usando auth.uid() + auth.users, evitando o problema de SELECT direto retornar vazio por RLS.
+    const viaRpcV2 = await supabase.rpc("superadmin_courtesy_access_list_v2");
+    const rpcRows = asArray(viaRpcV2.data);
+
+    if (!viaRpcV2.error && rpcRows.length > 0) {
+      return rpcRows;
+    }
+
+    // Fallback 1: RPC antiga, caso já exista no banco.
+    const viaRpcV1 = await supabase.rpc("superadmin_courtesy_access_list");
+    if (!viaRpcV1.error && Array.isArray(viaRpcV1.data) && viaRpcV1.data.length > 0) {
+      return viaRpcV1.data;
+    }
+
+    // Fallback 2: SELECT direto na tabela, caso a policy de SELECT esteja correta.
     const direct = await supabase
       .from("courtesy_access")
       .select("*")
@@ -239,18 +267,11 @@ export default function SuperAdminView({ section = "dashboard" }) {
       return direct.data;
     }
 
-    // 2) Fallback via RPC SECURITY DEFINER.
-    //    Este fallback resolve o caso em que os KPIs contam as cortesias,
-    //    mas a listagem da tabela retorna vazia por bloqueio de RLS/SELECT.
-    const viaRpc = await supabase.rpc("superadmin_courtesy_access_list");
-
-    if (!viaRpc.error && Array.isArray(viaRpc.data)) {
-      return viaRpc.data;
-    }
-
-    // Se o SELECT direto retornou erro, ele é mais útil para diagnóstico.
-    if (direct.error) throw direct.error;
-    if (viaRpc.error) throw viaRpc.error;
+    // Não interrompe o painel quando os KPIs carregam, mas a lista volta vazia.
+    // O aviso aparece abaixo quando total_courtesies > 0 e courtesyRows.length === 0.
+    if (viaRpcV2.error) console.warn("RPC v2 cortesias:", viaRpcV2.error.message || viaRpcV2.error);
+    if (viaRpcV1.error) console.warn("RPC v1 cortesias:", viaRpcV1.error.message || viaRpcV1.error);
+    if (direct.error) console.warn("SELECT cortesias:", direct.error.message || direct.error);
 
     return [];
   };
@@ -310,7 +331,7 @@ export default function SuperAdminView({ section = "dashboard" }) {
       const totalCourtesiesFromKpi = Number((metricsRes.data || {}).total_courtesies || 0);
       if (section === "courtesy" && totalCourtesiesFromKpi > 0 && courtesyRows.length === 0) {
         setErr(
-          "Existem cortesias contabilizadas nos KPIs, mas a listagem retornou 0 registros. Execute o SQL 07_fix_courtesy_access_listagem_rpc.sql no Supabase."
+          "Existem cortesias contabilizadas nos KPIs, mas a listagem retornou 0 registros. Execute o SQL 08_fix_courtesy_access_listagem_definitiva.sql no Supabase e depois clique em Atualizar."
         );
       }
     } catch (e) {
