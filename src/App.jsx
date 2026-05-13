@@ -1870,22 +1870,35 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
     >
       <div
         style={{
-          padding: collapsed ? "1.15rem 0.75rem" : "1.25rem",
+          padding: collapsed ? "1.15rem 0.75rem" : (isSuperAdmin ? "1.25rem" : "1rem 0.85rem 1.2rem"),
           borderBottom: `1px solid ${T.border}`,
           display: "flex",
           alignItems: "center",
-          justifyContent: collapsed ? "center" : "space-between",
-          minHeight: isSuperAdmin ? 92 : undefined,
+          justifyContent: collapsed ? "center" : (isSuperAdmin ? "space-between" : "center"),
+          minHeight: isSuperAdmin ? 92 : 150,
+          position: "relative",
         }}
       >
         {!collapsed && (
-          <div style={{ display:"flex", alignItems:"center", gap:10, minWidth:0, flex:1 }}>
+          <div
+            style={{
+              display:"flex",
+              alignItems:"center",
+              justifyContent:"center",
+              flexDirection: isSuperAdmin ? "row" : "column",
+              gap: isSuperAdmin ? 10 : 8,
+              minWidth:0,
+              flex:1,
+              width:"100%",
+              textAlign: isSuperAdmin ? "left" : "center",
+            }}
+          >
             <div
               style={{
-                width: isSuperAdmin ? 48 : 56,
-                height: isSuperAdmin ? 48 : 56,
-                minWidth: isSuperAdmin ? 48 : 56,
-                borderRadius: isSuperAdmin ? 16 : 14,
+                width: isSuperAdmin ? 48 : 80,
+                height: isSuperAdmin ? 48 : 80,
+                minWidth: isSuperAdmin ? 48 : 80,
+                borderRadius: isSuperAdmin ? 16 : 16,
                 background: isSuperAdmin ? `${T.accent}14` : "transparent",
                 border: isSuperAdmin ? `1px solid ${T.accent}24` : "none",
                 display:"flex",
@@ -1900,18 +1913,28 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
               <img src={logoUrl} alt={shopName} style={{ width:"100%", height:"100%", objectFit:"contain", display:"block" }} />
             </div>
 
-            <div style={{ minWidth:0 }}>
+            <div
+              style={{
+                minWidth:0,
+                width: isSuperAdmin ? "auto" : "100%",
+                display:"flex",
+                flexDirection:"column",
+                alignItems: isSuperAdmin ? "flex-start" : "center",
+              }}
+            >
               <div
                 style={{
                   fontFamily:"'Bebas Neue', sans-serif",
-                  fontSize: isSuperAdmin ? 24 : 19,
-                  letterSpacing:1.5,
+                  fontSize: isSuperAdmin ? 24 : 18,
+                  letterSpacing: isSuperAdmin ? 1.5 : 1.25,
                   color:T.text,
-                  lineHeight:1,
-                  whiteSpace:"nowrap",
-                  overflow:"hidden",
-                  textOverflow:"ellipsis",
-                  maxWidth: isSuperAdmin ? 150 : 158,
+                  lineHeight:1.05,
+                  whiteSpace: isSuperAdmin ? "nowrap" : "normal",
+                  overflow: isSuperAdmin ? "hidden" : "visible",
+                  textOverflow: isSuperAdmin ? "ellipsis" : "clip",
+                  maxWidth: isSuperAdmin ? 150 : 205,
+                  textAlign: isSuperAdmin ? "left" : "center",
+                  wordBreak:"break-word",
                 }}
               >
                 {shopName}
@@ -1926,7 +1949,8 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
                   whiteSpace:"nowrap",
                   overflow:"hidden",
                   textOverflow:"ellipsis",
-                  maxWidth: isSuperAdmin ? 150 : 158,
+                  maxWidth: isSuperAdmin ? 150 : 205,
+                  textAlign: isSuperAdmin ? "left" : "center",
                 }}
               >
                 {isSuperAdmin ? "Centro SaaS" : "Ambiente privado"}
@@ -1959,16 +1983,19 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
           <button
             onClick={()=>setCollapsed(true)}
             style={{
-              background:isSuperAdmin ? `${T.surface}` : "none",
-              border:isSuperAdmin ? `1px solid ${T.border}` : "none",
+              background:isSuperAdmin ? `${T.surface}` : "rgba(0,0,0,.18)",
+              border:isSuperAdmin ? `1px solid ${T.border}` : `1px solid ${T.border}`,
               color:T.muted,
               cursor:"pointer",
               display:"flex",
-              width:isSuperAdmin ? 34 : "auto",
-              height:isSuperAdmin ? 34 : "auto",
+              width:isSuperAdmin ? 34 : 32,
+              height:isSuperAdmin ? 34 : 32,
               alignItems:"center",
               justifyContent:"center",
               borderRadius:10,
+              position: isSuperAdmin ? "static" : "absolute",
+              top: isSuperAdmin ? "auto" : 18,
+              right: isSuperAdmin ? "auto" : 12,
             }}
           >
             <Menu size={18}/>
