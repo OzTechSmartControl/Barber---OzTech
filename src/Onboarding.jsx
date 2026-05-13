@@ -237,7 +237,7 @@ const ProgressBar = ({ step, total }) => (
 // ══════════════════════════════════════════════════════════════
 //  ONBOARDING PRINCIPAL
 // ══════════════════════════════════════════════════════════════
-export default function Onboarding({ onComplete, courtesyEmail = "" }) {
+export default function Onboarding({ onComplete, courtesyEmail = "", initialToken = null, initialUser = null, initialEmail = "" }) {
   const [step,    setStep]    = useState(1);   // 1–5
   const [loading, setLoading] = useState(false);
   const [err,     setErr]     = useState("");
@@ -246,7 +246,7 @@ export default function Onboarding({ onComplete, courtesyEmail = "" }) {
 
   // Dados coletados em cada passo
   // Pré-preenche o e-mail se veio do fluxo de cortesia
-  const [email,   setEmail]   = useState(courtesyEmail);
+  const [email,   setEmail]   = useState(initialEmail || initialUser?.email || courtesyEmail || "");
   const [pass,    setPass]    = useState("");
   const [pass2,   setPass2]   = useState("");
   const [isLogin, setIsLogin] = useState(false); // toggle cadastro/login
@@ -264,6 +264,17 @@ export default function Onboarding({ onComplete, courtesyEmail = "" }) {
   const [phone,   setPhone]   = useState("");
   const [address, setAddress] = useState("");
 
+  // ── Se já existe sessão ativa vinda do link de cortesia/senha, pula criação de conta.
+  useEffect(() => {
+    if (!initialToken || token) return;
+
+    setToken(initialToken);
+    setUid(initialUser?.id || null);
+    setEmail(initialEmail || initialUser?.email || courtesyEmail || "");
+    setIsLogin(true);
+    setStep(2);
+  }, [initialToken, initialUser?.id, initialUser?.email, initialEmail, courtesyEmail, token]);
+
   // ── Detecta retorno do OAuth Google ──────────────────────────
   useEffect(() => {
     const tok = apiAuth.parseHashToken();
@@ -273,7 +284,7 @@ export default function Onboarding({ onComplete, courtesyEmail = "" }) {
       // Busca o UID do usuário retornado pelo Google
       fetch(`${SUPABASE_URL}/auth/v1/user`, { headers: hdr(tok) })
         .then(r => r.json())
-        .then(u => { setUid(u.id); setStep(2); })
+        .then(u => { setUid(u.id); setEmail(u.email || email); setStep(2); })
         .catch(() => setErr("Erro ao identificar usuário Google."));
     }
   }, []);
@@ -392,8 +403,22 @@ export default function Onboarding({ onComplete, courtesyEmail = "" }) {
   // ── PASSO 5 — Finalizar e salvar tudo ────────────────────────
   const submitFinal = async () => {
     if (!phone) return setErr("Informe um telefone de contato.");
+    if (!token) return setErr("Sessão não encontrada. Acesse novamente pelo link enviado ao seu e-mail.");
+
     setLoading(true); setErr("");
     try {
+      const currentUser = await getAuthUser(token);
+      const finalUid = uid || currentUser?.id;
+      const finalEmail = (email || currentUser?.email || courtesyEmail || "").trim().toLowerCase();
+
+      if (!finalUid || !finalEmail) {
+        throw new Error("Não foi possível identificar o usuário autenticado.");
+      }
+
+      if (!userEmailConfirmed(currentUser)) {
+        throw new Error("Seu e-mail ainda não foi confirmado. Clique no link enviado antes de continuar.");
+      }
+
       // 1. Cria a barbearia e vincula o perfil admin.
       const shopId = await rpcCreateBarbershop(token, { name: shopName, slug, accent });
 
@@ -402,16 +427,16 @@ export default function Onboarding({ onComplete, courtesyEmail = "" }) {
         method: "POST",
         headers: hdr(token),
         body: JSON.stringify({
-          p_user_id: uid,
+          p_user_id: finalUid,
           p_barbershop_id: shopId,
-          p_email: email,
+          p_email: finalEmail,
         }),
       }).catch(() => null);
 
       // 3. Tenta vincular cortesia pelo e-mail real do usuário.
       // Antes isso dependia de courtesyEmail vindo da tela de planos; se o usuário entrasse pelo e-mail/senha,
       // a cortesia ficava sem used_by_user_id e sem barbershop_id.
-      await redeemCourtesyAccess(token, email || courtesyEmail, shopId);
+      await redeemCourtesyAccess(token, finalEmail, shopId);
 
       // 4. Faz upload do logo, se houver. Agora o erro não é mais ignorado silenciosamente.
       let logoUrl = null;
@@ -428,11 +453,11 @@ export default function Onboarding({ onComplete, courtesyEmail = "" }) {
       });
 
       // 6. Atualiza o perfil do admin com o nome do dono.
-      await updateProfile(token, uid, { full_name: ownerName });
+      await updateProfile(token, finalUid, { full_name: ownerName });
 
       // 7. Busca o perfil completo e devolve para o App.
       const profile = await fetch(
-        `${SUPABASE_URL}/rest/v1/profiles?id=eq.${uid}&select=*`,
+        `${SUPABASE_URL}/rest/v1/profiles?id=eq.${finalUid}&select=*`,
         { headers: hdr(token) }
       ).then(r => r.json()).then(d => d[0]);
 

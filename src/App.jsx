@@ -2292,8 +2292,16 @@ export default function App() {
       if (!mounted || !sessionData?.access_token || !sessionData?.user?.id) return;
 
       try {
-        const profile = await api.getProfile(sessionData.user.id, sessionData.access_token);
-        if (!profile) return;
+        const existingProfile = await api.getProfile(sessionData.user.id, sessionData.access_token);
+
+        // Usuário recém-criado pelo link de cortesia pode ainda não ter profile/barbearia.
+        // Mesmo assim, mantemos a sessão ativa e enviamos para o Onboarding.
+        const profile = existingProfile || {
+          id: sessionData.user.id,
+          role: "admin",
+          barbershop_id: null,
+          is_onboarding_pending: true,
+        };
 
         const authData = {
           token: sessionData.access_token,
@@ -2496,10 +2504,6 @@ export default function App() {
       profile={checkoutAuth?.profile}
       authData={checkoutAuth}
       session={{ access_token: checkoutAuth?.token || checkoutAuth?.access_token, user: checkoutAuth?.user, profile: checkoutAuth?.profile }}
-      onCourtesyValidated={(email) => {
-        setCourtesyEmail(email);
-        setShowPlans(false);
-      }}
     />
   );
 
@@ -2519,7 +2523,15 @@ export default function App() {
   // Usuário logado mas sem barbearia → onboarding.
   // Super admin pode entrar sem barbershop_id porque acessa apenas o painel administrativo.
   if (!auth.profile?.barbershop_id && !isSuperAdmin) {
-    return <Onboarding onComplete={onLogin} courtesyEmail={courtesyEmail} />;
+    return (
+      <Onboarding
+        onComplete={onLogin}
+        courtesyEmail={courtesyEmail || auth.user?.email || ""}
+        initialToken={auth.token || auth.access_token}
+        initialUser={auth.user}
+        initialEmail={auth.user?.email || courtesyEmail || ""}
+      />
+    );
   }
 
   if (loading||!dataLoaded) return <><style>{CSS}</style><LoadingScreen/></>;
