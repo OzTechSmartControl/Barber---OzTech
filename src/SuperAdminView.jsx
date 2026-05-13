@@ -241,48 +241,38 @@ export default function SuperAdminView({ section = "dashboard" }) {
   };
 
   const loadCourtesyRows = async () => {
-    // Caminho 0: VIEW administrativa criada pelo SQL 09.
-    // A view roda no banco como owner e contorna o problema em que a tabela
-    // courtesy_access tem registros, mas o SELECT do usuário retorna vazio por RLS.
-    const viaView = await supabase
-      .from("superadmin_courtesy_access_overview")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (!viaView.error && Array.isArray(viaView.data) && viaView.data.length > 0) {
-      return viaView.data;
-    }
-
-    // Caminho 1: RPC SECURITY DEFINER v2.
-    const viaRpcV2 = await supabase.rpc("superadmin_courtesy_access_list_v2");
-    const rpcRows = asArray(viaRpcV2.data);
-
-    if (!viaRpcV2.error && rpcRows.length > 0) {
-      return rpcRows;
-    }
-
-    // Caminho 2: RPC antiga, caso já exista no banco.
-    const viaRpcV1 = await supabase.rpc("superadmin_courtesy_access_list");
-    if (!viaRpcV1.error && Array.isArray(viaRpcV1.data) && viaRpcV1.data.length > 0) {
-      return viaRpcV1.data;
-    }
-
-    // Caminho 3: SELECT direto na tabela, caso a policy de SELECT esteja correta.
+    // Caminho 1: SELECT direto, usando a policy original:
+    // profiles.is_super_admin = true.
     const direct = await supabase
       .from("courtesy_access")
-      .select("*")
+      .select("id,email,type,expires_at,notes,status,created_at,revoked_at,used_at,used_by_user_id,barbershop_id,barbershops(name)")
       .order("created_at", { ascending: false });
 
-    if (!direct.error && Array.isArray(direct.data) && direct.data.length > 0) {
-      return direct.data;
+    if (!direct.error && Array.isArray(direct.data)) {
+      return {
+        rows: direct.data,
+        error: "",
+      };
     }
 
-    if (viaView.error) console.warn("VIEW cortesias:", viaView.error.message || viaView.error);
-    if (viaRpcV2.error) console.warn("RPC v2 cortesias:", viaRpcV2.error.message || viaRpcV2.error);
-    if (viaRpcV1.error) console.warn("RPC v1 cortesias:", viaRpcV1.error.message || viaRpcV1.error);
-    if (direct.error) console.warn("SELECT cortesias:", direct.error.message || direct.error);
+    // Caminho 2: fallback via RPC criada no SQL 11.
+    const viaRpc = await supabase.rpc("list_courtesy_access_for_superadmin");
+    const rpcRows = asArray(viaRpc.data);
 
-    return [];
+    if (!viaRpc.error && rpcRows.length >= 0) {
+      return {
+        rows: rpcRows,
+        error: "",
+      };
+    }
+
+    return {
+      rows: [],
+      error:
+        direct.error?.message ||
+        viaRpc.error?.message ||
+        "Não foi possível carregar a listagem de cortesias.",
+    };
   };
 
   const loadAll = async () => {
@@ -326,7 +316,8 @@ export default function SuperAdminView({ section = "dashboard" }) {
       if (clientsRes.error) throw clientsRes.error;
       if (subscriptionsRes.error) throw subscriptionsRes.error;
 
-      const courtesyRows = await loadCourtesyRows();
+      const courtesyResult = await loadCourtesyRows();
+      const courtesyRows = courtesyResult.rows || [];
 
       setMetrics({ ...defaultMetrics, ...(metricsRes.data || {}) });
       setCustomerGrowth(customerGrowthRes.data || []);
@@ -340,7 +331,8 @@ export default function SuperAdminView({ section = "dashboard" }) {
       const totalCourtesiesFromKpi = Number((metricsRes.data || {}).total_courtesies || 0);
       if (section === "courtesy" && totalCourtesiesFromKpi > 0 && courtesyRows.length === 0) {
         setErr(
-          "Existem cortesias contabilizadas nos KPIs, mas a listagem retornou 0 registros. Execute o SQL 09_fix_courtesy_access_view_listagem.sql no Supabase, faça deploy dos arquivos e depois clique em Atualizar."
+          courtesyResult.error ||
+            "Existem cortesias contabilizadas nos KPIs, mas a listagem retornou 0 registros. Execute o SQL 11_fix_courtesy_access_original_rules.sql e clique em Atualizar."
         );
       }
     } catch (e) {
@@ -409,8 +401,11 @@ export default function SuperAdminView({ section = "dashboard" }) {
     setSavingCourtesy(true);
 
     try {
+      const { data: userRes } = await supabase.auth.getUser();
+
       const body = {
         email,
+        granted_by: userRes?.user?.id || null,
         type: form.type,
         expires_at:
           form.type === "timed" ? new Date(form.expires_at).toISOString() : null,
@@ -462,11 +457,14 @@ export default function SuperAdminView({ section = "dashboard" }) {
     setRevoking(id);
 
     try {
+      const { data: userRes } = await supabase.auth.getUser();
+
       const { error } = await supabase
         .from("courtesy_access")
         .update({
           status: "revoked",
           revoked_at: new Date().toISOString(),
+          revoked_by: userRes?.user?.id || null,
         })
         .eq("id", id);
 
