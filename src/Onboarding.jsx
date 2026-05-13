@@ -82,20 +82,38 @@ const updateProfile = async (tok, uid, data) => {
   });
 };
 
-// Atualiza a barbearia recém-criada com telefone, endereço e logo
+// Atualiza a barbearia recém-criada com telefone, endereço e logo.
+// Usa RPC SECURITY DEFINER porque o PATCH direto em barbershops pode retornar sucesso vazio
+// quando a policy RLS ainda não reconhece o vínculo recém-criado do profile.
 const updateBarbershop = async (tok, shopId, data) => {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/barbershops?id=eq.${shopId}`, {
-    method: "PATCH",
-    headers: { ...hdr(tok), Prefer: "return=representation" },
-    body: JSON.stringify(data),
+  const body = {
+    p_barbershop_id: shopId,
+    p_phone: data.phone || null,
+    p_address: data.address || null,
+    p_accent_color: data.accent_color || "#4db8ff",
+    p_logo_url: data.logo_url || null,
+  };
+
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/oz_update_barbershop_branding`, {
+    method: "POST",
+    headers: hdr(tok),
+    body: JSON.stringify(body),
   });
 
   if (!r.ok) {
     const e = await r.json().catch(() => ({}));
-    throw new Error(e.message || "Erro ao atualizar dados da barbearia.");
+    throw new Error(e.message || "Erro ao atualizar logo/dados da barbearia.");
   }
 
-  return r.json().catch(() => null);
+  const updatedShop = await r.json().catch(() => null);
+
+  // Segurança extra: se houve upload mas a RPC não devolveu logo_url, bloqueia o fluxo
+  // em vez de seguir silenciosamente com o logo antigo.
+  if (data.logo_url && !updatedShop?.logo_url) {
+    throw new Error("Logo enviado, mas não foi gravado na barbearia. Tente novamente.");
+  }
+
+  return updatedShop;
 };
 
 // Upload de logo no Supabase Storage (bucket "logos")
@@ -104,7 +122,7 @@ const uploadLogo = async (tok, file, shopId) => {
 
   const rawExt = file.name.split(".").pop() || "png";
   const ext = rawExt.toLowerCase().replace(/[^a-z0-9]/g, "") || "png";
-  const path = `${shopId}/logo.${ext}`;
+  const path = `${shopId}/logo-${Date.now()}.${ext}`;
 
   const r = await fetch(`${SUPABASE_URL}/storage/v1/object/logos/${path}`, {
     method: "POST",
