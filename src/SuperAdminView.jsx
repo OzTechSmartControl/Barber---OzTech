@@ -216,6 +216,7 @@ export default function SuperAdminView({ section = "dashboard" }) {
   const [revokeError, setRevokeError] = useState("");
   const [savingCourtesy, setSavingCourtesy] = useState(false);
   const [revoking, setRevoking] = useState(null);
+  const [sendingInvite, setSendingInvite] = useState(null);
   const [revokingFromModal, setRevokingFromModal] = useState(false);
   const [courtesyError, setCourtesyError] = useState("");
 
@@ -279,8 +280,16 @@ export default function SuperAdminView({ section = "dashboard" }) {
       setPlanDistribution(planDistributionRes.data || []);
       setAlerts(alertsRes.data || []);
       setClients(clientsRes.data || []);
+      const courtesyRows = courtesyRes.data || [];
       setSubscriptions((subscriptionsRes.data || []).map(normalizeSubscription));
-      setCourtesies((courtesyRes.data || []).map(normalizeCourtesy));
+      setCourtesies(courtesyRows.map(normalizeCourtesy));
+
+      const totalCourtesiesFromKpi = Number((metricsRes.data || {}).total_courtesies || 0);
+      if (section === "courtesy" && totalCourtesiesFromKpi > 0 && courtesyRows.length === 0) {
+        setErr(
+          "Existem cortesias contabilizadas nos KPIs, mas a listagem retornou 0 registros. Execute a correção RLS de SELECT da tabela courtesy_access no Supabase."
+        );
+      }
     } catch (e) {
       console.error(e);
       setErr(e.message || "Erro ao carregar dados do painel administrativo.");
@@ -292,6 +301,42 @@ export default function SuperAdminView({ section = "dashboard" }) {
   useEffect(() => {
     loadAll();
   }, []);
+
+  const sendCourtesyAccessEmail = async (email) => {
+    const normalizedEmail = String(email || "").trim().toLowerCase();
+    if (!normalizedEmail) throw new Error("E-mail não informado para envio do acesso.");
+
+    const redirectTo = `${window.location.origin}/`;
+    const { error } = await supabase.auth.signInWithOtp({
+      email: normalizedEmail,
+      options: {
+        shouldCreateUser: true,
+        emailRedirectTo: redirectTo,
+      },
+    });
+
+    if (error) throw error;
+  };
+
+  const handleSendCourtesyEmail = async (row) => {
+    const email = row?.display_email || row?.email;
+    if (!email || email === "—") {
+      alert("Não foi possível reenviar: este acesso não possui e-mail válido.");
+      return;
+    }
+
+    setSendingInvite(row.id || email);
+
+    try {
+      await sendCourtesyAccessEmail(email);
+      alert(`E-mail de acesso reenviado para ${email}.`);
+    } catch (e) {
+      console.error(e);
+      alert(e.message || "Erro ao reenviar e-mail de acesso.");
+    } finally {
+      setSendingInvite(null);
+    }
+  };
 
   const handleCreateCourtesy = async () => {
     setCourtesyError("");
@@ -323,10 +368,25 @@ export default function SuperAdminView({ section = "dashboard" }) {
       const { error } = await supabase.from("courtesy_access").insert(body);
       if (error) throw error;
 
+      let emailWarning = "";
+      try {
+        await sendCourtesyAccessEmail(email);
+      } catch (emailErr) {
+        emailWarning = emailErr?.message || "Falha ao enviar o e-mail de acesso.";
+      }
+
       setShowCourtesyModal(false);
       setForm({ email: "", type: "unlimited", expires_at: "", notes: "" });
 
       await loadAll();
+
+      if (emailWarning) {
+        alert(
+          `Cortesia criada, mas o e-mail de ativação/acesso não foi enviado: ${emailWarning}`
+        );
+      } else {
+        alert("Cortesia criada e e-mail de acesso enviado ao usuário.");
+      }
     } catch (e) {
       console.error(e);
       setCourtesyError(e.message || "Erro ao criar cortesia.");
@@ -458,7 +518,9 @@ export default function SuperAdminView({ section = "dashboard" }) {
           }}
           onRevoke={handleRevoke}
           onDelete={handleDelete}
+          onSendInvite={handleSendCourtesyEmail}
           revoking={revoking}
+          sendingInvite={sendingInvite}
         />
       );
     }
@@ -480,6 +542,7 @@ export default function SuperAdminView({ section = "dashboard" }) {
     planFilter,
     revenueGrowth,
     revoking,
+    sendingInvite,
     search,
     statusFilter,
     subscriptions,
@@ -899,7 +962,7 @@ export default function SuperAdminView({ section = "dashboard" }) {
                   Revogando…
                 </>
               ) : (
-                "Revogar acesso"//teste
+                "Revogar acesso"
               )}
             </button>
           </div>

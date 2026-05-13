@@ -1,4 +1,4 @@
-import { Ban, Check, Clock, Gift, Infinity, Plus, Search, Trash2, TrendingUp } from "lucide-react";
+import { Ban, Check, Clock, Gift, Infinity, Mail, Plus, Search, Trash2, TrendingUp } from "lucide-react";
 
 import T from "../../config/theme";
 import { fDate, fDatetime } from "../../utils/formatters";
@@ -55,7 +55,9 @@ export default function CourtesyView({
   onOpenRevokeModal,
   onRevoke,
   onDelete,
+  onSendInvite,
   revoking,
+  sendingInvite,
 }) {
   const filtered = courtesyList.filter((item) => {
     const q = (search || "").toLowerCase();
@@ -153,25 +155,49 @@ export default function CourtesyView({
       render: (row) => (
         <div style={{ display: "flex", gap: 8 }}>
           {row.status === "active" && (
-            <button
-              onClick={() => onRevoke(row.id)}
-              disabled={revoking === row.id}
-              style={{
-                background: T.dangerBg,
-                border: `1px solid ${T.danger}44`,
-                borderRadius: 8,
-                padding: "5px 10px",
-                color: T.danger,
-                fontSize: 12,
-                fontWeight: 800,
-                cursor: "pointer",
-                display: "inline-flex",
-                gap: 5,
-                alignItems: "center",
-              }}
-            >
-              <Trash2 size={12} /> Revogar
-            </button>
+            <>
+              <button
+                onClick={() => onSendInvite?.(row)}
+                disabled={sendingInvite === row.id}
+                style={{
+                  background: `${T.accent}18`,
+                  border: `1px solid ${T.accent}55`,
+                  borderRadius: 8,
+                  padding: "5px 10px",
+                  color: T.accent,
+                  fontSize: 12,
+                  fontWeight: 800,
+                  cursor: sendingInvite === row.id ? "wait" : "pointer",
+                  display: "inline-flex",
+                  gap: 5,
+                  alignItems: "center",
+                  opacity: sendingInvite === row.id ? 0.7 : 1,
+                }}
+              >
+                <Mail size={12} /> {sendingInvite === row.id ? "Enviando" : "Enviar e-mail"}
+              </button>
+
+              <button
+                onClick={() => onRevoke(row.id)}
+                disabled={revoking === row.id}
+                style={{
+                  background: T.dangerBg,
+                  border: `1px solid ${T.danger}44`,
+                  borderRadius: 8,
+                  padding: "5px 10px",
+                  color: T.danger,
+                  fontSize: 12,
+                  fontWeight: 800,
+                  cursor: revoking === row.id ? "wait" : "pointer",
+                  display: "inline-flex",
+                  gap: 5,
+                  alignItems: "center",
+                  opacity: revoking === row.id ? 0.7 : 1,
+                }}
+              >
+                <Trash2 size={12} /> Revogar
+              </button>
+            </>
           )}
 
           {row.status === "revoked" && (
