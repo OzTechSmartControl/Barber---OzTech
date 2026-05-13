@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  AlertCircle,
   Ban,
   Check,
   Clock,
@@ -441,32 +440,6 @@ export default function CourtesyView({
           Atualizar lista
         </button>
       </div>
-
-      {(localError || debug.length > 0) && (
-        <div
-          style={{
-            background: localError ? T.warningBg || "rgba(245, 158, 11, 0.12)" : "rgba(56,189,248,.08)",
-            border: `1px solid ${localError ? T.warning || "#f59e0b" : T.accent}55`,
-            borderRadius: 12,
-            padding: "0.75rem 1rem",
-            color: localError ? T.warning || "#f59e0b" : T.mutedLight,
-            fontSize: 12,
-            marginBottom: "1rem",
-            display: "flex",
-            gap: 8,
-            alignItems: "flex-start",
-          }}
-        >
-          <AlertCircle size={15} style={{ marginTop: 1 }} />
-          <div>
-            {localError && <div style={{ fontWeight: 800, marginBottom: 4 }}>{localError}</div>}
-            <div>
-              Fonte da listagem:{" "}
-              {debug.map((a) => `${a.name} = ${a.error ? `erro: ${a.error}` : `${a.count} registro(s)`}`).join(" | ")}
-            </div>
-          </div>
-        </div>
-      )}
 
       <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 18, overflow: "hidden" }}>
         <div style={{ overflowX: "auto" }}>
