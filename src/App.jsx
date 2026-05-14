@@ -1878,7 +1878,7 @@ function SubscriptionView({ token, shop, profile, onOpenPlans }) {
 
               {isCourtesy && (
                 <div style={{ marginTop:"1rem", color:T.mutedLight, fontSize:12, lineHeight:1.55, background:T.successBg, border:`1px solid ${T.success}33`, borderRadius:10, padding:".75rem .9rem" }}>
-                  Este acesso é uma cortesia. Ele não gera cobrança e não entra como receita recorrente até ser convertido em plano pago.
+                  Acesso cortesia, não gera cobrança.
                 </div>
               )}
             </>
