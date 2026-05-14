@@ -3050,15 +3050,31 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     const payment = params.get("payment");
     const plan    = params.get("plan");
+    const paidEmail = (params.get("email") || params.get("payer_email") || "").trim().toLowerCase();
+
     if (payment === "success" && plan) {
       window.history.replaceState(null, "", window.location.pathname);
-      // Assinatura criada pelo webhook; usuário já pode prosseguir
+
+      // Fallback Checkout Pro: cliente pode pagar antes de criar acesso.
+      // Se veio e-mail no retorno, levamos direto para o onboarding com o e-mail preenchido.
+      if (paidEmail && !auth) {
+        setCourtesyEmail(paidEmail);
+      }
+
+      setShowPlans(false);
+    } else if (payment === "pending" && plan) {
+      window.history.replaceState(null, "", window.location.pathname);
+
+      if (paidEmail && !auth) {
+        setCourtesyEmail(paidEmail);
+      }
+
       setShowPlans(false);
     } else if (payment === "failure") {
       window.history.replaceState(null, "", window.location.pathname);
       setShowPlans(true);
     }
-  }, []);
+  }, [auth]);
 
   const loadData = useCallback(async (tok, profile) => {
     setLoading(true);

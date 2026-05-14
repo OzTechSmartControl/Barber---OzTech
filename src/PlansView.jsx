@@ -125,6 +125,8 @@ export default function PlansView({
   const [showCourtesyHelp, setShowCourtesyHelp] = useState(false);
   const [err, setErr] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+  const [payerEmail, setPayerEmail] = useState("");
+  const [pendingPlan, setPendingPlan] = useState(null);
 
   const getSavedAuth = () => {
     try {
@@ -204,6 +206,14 @@ export default function PlansView({
 
     try {
       const accessToken = getAccessToken();
+      const finalPayerEmail = String(getUserEmail() || payerEmail || "").trim().toLowerCase();
+
+      if (!finalPayerEmail || !finalPayerEmail.includes("@")) {
+        setPendingPlan(plan);
+        setErr("Informe seu e-mail para continuar a assinatura.");
+        setLoadingPlan(null);
+        return;
+      }
 
       const payload = {
         plan_id: plan.id,
@@ -217,7 +227,7 @@ export default function PlansView({
         pending_url: `${window.location.origin}/?payment=pending&plan=${plan.id}`,
         user_id: getUserId(),
         barbershop_id: getBarbershopId(),
-        payer_email: getUserEmail(),
+        payer_email: finalPayerEmail,
       };
 
       const res = await fetch(`${SUPABASE_URL}/functions/v1/create-mp-preference`, {
@@ -614,6 +624,98 @@ export default function PlansView({
             </div>
           </div>
         </div>
+
+        {pendingPlan && (
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 50,
+              background: "rgba(0,0,0,.72)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "1rem",
+              backdropFilter: "blur(6px)",
+            }}
+          >
+            <div
+              style={{
+                width: "100%",
+                maxWidth: 410,
+                background: "linear-gradient(180deg, rgba(26,26,36,.98), rgba(14,16,24,.98))",
+                border: `1px solid ${T.accent}55`,
+                borderRadius: 16,
+                padding: "1.4rem",
+                boxShadow: "0 28px 90px rgba(0,0,0,.55), 0 0 42px rgba(77,184,255,.08)",
+              }}
+            >
+              <div style={{ color: T.text, fontSize: 20, fontWeight: 800, marginBottom: 6 }}>
+                Informe seu e-mail
+              </div>
+              <div style={{ color: T.mutedLight, fontSize: 13, lineHeight: 1.5, marginBottom: "1rem" }}>
+                Usaremos este e-mail para liberar o cadastro da sua barbearia após o pagamento.
+              </div>
+
+              <div style={{ marginBottom: "1rem" }}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: T.muted, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.8 }}>
+                  E-mail
+                </div>
+                <input
+                  style={inputSt}
+                  type="email"
+                  placeholder="seu@email.com"
+                  value={payerEmail}
+                  onChange={(e) => setPayerEmail(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && pendingPlan) handlePlanSelect(pendingPlan);
+                  }}
+                  autoFocus
+                />
+              </div>
+
+              <div style={{ display: "flex", gap: 10 }}>
+                <button
+                  onClick={() => {
+                    setPendingPlan(null);
+                    setErr("");
+                  }}
+                  style={{
+                    flex: 1,
+                    background: "#0d0e14",
+                    border: `1px solid ${T.border}`,
+                    color: T.text,
+                    borderRadius: 10,
+                    padding: "0.75rem",
+                    fontWeight: 800,
+                    cursor: "pointer",
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                >
+                  Cancelar
+                </button>
+
+                <button
+                  onClick={() => pendingPlan && handlePlanSelect(pendingPlan)}
+                  disabled={loadingPlan === pendingPlan?.id}
+                  style={{
+                    flex: 1.4,
+                    background: T.accent,
+                    border: `1px solid ${T.accent}`,
+                    color: "#061018",
+                    borderRadius: 10,
+                    padding: "0.75rem",
+                    fontWeight: 900,
+                    cursor: loadingPlan === pendingPlan?.id ? "wait" : "pointer",
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                >
+                  {loadingPlan === pendingPlan?.id ? "Aguarde..." : "Continuar"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div style={{ textAlign: "center", marginTop: "1.75rem", fontSize: 12, color: T.mutedLight }}>
           Desenvolvido por <span style={{ color: T.accent, fontWeight: 700 }}>OzTech SmartControl</span>
