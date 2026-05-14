@@ -170,6 +170,20 @@ export default function PlansView({
     );
   };
 
+  const getUserEmail = () => {
+    const saved = getSavedAuth();
+
+    return (
+      user?.email ||
+      authData?.user?.email ||
+      session?.user?.email ||
+      saved?.user?.email ||
+      saved?.session?.user?.email ||
+      saved?.email ||
+      null
+    );
+  };
+
   const getBarbershopId = () => {
     const saved = getSavedAuth();
 
@@ -203,6 +217,7 @@ export default function PlansView({
         pending_url: `${window.location.origin}/?payment=pending&plan=${plan.id}`,
         user_id: getUserId(),
         barbershop_id: getBarbershopId(),
+        payer_email: getUserEmail(),
       };
 
       const res = await fetch(`${SUPABASE_URL}/functions/v1/create-mp-preference`, {
