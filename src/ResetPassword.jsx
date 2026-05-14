@@ -72,7 +72,7 @@ export default function ResetPassword() {
         }
       } catch (e) {
         console.error(e);
-        setError("Não foi possível validar o link. Solicite um novo e-mail de acesso.");
+        setError("Não foi possível validar o link. Solicite um novo e-mail de acesso ou recuperação de senha.");
       } finally {
         setBooting(false);
       }
@@ -99,7 +99,7 @@ export default function ResetPassword() {
     const { data: sessionData } = await supabase.auth.getSession();
 
     if (!sessionData?.session?.access_token) {
-      setError("Sessão expirada. Solicite um novo link de acesso.");
+      setError("Sessão expirada. Solicite um novo link de acesso ou recuperação de senha.");
       setLoading(false);
       return;
     }
@@ -201,7 +201,7 @@ export default function ResetPassword() {
               letterSpacing: -0.4,
             }}
           >
-            Criar acesso
+            Definir senha
           </h1>
 
           <p
@@ -213,7 +213,7 @@ export default function ResetPassword() {
               maxWidth: 420,
             }}
           >
-            Defina sua senha para continuar o cadastro da sua barbearia.
+            Crie ou atualize sua senha para continuar usando o Oz.Barber.
           </p>
 
           {error && (
@@ -254,7 +254,7 @@ export default function ResetPassword() {
               }}
             >
               <CheckCircle size={18} style={{ flexShrink: 0 }} />
-              Senha criada com sucesso. Redirecionando para o cadastro da barbearia…
+              Senha atualizada com sucesso. Redirecionando…
             </div>
           )}
 
@@ -342,7 +342,7 @@ export default function ResetPassword() {
               boxShadow: "0 12px 32px rgba(77,184,255,.24)",
             }}
           >
-            {booting ? "Validando link..." : loading ? "Salvando..." : success ? "Redirecionando..." : "Criar senha e continuar"}
+            {booting ? "Validando link..." : loading ? "Salvando..." : success ? "Redirecionando..." : "Definir senha e continuar"}
           </button>
         </div>
 

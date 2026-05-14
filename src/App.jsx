@@ -253,6 +253,12 @@ const LoginView = ({ onLogin, onShowPlans }) => {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
 
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [recoverEmail, setRecoverEmail] = useState("");
+  const [recoverLoading, setRecoverLoading] = useState(false);
+  const [recoverErr, setRecoverErr] = useState("");
+  const [recoverSuccess, setRecoverSuccess] = useState("");
+
   const submit = async () => {
     if (!email || !pass) return setErr("Preencha e-mail e senha.");
 
@@ -294,6 +300,56 @@ const LoginView = ({ onLogin, onShowPlans }) => {
     }
 
     setLoading(false);
+  };
+
+  const openForgot = () => {
+    setRecoverEmail(email.trim().toLowerCase());
+    setRecoverErr("");
+    setRecoverSuccess("");
+    setForgotOpen(true);
+  };
+
+  const sendRecoveryEmail = async () => {
+    const cleanEmail = recoverEmail.trim().toLowerCase();
+
+    if (!cleanEmail) {
+      setRecoverErr("Informe o e-mail cadastrado.");
+      return;
+    }
+
+    setRecoverLoading(true);
+    setRecoverErr("");
+    setRecoverSuccess("");
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      setRecoverSuccess("Se este e-mail estiver cadastrado, enviaremos um link para redefinir sua senha.");
+    } catch (e) {
+      console.error(e);
+      const message = String(e?.message || "").toLowerCase();
+
+      if (message.includes("rate limit")) {
+        setRecoverErr("Limite de envio de e-mails atingido. Aguarde alguns minutos e tente novamente.");
+      } else {
+        setRecoverErr(e?.message || "Não foi possível enviar o e-mail de recuperação.");
+      }
+    } finally {
+      setRecoverLoading(false);
+    }
+  };
+
+  const closeForgot = () => {
+    if (recoverLoading) return;
+    setForgotOpen(false);
+    setRecoverErr("");
+    setRecoverSuccess("");
   };
 
   const onKey = e => e.key === "Enter" && submit();
@@ -508,7 +564,7 @@ const LoginView = ({ onLogin, onShowPlans }) => {
           <div style={{ textAlign: "right", margin: ".15rem 0 1.05rem" }}>
             <button
               type="button"
-              onClick={() => alert("Em breve: recuperação de senha pelo e-mail.")}
+              onClick={openForgot}
               style={{
                 background: "transparent",
                 border: "none",
@@ -574,7 +630,7 @@ const LoginView = ({ onLogin, onShowPlans }) => {
           <div
             style={{
               textAlign: "center",
-              fontSize: 14,
+              fontSize: 13,
               color: T.mutedLight,
             }}
           >
@@ -586,7 +642,7 @@ const LoginView = ({ onLogin, onShowPlans }) => {
                 border: "none",
                 color: T.accent,
                 cursor: "pointer",
-                fontSize: 14,
+                fontSize: 13,
                 fontWeight: 900,
                 fontFamily: "'DM Sans', sans-serif",
                 padding: 0,
@@ -609,6 +665,121 @@ const LoginView = ({ onLogin, onShowPlans }) => {
           Desenvolvido por OzTech SmartControl
         </div>
       </div>
+
+      {forgotOpen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,.72)",
+            zIndex: 2000,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "1rem",
+            backdropFilter: "blur(6px)",
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: 420,
+              background: "linear-gradient(180deg, rgba(26,26,36,.98), rgba(14,16,24,.98))",
+              border: `1px solid ${T.accent}55`,
+              borderRadius: 16,
+              boxShadow: "0 28px 90px rgba(0,0,0,.55), 0 0 42px rgba(77,184,255,.08)",
+              padding: "1.65rem",
+            }}
+          >
+            <div style={{ display:"flex", justifyContent:"space-between", gap:12, alignItems:"flex-start", marginBottom:"1rem" }}>
+              <div>
+                <h2 style={{ margin:0, color:T.text, fontSize:22, lineHeight:1.1 }}>Recuperar senha</h2>
+                <p style={{ margin:".65rem 0 0", color:T.mutedLight, fontSize:13, lineHeight:1.5 }}>
+                  Informe o e-mail cadastrado para receber o link de redefinição.
+                </p>
+              </div>
+
+              <button
+                onClick={closeForgot}
+                disabled={recoverLoading}
+                style={{
+                  background:"transparent",
+                  border:"none",
+                  color:T.mutedLight,
+                  cursor: recoverLoading ? "not-allowed" : "pointer",
+                  fontSize:22,
+                  lineHeight:1,
+                  padding:0,
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {recoverErr && (
+              <div style={{ background:T.dangerBg, border:`1px solid ${T.danger}44`, color:T.danger, borderRadius:10, padding:".75rem .9rem", fontSize:13, marginBottom:"1rem", fontWeight:700 }}>
+                {recoverErr}
+              </div>
+            )}
+
+            {recoverSuccess && (
+              <div style={{ background:T.successBg, border:`1px solid ${T.success}44`, color:T.success, borderRadius:10, padding:".75rem .9rem", fontSize:13, marginBottom:"1rem", fontWeight:700, lineHeight:1.45 }}>
+                {recoverSuccess}
+              </div>
+            )}
+
+            <div style={{ marginBottom:"1rem" }}>
+              <div style={{ fontSize:11, fontWeight:800, color:T.mutedLight, marginBottom:8, textTransform:"uppercase", letterSpacing:1.4 }}>
+                E-mail
+              </div>
+
+              <div style={loginInputWrap}>
+                <Mail size={18} style={iconSt} />
+                <input
+                  type="email"
+                  value={recoverEmail}
+                  onChange={e => setRecoverEmail(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && sendRecoveryEmail()}
+                  placeholder="Digite seu e-mail"
+                  autoComplete="email"
+                  style={loginInput}
+                />
+              </div>
+            </div>
+
+            <button
+              onClick={sendRecoveryEmail}
+              disabled={recoverLoading}
+              style={{
+                width:"100%",
+                minHeight:42,
+                background:`linear-gradient(135deg, ${T.accent}, #7dd3fc)`,
+                color:"#061018",
+                border:"none",
+                borderRadius:10,
+                fontSize:13,
+                fontWeight:900,
+                cursor: recoverLoading ? "wait" : "pointer",
+                display:"inline-flex",
+                alignItems:"center",
+                justifyContent:"center",
+                gap:8,
+                fontFamily:"'DM Sans', sans-serif",
+                opacity: recoverLoading ? .75 : 1,
+              }}
+            >
+              {recoverLoading ? (
+                <>
+                  <RefreshCw size={15} style={{ animation:"spin 1s linear infinite" }} />
+                  Enviando…
+                </>
+              ) : (
+                "Enviar link de recuperação"
+              )}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
