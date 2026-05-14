@@ -72,7 +72,7 @@ export default function ResetPassword() {
         }
       } catch (e) {
         console.error(e);
-        setError("Não foi possível validar o link. Solicite um novo e-mail de acesso ou recuperação de senha.");
+        setError("Não foi possível validar o link. Solicite um novo e-mail de acesso.");
       } finally {
         setBooting(false);
       }
@@ -99,7 +99,7 @@ export default function ResetPassword() {
     const { data: sessionData } = await supabase.auth.getSession();
 
     if (!sessionData?.session?.access_token) {
-      setError("Sessão expirada. Solicite um novo link de acesso ou recuperação de senha.");
+      setError("Sessão expirada. Solicite um novo link de acesso.");
       setLoading(false);
       return;
     }
@@ -114,45 +114,13 @@ export default function ResetPassword() {
       return;
     }
 
-    // Se o usuário já possui perfil/barbearia, é fluxo de recuperação de senha:
-    // encerra a sessão e volta ao login limpo.
-    // Se ainda não possui barbearia, é primeiro acesso/cortesia:
-    // mantém a sessão para o App continuar no onboarding.
-    let shouldSignOut = false;
-
-    try {
-      const { data: userData } = await supabase.auth.getUser();
-      const userId = userData?.user?.id;
-
-      if (userId) {
-        const { data: profileData } = await supabase
-          .from("profiles")
-          .select("id, barbershop_id, role, is_super_admin")
-          .eq("id", userId)
-          .maybeSingle();
-
-        shouldSignOut = Boolean(
-          profileData?.barbershop_id ||
-          profileData?.is_super_admin === true ||
-          profileData?.role === "super_admin"
-        );
-      }
-    } catch (e) {
-      console.warn("Não foi possível identificar o tipo de fluxo após redefinir senha:", e);
-    }
-
     setSuccess(true);
     setLoading(false);
 
-    setTimeout(async () => {
+    setTimeout(() => {
       localStorage.removeItem("ozbarber_auth");
-
-      if (shouldSignOut) {
-        await supabase.auth.signOut();
-      }
-
       window.location.replace("/");
-    }, 1200);
+    }, 1500);
   };
 
   return (
@@ -233,7 +201,7 @@ export default function ResetPassword() {
               letterSpacing: -0.4,
             }}
           >
-            Definir senha
+            Criar acesso
           </h1>
 
           <p
@@ -245,7 +213,7 @@ export default function ResetPassword() {
               maxWidth: 420,
             }}
           >
-            Crie ou atualize sua senha para continuar usando o Oz.Barber.
+            Defina sua senha para continuar o cadastro da sua barbearia.
           </p>
 
           {error && (
@@ -286,7 +254,7 @@ export default function ResetPassword() {
               }}
             >
               <CheckCircle size={18} style={{ flexShrink: 0 }} />
-              Senha atualizada com sucesso. Redirecionando…
+              Senha criada com sucesso. Redirecionando para o cadastro da barbearia…
             </div>
           )}
 
@@ -374,7 +342,7 @@ export default function ResetPassword() {
               boxShadow: "0 12px 32px rgba(77,184,255,.24)",
             }}
           >
-            {booting ? "Validando link..." : loading ? "Salvando..." : success ? "Redirecionando..." : "Definir senha e continuar"}
+            {booting ? "Validando link..." : loading ? "Salvando..." : success ? "Redirecionando..." : "Criar senha e continuar"}
           </button>
         </div>
 

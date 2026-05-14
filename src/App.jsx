@@ -253,12 +253,6 @@ const LoginView = ({ onLogin, onShowPlans }) => {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
 
-  const [forgotOpen, setForgotOpen] = useState(false);
-  const [recoverEmail, setRecoverEmail] = useState("");
-  const [recoverLoading, setRecoverLoading] = useState(false);
-  const [recoverErr, setRecoverErr] = useState("");
-  const [recoverSuccess, setRecoverSuccess] = useState("");
-
   const submit = async () => {
     if (!email || !pass) return setErr("Preencha e-mail e senha.");
 
@@ -300,56 +294,6 @@ const LoginView = ({ onLogin, onShowPlans }) => {
     }
 
     setLoading(false);
-  };
-
-  const openForgot = () => {
-    setRecoverEmail(email.trim().toLowerCase());
-    setRecoverErr("");
-    setRecoverSuccess("");
-    setForgotOpen(true);
-  };
-
-  const sendRecoveryEmail = async () => {
-    const cleanEmail = recoverEmail.trim().toLowerCase();
-
-    if (!cleanEmail) {
-      setRecoverErr("Informe o e-mail cadastrado.");
-      return;
-    }
-
-    setRecoverLoading(true);
-    setRecoverErr("");
-    setRecoverSuccess("");
-
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      setRecoverSuccess("Se este e-mail estiver cadastrado, enviaremos um link para redefinir sua senha.");
-    } catch (e) {
-      console.error(e);
-      const message = String(e?.message || "").toLowerCase();
-
-      if (message.includes("rate limit")) {
-        setRecoverErr("Limite de envio de e-mails atingido. Aguarde alguns minutos e tente novamente.");
-      } else {
-        setRecoverErr(e?.message || "Não foi possível enviar o e-mail de recuperação.");
-      }
-    } finally {
-      setRecoverLoading(false);
-    }
-  };
-
-  const closeForgot = () => {
-    if (recoverLoading) return;
-    setForgotOpen(false);
-    setRecoverErr("");
-    setRecoverSuccess("");
   };
 
   const onKey = e => e.key === "Enter" && submit();
@@ -564,7 +508,7 @@ const LoginView = ({ onLogin, onShowPlans }) => {
           <div style={{ textAlign: "right", margin: ".15rem 0 1.05rem" }}>
             <button
               type="button"
-              onClick={openForgot}
+              onClick={() => alert("Em breve: recuperação de senha pelo e-mail.")}
               style={{
                 background: "transparent",
                 border: "none",
@@ -630,7 +574,7 @@ const LoginView = ({ onLogin, onShowPlans }) => {
           <div
             style={{
               textAlign: "center",
-              fontSize: 13,
+              fontSize: 14,
               color: T.mutedLight,
             }}
           >
@@ -642,7 +586,7 @@ const LoginView = ({ onLogin, onShowPlans }) => {
                 border: "none",
                 color: T.accent,
                 cursor: "pointer",
-                fontSize: 13,
+                fontSize: 14,
                 fontWeight: 900,
                 fontFamily: "'DM Sans', sans-serif",
                 padding: 0,
@@ -665,121 +609,6 @@ const LoginView = ({ onLogin, onShowPlans }) => {
           Desenvolvido por OzTech SmartControl
         </div>
       </div>
-
-      {forgotOpen && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,.72)",
-            zIndex: 2000,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "1rem",
-            backdropFilter: "blur(6px)",
-          }}
-        >
-          <div
-            style={{
-              width: "100%",
-              maxWidth: 420,
-              background: "linear-gradient(180deg, rgba(26,26,36,.98), rgba(14,16,24,.98))",
-              border: `1px solid ${T.accent}55`,
-              borderRadius: 16,
-              boxShadow: "0 28px 90px rgba(0,0,0,.55), 0 0 42px rgba(77,184,255,.08)",
-              padding: "1.65rem",
-            }}
-          >
-            <div style={{ display:"flex", justifyContent:"space-between", gap:12, alignItems:"flex-start", marginBottom:"1rem" }}>
-              <div>
-                <h2 style={{ margin:0, color:T.text, fontSize:22, lineHeight:1.1 }}>Recuperar senha</h2>
-                <p style={{ margin:".65rem 0 0", color:T.mutedLight, fontSize:13, lineHeight:1.5 }}>
-                  Informe o e-mail cadastrado para receber o link de redefinição.
-                </p>
-              </div>
-
-              <button
-                onClick={closeForgot}
-                disabled={recoverLoading}
-                style={{
-                  background:"transparent",
-                  border:"none",
-                  color:T.mutedLight,
-                  cursor: recoverLoading ? "not-allowed" : "pointer",
-                  fontSize:22,
-                  lineHeight:1,
-                  padding:0,
-                }}
-              >
-                ×
-              </button>
-            </div>
-
-            {recoverErr && (
-              <div style={{ background:T.dangerBg, border:`1px solid ${T.danger}44`, color:T.danger, borderRadius:10, padding:".75rem .9rem", fontSize:13, marginBottom:"1rem", fontWeight:700 }}>
-                {recoverErr}
-              </div>
-            )}
-
-            {recoverSuccess && (
-              <div style={{ background:T.successBg, border:`1px solid ${T.success}44`, color:T.success, borderRadius:10, padding:".75rem .9rem", fontSize:13, marginBottom:"1rem", fontWeight:700, lineHeight:1.45 }}>
-                {recoverSuccess}
-              </div>
-            )}
-
-            <div style={{ marginBottom:"1rem" }}>
-              <div style={{ fontSize:11, fontWeight:800, color:T.mutedLight, marginBottom:8, textTransform:"uppercase", letterSpacing:1.4 }}>
-                E-mail
-              </div>
-
-              <div style={loginInputWrap}>
-                <Mail size={18} style={iconSt} />
-                <input
-                  type="email"
-                  value={recoverEmail}
-                  onChange={e => setRecoverEmail(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && sendRecoveryEmail()}
-                  placeholder="Digite seu e-mail"
-                  autoComplete="email"
-                  style={loginInput}
-                />
-              </div>
-            </div>
-
-            <button
-              onClick={sendRecoveryEmail}
-              disabled={recoverLoading}
-              style={{
-                width:"100%",
-                minHeight:42,
-                background:`linear-gradient(135deg, ${T.accent}, #7dd3fc)`,
-                color:"#061018",
-                border:"none",
-                borderRadius:10,
-                fontSize:13,
-                fontWeight:900,
-                cursor: recoverLoading ? "wait" : "pointer",
-                display:"inline-flex",
-                alignItems:"center",
-                justifyContent:"center",
-                gap:8,
-                fontFamily:"'DM Sans', sans-serif",
-                opacity: recoverLoading ? .75 : 1,
-              }}
-            >
-              {recoverLoading ? (
-                <>
-                  <RefreshCw size={15} style={{ animation:"spin 1s linear infinite" }} />
-                  Enviando…
-                </>
-              ) : (
-                "Enviar link de recuperação"
-              )}
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
@@ -1820,302 +1649,6 @@ function ReportsView({ attendances, clients, services, barbers, expenses, shop }
 
 
 
-// ── MINHA ASSINATURA ───────────────────────────────────────────
-const planLabel = (raw) => {
-  const id = String(
-    raw?.plan_id ||
-    raw?.plan ||
-    raw?.plan_type ||
-    raw?.type ||
-    raw?.metadata?.plan_id ||
-    ""
-  ).toLowerCase();
-
-  if (id.includes("annual") || id.includes("anual")) return "Plano Anual";
-  if (id.includes("semestral") || id.includes("semi")) return "Plano Semestral";
-  if (id.includes("monthly") || id.includes("mensal")) return "Plano Mensal";
-
-  return raw?.plan_label || raw?.label || raw?.name || "Plano contratado";
-};
-
-const statusConfig = (status, accessType) => {
-  if (accessType === "courtesy" && status === "active") {
-    return { label: "Cortesia ativa", color: T.success, bg: T.successBg };
-  }
-  if (status === "active") {
-    return { label: "Ativa", color: T.success, bg: T.successBg };
-  }
-  if (status === "expired") {
-    return { label: "Expirada", color: T.danger, bg: T.dangerBg };
-  }
-  if (status === "revoked") {
-    return { label: "Revogada", color: T.danger, bg: T.dangerBg };
-  }
-  if (status === "past_due" || status === "overdue") {
-    return { label: "Inadimplente", color: "#f59e0b", bg: "#f59e0b18" };
-  }
-  if (status === "canceled" || status === "cancelled") {
-    return { label: "Cancelada", color: T.mutedLight, bg: T.surface };
-  }
-  return { label: "Sem assinatura ativa", color: T.mutedLight, bg: T.surface };
-};
-
-const accessTypeLabel = (type) => {
-  if (type === "subscription") return "Plano pago";
-  if (type === "courtesy") return "Cortesia";
-  return "Sem acesso ativo";
-};
-
-function SubscriptionView({ token, shop, profile, onOpenPlans }) {
-  const [overview, setOverview] = useState(null);
-  const [loadingSub, setLoadingSub] = useState(true);
-  const [errSub, setErrSub] = useState("");
-
-  const loadOverview = useCallback(async () => {
-    const effectiveBarbershopId = shop?.id || profile?.barbershop_id;
-
-    if (!token || !effectiveBarbershopId) {
-      setLoadingSub(false);
-      setErrSub("Barbearia não encontrada. Saia, entre novamente ou finalize o cadastro da barbearia.");
-      return;
-    }
-
-    setLoadingSub(true);
-    setErrSub("");
-
-    try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/oz_my_subscription_overview`, {
-        method: "POST",
-        headers: hdr(token),
-        body: JSON.stringify({ p_barbershop_id: effectiveBarbershopId }),
-      });
-
-      const data = await res.json().catch(() => null);
-
-      if (!res.ok) {
-        throw new Error(data?.message || data?.error || "Erro ao carregar assinatura.");
-      }
-
-      setOverview(data || {});
-    } catch (e) {
-      console.error(e);
-      setErrSub(e.message || "Erro ao carregar assinatura.");
-    } finally {
-      setLoadingSub(false);
-    }
-  }, [token, shop?.id, profile?.barbershop_id]);
-
-  useEffect(() => {
-    loadOverview();
-  }, [loadOverview]);
-
-  const accessType = overview?.access_type || "none";
-  const current = overview?.current || {};
-  const subscription = overview?.subscription || {};
-  const courtesy = overview?.courtesy || {};
-  const history = Array.isArray(overview?.history) ? overview.history : [];
-  const status = overview?.status || current?.status || "none";
-  const st = statusConfig(status, accessType);
-  const expiresAt = overview?.expires_at || current?.expires_at || null;
-  const daysRemaining = overview?.days_remaining;
-  const isCourtesy = accessType === "courtesy";
-  const isSubscription = accessType === "subscription";
-  const hasAccess = overview?.has_access === true || status === "active";
-
-  const mainTitle = isCourtesy
-    ? "Cortesia Oz.Barber"
-    : isSubscription
-      ? planLabel(current)
-      : "Nenhum plano ativo";
-
-  const mainSub = isCourtesy
-    ? "Acesso concedido pela OzTech SmartControl"
-    : isSubscription
-      ? "Assinatura vinculada à sua barbearia"
-      : "Escolha um plano para ativar o sistema";
-
-  const displayShopName = shop?.name || overview?.barbershop?.name || "—";
-
-  const formatHistoryTitle = (item) => {
-    const kind = item?.kind;
-    const data = item?.data || {};
-    if (kind === "courtesy") return "Cortesia";
-    return planLabel(data);
-  };
-
-  const formatHistoryStatus = (item) => {
-    const data = item?.data || {};
-    return statusConfig(data.status || "none", item?.kind === "courtesy" ? "courtesy" : "subscription");
-  };
-
-  return (
-    <div>
-      <PageHeader
-        title="Minha Assinatura"
-        sub="Acompanhe seu plano, vencimento e status de acesso"
-        right={
-          <Btn onClick={loadOverview} variant="ghost" disabled={loadingSub}>
-            <RefreshCw size={14} style={loadingSub ? { animation: "spin 1s linear infinite" } : undefined} />
-            Atualizar
-          </Btn>
-        }
-      />
-
-      {errSub && <ErrorBar msg={errSub} />}
-
-      <div style={{ display:"grid", gridTemplateColumns:"minmax(0, 1.2fr) minmax(300px, .8fr)", gap:"1.25rem", alignItems:"start" }}>
-        <Card
-          style={{
-            border:`1px solid ${hasAccess ? `${st.color}44` : T.border}`,
-            boxShadow: hasAccess ? `0 0 34px ${st.color}10` : "none",
-            padding:"1.5rem",
-          }}
-        >
-          {loadingSub ? (
-            <div style={{ color:T.mutedLight, display:"flex", alignItems:"center", gap:10 }}>
-              <RefreshCw size={16} style={{ animation:"spin 1s linear infinite" }} />
-              Carregando informações da assinatura...
-            </div>
-          ) : (
-            <>
-              <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:16, marginBottom:"1.5rem" }}>
-                <div>
-                  <div style={{ fontSize:11, color:T.muted, textTransform:"uppercase", letterSpacing:1.1, fontWeight:800, marginBottom:8 }}>
-                    Status do acesso
-                  </div>
-                  <h2 style={{ margin:0, color:T.text, fontSize:28, lineHeight:1.1 }}>
-                    {mainTitle}
-                  </h2>
-                  <div style={{ color:T.mutedLight, marginTop:8, fontSize:13 }}>
-                    {mainSub}
-                  </div>
-                </div>
-
-                <span
-                  style={{
-                    background: st.bg,
-                    color: st.color,
-                    border:`1px solid ${st.color}33`,
-                    borderRadius:999,
-                    padding:"0.42rem 0.75rem",
-                    fontSize:12,
-                    fontWeight:900,
-                    whiteSpace:"nowrap",
-                  }}
-                >
-                  {st.label}
-                </span>
-              </div>
-
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(155px, 1fr))", gap:12, marginBottom:"1.35rem" }}>
-                <div style={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:12, padding:"1rem" }}>
-                  <div style={{ color:T.muted, fontSize:11, textTransform:"uppercase", letterSpacing:.8, fontWeight:800, marginBottom:8 }}>
-                    Tipo
-                  </div>
-                  <div style={{ color:T.text, fontWeight:900 }}>
-                    {accessTypeLabel(accessType)}
-                  </div>
-                </div>
-
-                <div style={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:12, padding:"1rem" }}>
-                  <div style={{ color:T.muted, fontSize:11, textTransform:"uppercase", letterSpacing:.8, fontWeight:800, marginBottom:8 }}>
-                    Vencimento
-                  </div>
-                  <div style={{ color:T.text, fontWeight:900 }}>
-                    {isCourtesy && !expiresAt ? "Sem expiração" : (expiresAt ? new Date(expiresAt).toLocaleDateString("pt-BR") : "—")}
-                  </div>
-                  {typeof daysRemaining === "number" && expiresAt && (
-                    <div style={{ color: daysRemaining <= 7 ? T.danger : T.mutedLight, fontSize:12, marginTop:4 }}>
-                      {daysRemaining >= 0 ? `${daysRemaining} dia(s) restante(s)` : "Vencida"}
-                    </div>
-                  )}
-                </div>
-
-                <div style={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:12, padding:"1rem" }}>
-                  <div style={{ color:T.muted, fontSize:11, textTransform:"uppercase", letterSpacing:.8, fontWeight:800, marginBottom:8 }}>
-                    Barbearia
-                  </div>
-                  <div style={{ color:T.text, fontWeight:900, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
-                    {displayShopName}
-                  </div>
-                </div>
-              </div>
-
-              <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
-                <Btn onClick={onOpenPlans}>
-                  <CreditCard size={14} />
-                  {hasAccess ? "Trocar / renovar plano" : "Assinar plano"}
-                </Btn>
-
-                <Btn
-                  variant="ghost"
-                  onClick={() => alert("Cancelamento será liberado na etapa de recorrência real do Mercado Pago.")}
-                >
-                  Cancelar assinatura
-                </Btn>
-              </div>
-
-              {isCourtesy && (
-                <div style={{ marginTop:"1rem", color:T.mutedLight, fontSize:12, lineHeight:1.55, background:T.successBg, border:`1px solid ${T.success}33`, borderRadius:10, padding:".75rem .9rem" }}>
-                  Acesso cortesia, não gera cobrança.
-                </div>
-              )}
-            </>
-          )}
-        </Card>
-
-        <Card style={{ padding:"1.5rem" }}>
-          <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:"1.1rem" }}>
-            <div style={{ background:T.accentGlow, borderRadius:10, padding:9, display:"flex" }}>
-              <FileText size={17} color={T.accent} />
-            </div>
-            <div>
-              <div style={{ color:T.text, fontWeight:900 }}>Histórico</div>
-              <div style={{ color:T.muted, fontSize:12 }}>Planos e acessos vinculados</div>
-            </div>
-          </div>
-
-          {loadingSub ? (
-            <div style={{ color:T.mutedLight, fontSize:13 }}>Carregando histórico...</div>
-          ) : !history.length ? (
-            <div style={{ color:T.mutedLight, fontSize:13, lineHeight:1.55 }}>
-              Nenhum histórico encontrado para esta barbearia.
-            </div>
-          ) : (
-            <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-              {history.slice(0, 8).map((item, idx) => {
-                const data = item?.data || {};
-                const hs = formatHistoryStatus(item);
-                return (
-                  <div key={`${item.kind}-${data.id || idx}`} style={{ border:`1px solid ${T.border}`, background:T.surface, borderRadius:12, padding:".85rem" }}>
-                    <div style={{ display:"flex", justifyContent:"space-between", gap:10, alignItems:"flex-start" }}>
-                      <div>
-                        <div style={{ color:T.text, fontWeight:900, fontSize:13 }}>{formatHistoryTitle(item)}</div>
-                        <div style={{ color:T.mutedLight, fontSize:12, marginTop:4 }}>
-                          Criado em {data.created_at ? new Date(data.created_at).toLocaleDateString("pt-BR") : "—"}
-                        </div>
-                        {data.expires_at && (
-                          <div style={{ color:T.muted, fontSize:12, marginTop:2 }}>
-                            Vence em {new Date(data.expires_at).toLocaleDateString("pt-BR")}
-                          </div>
-                        )}
-                      </div>
-                      <span style={{ background:hs.bg, color:hs.color, borderRadius:999, padding:"3px 8px", fontSize:10.5, fontWeight:900 }}>
-                        {hs.label}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </Card>
-      </div>
-    </div>
-  );
-}
-
-
 // ── CONFIGURAÇÕES DA BARBEARIA ────────────────────────────────
 const BRAND_COLOR_PRESETS = [
   { label: "Azul", hex: "#4db8ff" },
@@ -2524,12 +2057,11 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
         { id:"attendances", label:"Atendimentos",  Icon:Scissors },
         { id:"clients",     label:"Clientes",      Icon:Users },
         ...(isAdmin ? [
-          { id:"subscription", label:"Minha Assinatura", Icon:CreditCard },
-          { id:"barbers",      label:"Barbeiros",         Icon:Award },
-          { id:"services",     label:"Serviços",          Icon:Tag },
-          { id:"financial",    label:"Financeiro",        Icon:DollarSign },
-          { id:"reports",      label:"Relatórios",        Icon:FileText },
-          { id:"settings",     label:"Configurações",     Icon:Settings },
+          { id:"barbers",   label:"Barbeiros",     Icon:Award },
+          { id:"services",  label:"Serviços",      Icon:Tag },
+          { id:"financial", label:"Financeiro",    Icon:DollarSign },
+          { id:"reports",   label:"Relatórios",    Icon:FileText },
+          { id:"settings",  label:"Configurações", Icon:Settings },
         ] : []),
       ];
 
@@ -3050,67 +2582,24 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     const payment = params.get("payment");
     const plan    = params.get("plan");
-    const paidEmail = (params.get("email") || params.get("payer_email") || "").trim().toLowerCase();
-
     if (payment === "success" && plan) {
       window.history.replaceState(null, "", window.location.pathname);
-
-      // Fallback Checkout Pro: cliente pode pagar antes de criar acesso.
-      // Se veio e-mail no retorno, levamos direto para o onboarding com o e-mail preenchido.
-      if (paidEmail && !auth) {
-        setCourtesyEmail(paidEmail);
-      }
-
-      setShowPlans(false);
-    } else if (payment === "pending" && plan) {
-      window.history.replaceState(null, "", window.location.pathname);
-
-      if (paidEmail && !auth) {
-        setCourtesyEmail(paidEmail);
-      }
-
+      // Assinatura criada pelo webhook; usuário já pode prosseguir
       setShowPlans(false);
     } else if (payment === "failure") {
       window.history.replaceState(null, "", window.location.pathname);
       setShowPlans(true);
     }
-  }, [auth]);
+  }, []);
 
   const loadData = useCallback(async (tok, profile) => {
     setLoading(true);
     setDataLoaded(false);
 
     try {
-      // Sempre tenta buscar o profile mais recente do banco.
-      // Isso corrige casos em que o localStorage ficou com profile antigo
-      // após onboarding, recuperação de senha ou criação manual de usuário.
-      let workingProfile = profile;
-
-      if (profile?.id) {
-        try {
-          const freshProfile = await api.getProfile(profile.id, tok);
-          if (freshProfile?.id) {
-            workingProfile = { ...profile, ...freshProfile };
-
-            const updatedAuth = {
-              ...(safeLoadAuth() || {}),
-              token: tok,
-              access_token: tok,
-              user: auth?.user || safeLoadAuth()?.user || null,
-              profile: workingProfile,
-            };
-
-            setAuth(prev => prev ? { ...prev, profile: workingProfile } : updatedAuth);
-            safeSaveAuth(updatedAuth);
-          }
-        } catch (profileErr) {
-          console.warn("Não foi possível atualizar o profile antes de carregar dados:", profileErr);
-        }
-      }
-
       const isSuperAdmin =
-        workingProfile?.is_super_admin === true ||
-        workingProfile?.role === "super_admin";
+        profile?.is_super_admin === true ||
+        profile?.role === "super_admin";
 
       // Super admin não deve carregar dados operacionais/financeiros das barbearias.
       // Isso evita loop em "CARREGANDO" quando as RLS bloqueiam essas tabelas.
@@ -3127,15 +2616,15 @@ export default function App() {
         return;
       }
 
-      const isAdm = workingProfile.role === "admin";
-      const shopId = workingProfile.barbershop_id;
+      const isAdm = profile.role === "admin";
+      const shopId = profile.barbershop_id;
 
       if (!shopId) {
         throw new Error("Perfil sem barbershop_id. Finalize o cadastro da barbearia.");
       }
 
       // Bloqueio efetivo: revogação/expiração precisa ser validada também em sessão restaurada.
-      const accessStatus = await checkCurrentUserAccess(tok, workingProfile);
+      const accessStatus = await checkCurrentUserAccess(tok, profile);
       if (!accessStatus?.has_access) {
         setExpiredMsg(accessDeniedMessage(accessStatus?.reason));
         setShowPlans(true);
@@ -3150,7 +2639,7 @@ export default function App() {
 
       const attQuery = isAdm
         ? withShop("select=*&order=date.desc,time.desc")
-        : withShop(`select=*&barber_id=eq.${workingProfile.barber_id}&order=date.desc,time.desc`);
+        : withShop(`select=*&barber_id=eq.${profile.barber_id}&order=date.desc,time.desc`);
 
       const [shopRows, brs, cls, svcs, atts, exps] = await Promise.all([
         api.list("barbershops", `id=eq.${shopId}&select=*`, tok),
@@ -3161,31 +2650,7 @@ export default function App() {
         isAdm ? api.list("expenses", withShop("select=*&order=date.desc"), tok) : Promise.resolve([]),
       ]);
 
-      let currentShop = ensureArray(shopRows)[0] || null;
-
-      // Fallback seguro por RPC, útil quando RLS/cache/schema impedem o select direto em barbershops.
-      if (!currentShop && shopId) {
-        try {
-          const shopRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/oz_get_my_barbershop`, {
-            method: "POST",
-            headers: hdr(tok),
-            body: JSON.stringify({ p_barbershop_id: shopId }),
-          });
-
-          const shopData = await shopRes.json().catch(() => null);
-
-          if (shopRes.ok && shopData && typeof shopData === "object" && shopData.id) {
-            currentShop = shopData;
-          }
-        } catch (shopErr) {
-          console.warn("Fallback oz_get_my_barbershop falhou:", shopErr);
-        }
-      }
-
-      if (!currentShop) {
-        console.warn("Barbearia vinculada ao perfil não foi encontrada no carregamento do app.", { shopId, workingProfile });
-      }
-
+      const currentShop = ensureArray(shopRows)[0] || null;
       setShop(currentShop);
       applyTenantTheme(currentShop);
 
@@ -3201,37 +2666,7 @@ export default function App() {
     } finally {
       setLoading(false);
     }
-  }, [auth?.user]);
-
-  // Carrega os dados quando a sessão é restaurada automaticamente
-  // após recuperação de senha, refresh da página ou retorno do Supabase.
-  useEffect(() => {
-    const tok = auth?.token || auth?.access_token;
-    const profile = auth?.profile;
-
-    if (!tok || !profile) return;
-    if (loading || dataLoaded || showPlans) return;
-
-    const isRestoredSuperAdmin =
-      profile?.is_super_admin === true ||
-      profile?.role === "super_admin";
-
-    if (!profile?.barbershop_id && !isRestoredSuperAdmin) return;
-
-    loadData(tok, profile);
-  }, [
-    auth?.token,
-    auth?.access_token,
-    auth?.profile?.barbershop_id,
-    auth?.profile?.role,
-    auth?.profile?.is_super_admin,
-    loading,
-    dataLoaded,
-    showPlans,
-    loadData,
-  ]);
-
-
+  }, []);
 
   const onLogin = useCallback(async (authData) => {
     const normalizedAuth = {
@@ -3354,9 +2789,8 @@ export default function App() {
         barbers:     <BarbersView  barbers={barbers} setBarbers={setBarbers} attendances={attendances} token={tok} barbershopId={barbershopId}/>,
         services:    <ServicesView services={services} setServices={setServices} token={tok} barbershopId={barbershopId}/>,
         financial:   <FinancialView attendances={attendances} expenses={expenses} setExpenses={setExpenses} token={tok} barbershopId={barbershopId}/>,
-        reports:      <ReportsView attendances={attendances} clients={clients} services={services} barbers={barbers} expenses={expenses} shop={shop}/>,
-        subscription: <SubscriptionView token={tok} shop={shop} profile={auth.profile} onOpenPlans={() => { setExpiredMsg(""); setShowPlans(true); }} />,
-        settings:     <SettingsView token={tok} shop={shop} onShopUpdated={(updatedShop) => { setShop(updatedShop); applyTenantTheme(updatedShop); }} />,
+        reports:     <ReportsView attendances={attendances} clients={clients} services={services} barbers={barbers} expenses={expenses} shop={shop}/>,
+        settings:    <SettingsView token={tok} shop={shop} onShopUpdated={(updatedShop) => { setShop(updatedShop); applyTenantTheme(updatedShop); }} />,
       };
 
   return (
