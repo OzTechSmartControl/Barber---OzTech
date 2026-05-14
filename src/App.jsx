@@ -1649,6 +1649,294 @@ function ReportsView({ attendances, clients, services, barbers, expenses, shop }
 
 
 
+// ── MINHA ASSINATURA ───────────────────────────────────────────
+const planLabel = (raw) => {
+  const id = String(
+    raw?.plan_id ||
+    raw?.plan ||
+    raw?.plan_type ||
+    raw?.type ||
+    raw?.metadata?.plan_id ||
+    ""
+  ).toLowerCase();
+
+  if (id.includes("annual") || id.includes("anual")) return "Plano Anual";
+  if (id.includes("semestral") || id.includes("semi")) return "Plano Semestral";
+  if (id.includes("monthly") || id.includes("mensal")) return "Plano Mensal";
+
+  return raw?.plan_label || raw?.label || raw?.name || "Plano contratado";
+};
+
+const statusConfig = (status, accessType) => {
+  if (accessType === "courtesy" && status === "active") {
+    return { label: "Cortesia ativa", color: T.success, bg: T.successBg };
+  }
+  if (status === "active") {
+    return { label: "Ativa", color: T.success, bg: T.successBg };
+  }
+  if (status === "expired") {
+    return { label: "Expirada", color: T.danger, bg: T.dangerBg };
+  }
+  if (status === "revoked") {
+    return { label: "Revogada", color: T.danger, bg: T.dangerBg };
+  }
+  if (status === "past_due" || status === "overdue") {
+    return { label: "Inadimplente", color: "#f59e0b", bg: "#f59e0b18" };
+  }
+  if (status === "canceled" || status === "cancelled") {
+    return { label: "Cancelada", color: T.mutedLight, bg: T.surface };
+  }
+  return { label: "Sem assinatura ativa", color: T.mutedLight, bg: T.surface };
+};
+
+const accessTypeLabel = (type) => {
+  if (type === "subscription") return "Plano pago";
+  if (type === "courtesy") return "Cortesia";
+  return "Sem acesso ativo";
+};
+
+function SubscriptionView({ token, shop, profile, onOpenPlans }) {
+  const [overview, setOverview] = useState(null);
+  const [loadingSub, setLoadingSub] = useState(true);
+  const [errSub, setErrSub] = useState("");
+
+  const loadOverview = useCallback(async () => {
+    if (!token || !shop?.id) return;
+
+    setLoadingSub(true);
+    setErrSub("");
+
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/oz_my_subscription_overview`, {
+        method: "POST",
+        headers: hdr(token),
+        body: JSON.stringify({ p_barbershop_id: shop.id }),
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        throw new Error(data?.message || data?.error || "Erro ao carregar assinatura.");
+      }
+
+      setOverview(data || {});
+    } catch (e) {
+      console.error(e);
+      setErrSub(e.message || "Erro ao carregar assinatura.");
+    } finally {
+      setLoadingSub(false);
+    }
+  }, [token, shop?.id]);
+
+  useEffect(() => {
+    loadOverview();
+  }, [loadOverview]);
+
+  const accessType = overview?.access_type || "none";
+  const current = overview?.current || {};
+  const subscription = overview?.subscription || {};
+  const courtesy = overview?.courtesy || {};
+  const history = Array.isArray(overview?.history) ? overview.history : [];
+  const status = overview?.status || current?.status || "none";
+  const st = statusConfig(status, accessType);
+  const expiresAt = overview?.expires_at || current?.expires_at || null;
+  const daysRemaining = overview?.days_remaining;
+  const isCourtesy = accessType === "courtesy";
+  const isSubscription = accessType === "subscription";
+  const hasAccess = overview?.has_access === true || status === "active";
+
+  const mainTitle = isCourtesy
+    ? "Cortesia Oz.Barber"
+    : isSubscription
+      ? planLabel(current)
+      : "Nenhum plano ativo";
+
+  const mainSub = isCourtesy
+    ? "Acesso concedido pela OzTech SmartControl"
+    : isSubscription
+      ? "Assinatura vinculada à sua barbearia"
+      : "Escolha um plano para ativar o sistema";
+
+  const formatHistoryTitle = (item) => {
+    const kind = item?.kind;
+    const data = item?.data || {};
+    if (kind === "courtesy") return "Cortesia";
+    return planLabel(data);
+  };
+
+  const formatHistoryStatus = (item) => {
+    const data = item?.data || {};
+    return statusConfig(data.status || "none", item?.kind === "courtesy" ? "courtesy" : "subscription");
+  };
+
+  return (
+    <div>
+      <PageHeader
+        title="Minha Assinatura"
+        sub="Acompanhe seu plano, vencimento e status de acesso"
+        right={
+          <Btn onClick={loadOverview} variant="ghost" disabled={loadingSub}>
+            <RefreshCw size={14} style={loadingSub ? { animation: "spin 1s linear infinite" } : undefined} />
+            Atualizar
+          </Btn>
+        }
+      />
+
+      {errSub && <ErrorBar msg={errSub} />}
+
+      <div style={{ display:"grid", gridTemplateColumns:"minmax(0, 1.2fr) minmax(300px, .8fr)", gap:"1.25rem", alignItems:"start" }}>
+        <Card
+          style={{
+            border:`1px solid ${hasAccess ? `${st.color}44` : T.border}`,
+            boxShadow: hasAccess ? `0 0 34px ${st.color}10` : "none",
+            padding:"1.5rem",
+          }}
+        >
+          {loadingSub ? (
+            <div style={{ color:T.mutedLight, display:"flex", alignItems:"center", gap:10 }}>
+              <RefreshCw size={16} style={{ animation:"spin 1s linear infinite" }} />
+              Carregando informações da assinatura...
+            </div>
+          ) : (
+            <>
+              <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:16, marginBottom:"1.5rem" }}>
+                <div>
+                  <div style={{ fontSize:11, color:T.muted, textTransform:"uppercase", letterSpacing:1.1, fontWeight:800, marginBottom:8 }}>
+                    Status do acesso
+                  </div>
+                  <h2 style={{ margin:0, color:T.text, fontSize:28, lineHeight:1.1 }}>
+                    {mainTitle}
+                  </h2>
+                  <div style={{ color:T.mutedLight, marginTop:8, fontSize:13 }}>
+                    {mainSub}
+                  </div>
+                </div>
+
+                <span
+                  style={{
+                    background: st.bg,
+                    color: st.color,
+                    border:`1px solid ${st.color}33`,
+                    borderRadius:999,
+                    padding:"0.42rem 0.75rem",
+                    fontSize:12,
+                    fontWeight:900,
+                    whiteSpace:"nowrap",
+                  }}
+                >
+                  {st.label}
+                </span>
+              </div>
+
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(155px, 1fr))", gap:12, marginBottom:"1.35rem" }}>
+                <div style={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:12, padding:"1rem" }}>
+                  <div style={{ color:T.muted, fontSize:11, textTransform:"uppercase", letterSpacing:.8, fontWeight:800, marginBottom:8 }}>
+                    Tipo
+                  </div>
+                  <div style={{ color:T.text, fontWeight:900 }}>
+                    {accessTypeLabel(accessType)}
+                  </div>
+                </div>
+
+                <div style={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:12, padding:"1rem" }}>
+                  <div style={{ color:T.muted, fontSize:11, textTransform:"uppercase", letterSpacing:.8, fontWeight:800, marginBottom:8 }}>
+                    Vencimento
+                  </div>
+                  <div style={{ color:T.text, fontWeight:900 }}>
+                    {isCourtesy && !expiresAt ? "Sem expiração" : (expiresAt ? new Date(expiresAt).toLocaleDateString("pt-BR") : "—")}
+                  </div>
+                  {typeof daysRemaining === "number" && expiresAt && (
+                    <div style={{ color: daysRemaining <= 7 ? T.danger : T.mutedLight, fontSize:12, marginTop:4 }}>
+                      {daysRemaining >= 0 ? `${daysRemaining} dia(s) restante(s)` : "Vencida"}
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:12, padding:"1rem" }}>
+                  <div style={{ color:T.muted, fontSize:11, textTransform:"uppercase", letterSpacing:.8, fontWeight:800, marginBottom:8 }}>
+                    Barbearia
+                  </div>
+                  <div style={{ color:T.text, fontWeight:900, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+                    {shop?.name || "—"}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
+                <Btn onClick={onOpenPlans}>
+                  <CreditCard size={14} />
+                  {hasAccess ? "Trocar / renovar plano" : "Assinar plano"}
+                </Btn>
+
+                <Btn
+                  variant="ghost"
+                  onClick={() => alert("Cancelamento será liberado na etapa de recorrência real do Mercado Pago.")}
+                >
+                  Cancelar assinatura
+                </Btn>
+              </div>
+
+              {isCourtesy && (
+                <div style={{ marginTop:"1rem", color:T.mutedLight, fontSize:12, lineHeight:1.55, background:T.successBg, border:`1px solid ${T.success}33`, borderRadius:10, padding:".75rem .9rem" }}>
+                  Este acesso é uma cortesia. Ele não gera cobrança e não entra como receita recorrente até ser convertido em plano pago.
+                </div>
+              )}
+            </>
+          )}
+        </Card>
+
+        <Card style={{ padding:"1.5rem" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:"1.1rem" }}>
+            <div style={{ background:T.accentGlow, borderRadius:10, padding:9, display:"flex" }}>
+              <FileText size={17} color={T.accent} />
+            </div>
+            <div>
+              <div style={{ color:T.text, fontWeight:900 }}>Histórico</div>
+              <div style={{ color:T.muted, fontSize:12 }}>Planos e acessos vinculados</div>
+            </div>
+          </div>
+
+          {loadingSub ? (
+            <div style={{ color:T.mutedLight, fontSize:13 }}>Carregando histórico...</div>
+          ) : !history.length ? (
+            <div style={{ color:T.mutedLight, fontSize:13, lineHeight:1.55 }}>
+              Nenhum histórico encontrado para esta barbearia.
+            </div>
+          ) : (
+            <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+              {history.slice(0, 8).map((item, idx) => {
+                const data = item?.data || {};
+                const hs = formatHistoryStatus(item);
+                return (
+                  <div key={`${item.kind}-${data.id || idx}`} style={{ border:`1px solid ${T.border}`, background:T.surface, borderRadius:12, padding:".85rem" }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", gap:10, alignItems:"flex-start" }}>
+                      <div>
+                        <div style={{ color:T.text, fontWeight:900, fontSize:13 }}>{formatHistoryTitle(item)}</div>
+                        <div style={{ color:T.mutedLight, fontSize:12, marginTop:4 }}>
+                          Criado em {data.created_at ? new Date(data.created_at).toLocaleDateString("pt-BR") : "—"}
+                        </div>
+                        {data.expires_at && (
+                          <div style={{ color:T.muted, fontSize:12, marginTop:2 }}>
+                            Vence em {new Date(data.expires_at).toLocaleDateString("pt-BR")}
+                          </div>
+                        )}
+                      </div>
+                      <span style={{ background:hs.bg, color:hs.color, borderRadius:999, padding:"3px 8px", fontSize:10.5, fontWeight:900 }}>
+                        {hs.label}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+
 // ── CONFIGURAÇÕES DA BARBEARIA ────────────────────────────────
 const BRAND_COLOR_PRESETS = [
   { label: "Azul", hex: "#4db8ff" },
@@ -2057,11 +2345,12 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
         { id:"attendances", label:"Atendimentos",  Icon:Scissors },
         { id:"clients",     label:"Clientes",      Icon:Users },
         ...(isAdmin ? [
-          { id:"barbers",   label:"Barbeiros",     Icon:Award },
-          { id:"services",  label:"Serviços",      Icon:Tag },
-          { id:"financial", label:"Financeiro",    Icon:DollarSign },
-          { id:"reports",   label:"Relatórios",    Icon:FileText },
-          { id:"settings",  label:"Configurações", Icon:Settings },
+          { id:"subscription", label:"Minha Assinatura", Icon:CreditCard },
+          { id:"barbers",      label:"Barbeiros",         Icon:Award },
+          { id:"services",     label:"Serviços",          Icon:Tag },
+          { id:"financial",    label:"Financeiro",        Icon:DollarSign },
+          { id:"reports",      label:"Relatórios",        Icon:FileText },
+          { id:"settings",     label:"Configurações",     Icon:Settings },
         ] : []),
       ];
 
@@ -2789,8 +3078,9 @@ export default function App() {
         barbers:     <BarbersView  barbers={barbers} setBarbers={setBarbers} attendances={attendances} token={tok} barbershopId={barbershopId}/>,
         services:    <ServicesView services={services} setServices={setServices} token={tok} barbershopId={barbershopId}/>,
         financial:   <FinancialView attendances={attendances} expenses={expenses} setExpenses={setExpenses} token={tok} barbershopId={barbershopId}/>,
-        reports:     <ReportsView attendances={attendances} clients={clients} services={services} barbers={barbers} expenses={expenses} shop={shop}/>,
-        settings:    <SettingsView token={tok} shop={shop} onShopUpdated={(updatedShop) => { setShop(updatedShop); applyTenantTheme(updatedShop); }} />,
+        reports:      <ReportsView attendances={attendances} clients={clients} services={services} barbers={barbers} expenses={expenses} shop={shop}/>,
+        subscription: <SubscriptionView token={tok} shop={shop} profile={auth.profile} onOpenPlans={() => { setExpiredMsg(""); setShowPlans(true); }} />,
+        settings:     <SettingsView token={tok} shop={shop} onShopUpdated={(updatedShop) => { setShop(updatedShop); applyTenantTheme(updatedShop); }} />,
       };
 
   return (
