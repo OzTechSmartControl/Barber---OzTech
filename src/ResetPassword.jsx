@@ -114,13 +114,45 @@ export default function ResetPassword() {
       return;
     }
 
+    // Se o usuário já possui perfil/barbearia, é fluxo de recuperação de senha:
+    // encerra a sessão e volta ao login limpo.
+    // Se ainda não possui barbearia, é primeiro acesso/cortesia:
+    // mantém a sessão para o App continuar no onboarding.
+    let shouldSignOut = false;
+
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      const userId = userData?.user?.id;
+
+      if (userId) {
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("id, barbershop_id, role, is_super_admin")
+          .eq("id", userId)
+          .maybeSingle();
+
+        shouldSignOut = Boolean(
+          profileData?.barbershop_id ||
+          profileData?.is_super_admin === true ||
+          profileData?.role === "super_admin"
+        );
+      }
+    } catch (e) {
+      console.warn("Não foi possível identificar o tipo de fluxo após redefinir senha:", e);
+    }
+
     setSuccess(true);
     setLoading(false);
 
-    setTimeout(() => {
+    setTimeout(async () => {
       localStorage.removeItem("ozbarber_auth");
+
+      if (shouldSignOut) {
+        await supabase.auth.signOut();
+      }
+
       window.location.replace("/");
-    }, 1500);
+    }, 1200);
   };
 
   return (

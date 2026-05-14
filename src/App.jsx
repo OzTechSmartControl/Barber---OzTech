@@ -3128,6 +3128,36 @@ export default function App() {
     }
   }, []);
 
+  // Carrega os dados quando a sessão é restaurada automaticamente
+  // após recuperação de senha, refresh da página ou retorno do Supabase.
+  useEffect(() => {
+    const tok = auth?.token || auth?.access_token;
+    const profile = auth?.profile;
+
+    if (!tok || !profile) return;
+    if (loading || dataLoaded || showPlans) return;
+
+    const isRestoredSuperAdmin =
+      profile?.is_super_admin === true ||
+      profile?.role === "super_admin";
+
+    if (!profile?.barbershop_id && !isRestoredSuperAdmin) return;
+
+    loadData(tok, profile);
+  }, [
+    auth?.token,
+    auth?.access_token,
+    auth?.profile?.barbershop_id,
+    auth?.profile?.role,
+    auth?.profile?.is_super_admin,
+    loading,
+    dataLoaded,
+    showPlans,
+    loadData,
+  ]);
+
+
+
   const onLogin = useCallback(async (authData) => {
     const normalizedAuth = {
       ...authData,
