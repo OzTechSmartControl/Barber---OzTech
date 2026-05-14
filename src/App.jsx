@@ -1872,7 +1872,13 @@ function SubscriptionView({ token, shop, profile, onOpenPlans }) {
   const [errSub, setErrSub] = useState("");
 
   const loadOverview = useCallback(async () => {
-    if (!token || !shop?.id) return;
+    const effectiveBarbershopId = shop?.id || profile?.barbershop_id;
+
+    if (!token || !effectiveBarbershopId) {
+      setLoadingSub(false);
+      setErrSub("Barbearia não encontrada. Saia, entre novamente ou finalize o cadastro da barbearia.");
+      return;
+    }
 
     setLoadingSub(true);
     setErrSub("");
@@ -1881,7 +1887,7 @@ function SubscriptionView({ token, shop, profile, onOpenPlans }) {
       const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/oz_my_subscription_overview`, {
         method: "POST",
         headers: hdr(token),
-        body: JSON.stringify({ p_barbershop_id: shop.id }),
+        body: JSON.stringify({ p_barbershop_id: effectiveBarbershopId }),
       });
 
       const data = await res.json().catch(() => null);
@@ -1897,7 +1903,7 @@ function SubscriptionView({ token, shop, profile, onOpenPlans }) {
     } finally {
       setLoadingSub(false);
     }
-  }, [token, shop?.id]);
+  }, [token, shop?.id, profile?.barbershop_id]);
 
   useEffect(() => {
     loadOverview();
@@ -1927,6 +1933,8 @@ function SubscriptionView({ token, shop, profile, onOpenPlans }) {
     : isSubscription
       ? "Assinatura vinculada à sua barbearia"
       : "Escolha um plano para ativar o sistema";
+
+  const displayShopName = shop?.name || overview?.barbershop?.name || "—";
 
   const formatHistoryTitle = (item) => {
     const kind = item?.kind;
@@ -2028,7 +2036,7 @@ function SubscriptionView({ token, shop, profile, onOpenPlans }) {
                     Barbearia
                   </div>
                   <div style={{ color:T.text, fontWeight:900, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
-                    {shop?.name || "—"}
+                    {displayShopName}
                   </div>
                 </div>
               </div>
@@ -3057,9 +3065,36 @@ export default function App() {
     setDataLoaded(false);
 
     try {
+      // Sempre tenta buscar o profile mais recente do banco.
+      // Isso corrige casos em que o localStorage ficou com profile antigo
+      // após onboarding, recuperação de senha ou criação manual de usuário.
+      let workingProfile = profile;
+
+      if (profile?.id) {
+        try {
+          const freshProfile = await api.getProfile(profile.id, tok);
+          if (freshProfile?.id) {
+            workingProfile = { ...profile, ...freshProfile };
+
+            const updatedAuth = {
+              ...(safeLoadAuth() || {}),
+              token: tok,
+              access_token: tok,
+              user: auth?.user || safeLoadAuth()?.user || null,
+              profile: workingProfile,
+            };
+
+            setAuth(prev => prev ? { ...prev, profile: workingProfile } : updatedAuth);
+            safeSaveAuth(updatedAuth);
+          }
+        } catch (profileErr) {
+          console.warn("Não foi possível atualizar o profile antes de carregar dados:", profileErr);
+        }
+      }
+
       const isSuperAdmin =
-        profile?.is_super_admin === true ||
-        profile?.role === "super_admin";
+        workingProfile?.is_super_admin === true ||
+        workingProfile?.role === "super_admin";
 
       // Super admin não deve carregar dados operacionais/financeiros das barbearias.
       // Isso evita loop em "CARREGANDO" quando as RLS bloqueiam essas tabelas.
@@ -3076,15 +3111,15 @@ export default function App() {
         return;
       }
 
-      const isAdm = profile.role === "admin";
-      const shopId = profile.barbershop_id;
+      const isAdm = workingProfile.role === "admin";
+      const shopId = workingProfile.barbershop_id;
 
       if (!shopId) {
         throw new Error("Perfil sem barbershop_id. Finalize o cadastro da barbearia.");
       }
 
       // Bloqueio efetivo: revogação/expiração precisa ser validada também em sessão restaurada.
-      const accessStatus = await checkCurrentUserAccess(tok, profile);
+      const accessStatus = await checkCurrentUserAccess(tok, workingProfile);
       if (!accessStatus?.has_access) {
         setExpiredMsg(accessDeniedMessage(accessStatus?.reason));
         setShowPlans(true);
@@ -3099,7 +3134,7 @@ export default function App() {
 
       const attQuery = isAdm
         ? withShop("select=*&order=date.desc,time.desc")
-        : withShop(`select=*&barber_id=eq.${profile.barber_id}&order=date.desc,time.desc`);
+        : withShop(`select=*&barber_id=eq.${workingProfile.barber_id}&order=date.desc,time.desc`);
 
       const [shopRows, brs, cls, svcs, atts, exps] = await Promise.all([
         api.list("barbershops", `id=eq.${shopId}&select=*`, tok),
@@ -3110,7 +3145,31 @@ export default function App() {
         isAdm ? api.list("expenses", withShop("select=*&order=date.desc"), tok) : Promise.resolve([]),
       ]);
 
-      const currentShop = ensureArray(shopRows)[0] || null;
+      let currentShop = ensureArray(shopRows)[0] || null;
+
+      // Fallback seguro por RPC, útil quando RLS/cache/schema impedem o select direto em barbershops.
+      if (!currentShop && shopId) {
+        try {
+          const shopRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/oz_get_my_barbershop`, {
+            method: "POST",
+            headers: hdr(tok),
+            body: JSON.stringify({ p_barbershop_id: shopId }),
+          });
+
+          const shopData = await shopRes.json().catch(() => null);
+
+          if (shopRes.ok && shopData && typeof shopData === "object" && shopData.id) {
+            currentShop = shopData;
+          }
+        } catch (shopErr) {
+          console.warn("Fallback oz_get_my_barbershop falhou:", shopErr);
+        }
+      }
+
+      if (!currentShop) {
+        console.warn("Barbearia vinculada ao perfil não foi encontrada no carregamento do app.", { shopId, workingProfile });
+      }
+
       setShop(currentShop);
       applyTenantTheme(currentShop);
 
@@ -3126,7 +3185,7 @@ export default function App() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [auth?.user]);
 
   // Carrega os dados quando a sessão é restaurada automaticamente
   // após recuperação de senha, refresh da página ou retorno do Supabase.
