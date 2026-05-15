@@ -777,31 +777,29 @@ function MeuPlanoView({ token, userEmail, profile, onRenew }) {
 
   useEffect(() => {
     let cancelled = false;
+    const rpc = async (fn) => {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
+        method: "POST",
+        headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${token}`, "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({}),
+      });
+      const d = await r.json();
+      return (d && typeof d === "object" && !Array.isArray(d) && d.id) ? d : null;
+    };
+
     const load = async () => {
       setLoading(true);
       try {
-        if (profile?.barbershop_id) {
-          const r = await fetch(
-            `${SUPABASE_URL}/rest/v1/payment_checkouts?barbershop_id=eq.${profile.barbershop_id}&status=in.(redeemed,paid)&order=paid_at.desc&limit=1`,
-            { headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${token}`, Accept: "application/json" } }
-          );
-          const d = await r.json();
-          if (!cancelled && Array.isArray(d) && d.length > 0) { setSub(d[0]); setLoading(false); return; }
-        }
-        if (userEmail) {
-          const r2 = await fetch(
-            `${SUPABASE_URL}/rest/v1/courtesy_access?email=eq.${encodeURIComponent(userEmail)}&status=eq.active&order=created_at.desc&limit=1`,
-            { headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${token}`, Accept: "application/json" } }
-          );
-          const d2 = await r2.json();
-          if (!cancelled && Array.isArray(d2) && d2.length > 0) setCourtesy(d2[0]);
-        }
+        const planData = await rpc("get_my_plan_info");
+        if (!cancelled && planData) { setSub(planData); setLoading(false); return; }
+        const courtesyData = await rpc("get_my_courtesy_info");
+        if (!cancelled && courtesyData) setCourtesy(courtesyData);
       } catch(e) { console.error(e); }
       if (!cancelled) setLoading(false);
     };
     load();
     return () => { cancelled = true; };
-  }, [token, userEmail, profile]);
+  }, [token]);
 
   const PLAN_LABEL  = { monthly:"Plano Mensal", semestral:"Plano Semestral", annual:"Plano Anual" };
   const PLAN_PERIOD = { monthly:"30 dias", semestral:"6 meses", annual:"12 meses" };
