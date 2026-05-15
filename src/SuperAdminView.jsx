@@ -317,10 +317,7 @@ export default function SuperAdminView({ section = "dashboard" }) {
           .from("superadmin_saas_overview")
           .select("*")
           .order("barbershop_created_at", { ascending: false }),
-        supabase
-          .from("subscriptions")
-          .select("*")
-          .order("created_at", { ascending: false }),
+        supabase.rpc("superadmin_list_subscriptions"),
       ]);
 
       if (metricsRes.error) throw metricsRes.error;
