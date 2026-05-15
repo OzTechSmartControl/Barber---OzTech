@@ -63,14 +63,21 @@ const apiAuth = {
 };
 
 // Chama a função RPC create_barbershop criada na migration 04
+// Tenta até 5 vezes com sufixo numérico se o slug já existir.
 const rpcCreateBarbershop = async (tok, { name, slug, accent }) => {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/create_barbershop`, {
-    method: "POST",
-    headers: hdr(tok),
-    body: JSON.stringify({ p_name: name, p_slug: slug, p_accent: accent }),
-  });
-  if (!r.ok) { const e = await r.json(); throw new Error(e.message || "Erro ao criar barbearia"); }
-  return r.json(); // retorna o UUID da barbearia
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const candidateSlug = attempt === 0 ? slug : `${slug}-${attempt + 1}`;
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/create_barbershop`, {
+      method: "POST",
+      headers: hdr(tok),
+      body: JSON.stringify({ p_name: name, p_slug: candidateSlug, p_accent: accent }),
+    });
+    if (r.ok) return r.json();
+    const e = await r.json();
+    const msg = e.message || "";
+    if (!msg.includes("slug_key") && !msg.includes("unique")) throw new Error(msg || "Erro ao criar barbearia");
+  }
+  throw new Error("Não foi possível gerar um slug único. Tente um nome diferente para a barbearia.");
 };
 
 // Atualiza o perfil do admin com o nome e outros dados
