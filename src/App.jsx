@@ -2100,7 +2100,7 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
           display: "flex",
           alignItems: "center",
           justifyContent: collapsed ? "center" : (isSuperAdmin ? "space-between" : "center"),
-          minHeight: isSuperAdmin ? 92 : 150,
+          minHeight: isSuperAdmin ? 140 : 150,
           position: "relative",
         }}
       >
@@ -2122,9 +2122,9 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
                 alt="Oz.Barber"
                 style={{
                   width:"100%",
-                  maxWidth:150,
+                  maxWidth:200,
                   height:"auto",
-                  maxHeight:74,
+                  maxHeight:120,
                   objectFit:"contain",
                   display:"block",
                   filter:`drop-shadow(0 0 18px ${T.accent}22)`,
