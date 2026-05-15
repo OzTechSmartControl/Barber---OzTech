@@ -261,7 +261,7 @@ const ProgressBar = ({ step, total }) => (
 // ══════════════════════════════════════════════════════════════
 //  ONBOARDING PRINCIPAL
 // ══════════════════════════════════════════════════════════════
-export default function Onboarding({ onComplete, courtesyEmail = "", initialToken = null, initialUser = null, initialEmail = "" }) {
+export default function Onboarding({ onComplete, courtesyEmail = "", initialToken = null, initialUser = null, initialEmail = "", postPayment = false, postPaymentPlan = null }) {
   const [step,    setStep]    = useState(1);   // 1–5
   const [loading, setLoading] = useState(false);
   const [err,     setErr]     = useState("");
@@ -336,6 +336,27 @@ export default function Onboarding({ onComplete, courtesyEmail = "", initialToke
     if (!isLogin && pass.length < 6) return setErr("A senha precisa ter no mínimo 6 caracteres.");
     setLoading(true);
     try {
+      // Valida assinatura ativa antes de criar conta.
+      // Só se aplica a novos cadastros sem fluxo de cortesia.
+      if (!isLogin && !courtesyEmail) {
+        const valRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/can_register_with_email`, {
+          method:  "POST",
+          headers: { apikey: SUPABASE_ANON, "Content-Type": "application/json" },
+          body: JSON.stringify({ p_email: email.trim().toLowerCase() }),
+        });
+        const val = await valRes.json().catch(() => ({}));
+        if (!val.allowed) {
+          const reason = val.reason ?? "";
+          setErr(
+            reason === "no_active_subscription"
+              ? "Este e-mail não possui uma assinatura ativa. Se você acabou de pagar, aguarde alguns segundos e tente novamente. Caso o problema persista, entre em contato com o suporte."
+              : "E-mail já vinculado a uma barbearia. Faça login ou use o e-mail utilizado na assinatura."
+          );
+          setLoading(false);
+          return;
+        }
+      }
+
       const res = isLogin
         ? await apiAuth.login(email.trim().toLowerCase(), pass)
         : await apiAuth.signUp(email.trim().toLowerCase(), pass);
@@ -618,11 +639,35 @@ export default function Onboarding({ onComplete, courtesyEmail = "", initialToke
           {/* ── PASSO 1: Criar conta ─── */}
           {step === 1 && (
             <>
+              {/* Banner: pagamento confirmado (vindo do redirecionamento do MP) */}
+              {postPayment && (
+                <div style={{
+                  background: "#43d18a18",
+                  border: "1px solid #43d18a44",
+                  borderRadius: 12,
+                  padding: "0.85rem 1rem",
+                  marginBottom: "1.5rem",
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: 10,
+                }}>
+                  <div style={{ fontSize: 20, lineHeight: 1 }}>🎉</div>
+                  <div>
+                    <div style={{ color: "#43d18a", fontWeight: 800, fontSize: 14, marginBottom: 4 }}>
+                      Pagamento confirmado!
+                    </div>
+                    <div style={{ color: T.mutedLight, fontSize: 13, lineHeight: 1.55 }}>
+                      Agora crie sua conta usando <strong style={{ color: T.text }}>o mesmo e-mail</strong> que você utilizou no pagamento.
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 30, letterSpacing: 3, color: T.text, marginBottom: 6 }}>
                 {isLogin ? "ENTRAR" : "CRIAR CONTA"}
               </div>
               <div style={{ fontSize: 13, color: T.muted, marginBottom: "1.5rem" }}>
-                {isLogin ? "Acesse sua conta existente" : "Comece gratuitamente, sem cartão"}
+                {isLogin ? "Acesse sua conta existente" : postPayment ? "Use o e-mail da assinatura para criar seu acesso" : "Comece gratuitamente, sem cartão"}
               </div>
 
               <ErrMsg msg={err} />

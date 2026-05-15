@@ -2527,8 +2527,9 @@ export default function App() {
   const [loading,      setLoading]      = useState(false);
   const [view,         setView]         = useState("dashboard");
   const [collapsed,    setCollapsed]    = useState(false);
-  const [showPlans,    setShowPlans]    = useState(false);
-  const [expiredMsg,   setExpiredMsg]   = useState("");
+  const [showPlans,      setShowPlans]      = useState(false);
+  const [expiredMsg,     setExpiredMsg]     = useState("");
+  const [postPaymentPlan, setPostPaymentPlan] = useState(null); // plano pago recentemente por usuário sem conta
   const [courtesyEmail,setCourtesyEmail]= useState(null); // e-mail validado como cortesia
   const [shop,         setShop]         = useState(null);
 
@@ -2607,18 +2608,31 @@ export default function App() {
 
   // Detecta retorno do Mercado Pago (?payment=success&plan=...)
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
+    const params  = new URLSearchParams(window.location.search);
     const payment = params.get("payment");
     const plan    = params.get("plan");
+
     if (payment === "success" && plan) {
       window.history.replaceState(null, "", window.location.pathname);
-      // Assinatura criada pelo webhook; usuário já pode prosseguir
       setShowPlans(false);
+      setExpiredMsg("");
+      // Usuário sem conta → direciona para cadastro pós-pagamento
+      // Usuário com conta (renovação) → força recarga de dados
+      setPostPaymentPlan(plan);
+      setDataLoaded(false);
     } else if (payment === "failure") {
       window.history.replaceState(null, "", window.location.pathname);
       setShowPlans(true);
     }
   }, []);
+
+  // Carrega dados toda vez que auth muda e dataLoaded ainda é false.
+  // Isso resolve tanto o refresh da página quanto o retorno pós-pagamento.
+  useEffect(() => {
+    if (auth?.token && auth?.profile?.barbershop_id && !dataLoaded && !showPlans) {
+      loadData(auth.token, auth.profile);
+    }
+  }, [auth, dataLoaded, showPlans, loadData]);
 
   const loadData = useCallback(async (tok, profile) => {
     setLoading(true);
@@ -2764,6 +2778,17 @@ export default function App() {
   if (!auth && courtesyEmail) return (
     <><style>{CSS}</style>
       <Onboarding onComplete={onLogin} courtesyEmail={courtesyEmail} />
+    </>
+  );
+
+  // Retorno do Mercado Pago com pagamento aprovado e usuário ainda sem conta → cadastro guiado
+  if (!auth && postPaymentPlan) return (
+    <><style>{CSS}</style>
+      <Onboarding
+        onComplete={(authData) => { setPostPaymentPlan(null); onLogin(authData); }}
+        postPayment={true}
+        postPaymentPlan={postPaymentPlan}
+      />
     </>
   );
 
