@@ -10,8 +10,7 @@ import {
   Menu, X, Plus, Search, Edit2, Trash2, Check, TrendingUp,
   Phone, LogOut, Lock, Mail, CreditCard, Banknote, Smartphone,
   BadgePercent, AlertCircle, RefreshCw, FileText, Download, Calendar, Bell, Gift,
-  Settings, Upload, Palette, Image
-
+  Settings, Upload, Palette, Image, Shield, Clock, Layers,
 } from "lucide-react";
 
 (() => {
@@ -131,8 +130,8 @@ const accessDeniedMessage = (reason) => {
 
 
 // ── TRANSFORMS ────────────────────────────────────────────────
-const toAtt  = a => ({ id: a.id, clientId: a.client_id, barberId: a.barber_id, serviceId: a.service_id, price: +a.price, payment: a.payment, date: a.date, time: a.time || "", notes: a.notes || "" });
-const fromAtt = a => ({ client_id: +a.clientId, barber_id: +a.barberId, service_id: +a.serviceId, price: +a.price, payment: a.payment, date: a.date, time: a.time, notes: a.notes });
+const toAtt  = a => ({ id: a.id, clientId: a.client_id, barberId: a.barber_id, serviceId: a.service_id, price: +a.price, payment: a.payment, date: a.date, time: a.time || "", notes: a.notes || "", extraServices: Array.isArray(a.extra_services) ? a.extra_services : [] });
+const fromAtt = a => ({ client_id: +a.clientId||0, barber_id: +a.barberId||0, service_id: +a.serviceId||0, price: +a.price, payment: a.payment, date: a.date, time: a.time, notes: a.notes, extra_services: a.extraServices||[] });
 const toClient = c => ({ id: c.id, name: c.name, phone: c.phone || "", whatsapp: c.whatsapp || "", birthdate: c.birthdate || "", notes: c.notes || "", points: +c.points });
 const toBarber = b => ({ id: b.id, name: b.name, phone: b.phone || "", commission: +b.commission, status: b.status, userId: b.user_id });
 const toService = s => ({ id: s.id, name: s.name, price: +s.price, duration: +s.duration, active: s.active });
@@ -170,7 +169,8 @@ const resetTenantTheme = () => {
 // ── HELPERS ───────────────────────────────────────────────────
 const R$   = v => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(+v || 0);
 const fDate = s => s ? new Date(s + "T12:00:00").toLocaleDateString("pt-BR") : "—";
-const today = () => new Date().toISOString().slice(0, 10);
+const today   = () => new Date().toISOString().slice(0, 10);
+const nowTime = () => { const n = new Date(); return `${String(n.getHours()).padStart(2,"0")}:${String(n.getMinutes()).padStart(2,"0")}`; };
 const month = () => today().slice(0, 7);
 const nextId = arr => Math.max(0, ...arr.map(x => x.id)) + 1;
 
@@ -769,90 +769,258 @@ function Dashboard({ attendances, clients, services, barbers, isAdmin, myBarberI
 }
 
 // ── ATTENDANCES ───────────────────────────────────────────────
-function AttendancesView({ attendances, setAttendances, clients, services, barbers, token, isAdmin, myBarberId, barbershopId }) {
-  const [filterDate, setFilterDate]   = useState(today());
-  const [filterBarber, setFilterBarber] = useState("");
-  const [showModal, setShowModal] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [err, setErr]       = useState("");
-  const [form, setForm] = useState({ clientId:"", barberId: isAdmin?"":String(myBarberId||""), serviceId:"", price:"", payment:"PIX", date:today(), time:"", notes:"" });
+// ── MEU PLANO ─────────────────────────────────────────────────
+function MeuPlanoView({ token, userEmail, profile, onRenew }) {
+  const [sub, setSub]         = useState(null);
+  const [courtesy, setCourtesy] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const setF = k => e => {
-    const v = e.target.value;
-    if (k==="serviceId") {
-      const svc = services.find(s=>s.id===+v);
-      setForm(f=>({...f, serviceId:v, price: svc?svc.price:""}));
-    } else {
-      setForm(f=>({...f,[k]:v}));
-    }
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      setLoading(true);
+      try {
+        if (profile?.barbershop_id) {
+          const r = await fetch(
+            `${SUPABASE_URL}/rest/v1/payment_checkouts?barbershop_id=eq.${profile.barbershop_id}&status=in.(redeemed,paid)&order=paid_at.desc&limit=1`,
+            { headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${token}`, Accept: "application/json" } }
+          );
+          const d = await r.json();
+          if (!cancelled && Array.isArray(d) && d.length > 0) { setSub(d[0]); setLoading(false); return; }
+        }
+        if (userEmail) {
+          const r2 = await fetch(
+            `${SUPABASE_URL}/rest/v1/courtesy_access?email=eq.${encodeURIComponent(userEmail)}&status=eq.active&order=created_at.desc&limit=1`,
+            { headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${token}`, Accept: "application/json" } }
+          );
+          const d2 = await r2.json();
+          if (!cancelled && Array.isArray(d2) && d2.length > 0) setCourtesy(d2[0]);
+        }
+      } catch(e) { console.error(e); }
+      if (!cancelled) setLoading(false);
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [token, userEmail, profile]);
+
+  const PLAN_LABEL  = { monthly:"Plano Mensal", semestral:"Plano Semestral", annual:"Plano Anual" };
+  const PLAN_PERIOD = { monthly:"30 dias", semestral:"6 meses", annual:"12 meses" };
+
+  const calcExpiry = (row) => {
+    if (!row) return null;
+    if (row.expires_at) return new Date(row.expires_at);
+    const base = row.paid_at || row.created_at;
+    if (!base) return null;
+    const d = new Date(base);
+    if (row.plan === "annual") d.setFullYear(d.getFullYear() + 1);
+    else if (row.plan === "semestral") d.setMonth(d.getMonth() + 6);
+    else d.setMonth(d.getMonth() + 1);
+    return d;
   };
 
-  const filtered = useMemo(()=>
+  const isCourtesy     = !sub && !!courtesy;
+  const isUnlimited    = isCourtesy && courtesy.type === "unlimited";
+  const expiryDate     = sub ? calcExpiry(sub) : (courtesy?.expires_at ? new Date(courtesy.expires_at) : null);
+  const contractDate   = sub ? (sub.paid_at || sub.created_at) : courtesy?.created_at;
+  const daysLeft       = (!expiryDate || isUnlimited) ? null : Math.max(0, Math.ceil((expiryDate.getTime() - Date.now()) / 86400000));
+  const daysColor      = daysLeft === null ? T.accent : daysLeft > 30 ? T.success : daysLeft > 10 ? T.warning : T.danger;
+  const planName       = sub ? (PLAN_LABEL[sub.plan] || sub.plan || "Plano") : isCourtesy ? "Acesso Cortesia" : "Sem plano ativo";
+  const planPeriod     = sub ? PLAN_PERIOD[sub.plan] : isCourtesy ? (isUnlimited ? "Indeterminado" : "Prazo determinado") : "—";
+  const amountPaid     = sub ? +sub.amount : null;
+
+  const InfoRow = ({ label, value, valueColor }) => (
+    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"0.75rem 0", borderBottom:`1px solid ${T.borderLight}` }}>
+      <span style={{ color:T.muted, fontSize:13 }}>{label}</span>
+      <span style={{ color:valueColor||T.text, fontSize:13, fontWeight:700 }}>{value}</span>
+    </div>
+  );
+
+  return (
+    <div>
+      <PageHeader title="Meu Plano" sub="Informações do plano contratado e opções de renovação" right={
+        <Btn onClick={onRenew}><RefreshCw size={14}/> Renovar / Trocar plano</Btn>
+      }/>
+
+      {loading ? (
+        <Card><div style={{ textAlign:"center", color:T.muted, padding:"2rem" }}>Carregando informações do plano…</div></Card>
+      ) : (sub || courtesy) ? (
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1.25rem" }}>
+          {/* Card principal */}
+          <Card>
+            <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:"1.25rem" }}>
+              <div style={{ background:`${T.accent}18`, borderRadius:12, padding:12 }}>
+                <Shield size={22} color={T.accent}/>
+              </div>
+              <div>
+                <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:24, letterSpacing:1.5, color:T.text }}>{planName}</div>
+                <div style={{ color:T.muted, fontSize:12 }}>{planPeriod}</div>
+              </div>
+            </div>
+            <InfoRow label="Contratado em"   value={contractDate ? new Date(contractDate).toLocaleDateString("pt-BR") : "—"} />
+            <InfoRow label="Expira em"        value={isUnlimited ? "Indeterminado" : expiryDate ? expiryDate.toLocaleDateString("pt-BR") : "—"} />
+            {amountPaid !== null && <InfoRow label="Valor pago"  value={R$(amountPaid)} valueColor={T.success} />}
+            <InfoRow label="Tipo de acesso"  value={isCourtesy ? "Cortesia" : "Assinatura"} />
+          </Card>
+
+          {/* Card dias restantes */}
+          <Card style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", textAlign:"center" }}>
+            {isUnlimited ? (
+              <>
+                <div style={{ background:`${T.accent}18`, borderRadius:999, padding:18, marginBottom:16 }}>
+                  <Layers size={32} color={T.accent}/>
+                </div>
+                <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:28, letterSpacing:1.5, color:T.accent }}>Acesso Vitalício</div>
+                <div style={{ color:T.muted, fontSize:13, marginTop:6 }}>Sem data de expiração</div>
+              </>
+            ) : daysLeft !== null ? (
+              <>
+                <div style={{ background:`${daysColor}18`, borderRadius:999, padding:18, marginBottom:16 }}>
+                  <Clock size={32} color={daysColor}/>
+                </div>
+                <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:56, letterSpacing:2, color:daysColor, lineHeight:1 }}>{daysLeft}</div>
+                <div style={{ color:T.muted, fontSize:13, marginTop:8 }}>dias restantes</div>
+                {daysLeft <= 10 && (
+                  <div style={{ background:T.dangerBg, border:`1px solid ${T.danger}44`, color:T.danger, borderRadius:8, padding:"0.5rem 1rem", fontSize:12, fontWeight:700, marginTop:16 }}>
+                    ⚠️ Plano prestes a expirar
+                  </div>
+                )}
+              </>
+            ) : (
+              <div style={{ color:T.muted, fontSize:13 }}>Sem data de expiração calculada</div>
+            )}
+          </Card>
+
+          {/* Card renovação */}
+          <Card style={{ gridColumn:"1 / -1" }}>
+            <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:20, letterSpacing:1.5, color:T.text, marginBottom:"0.75rem" }}>Renovar ou Trocar Plano</div>
+            <div style={{ color:T.muted, fontSize:13, marginBottom:"1.25rem", lineHeight:1.5 }}>
+              Renove seu plano atual ou troque para um plano com melhor custo-benefício. Pagamento seguro via Mercado Pago — Pix, cartão e boleto.
+            </div>
+            <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
+              <Btn onClick={onRenew}><CreditCard size={14}/> Ver planos disponíveis</Btn>
+              <Btn variant="ghost" onClick={onRenew}><RefreshCw size={14}/> Renovar plano atual</Btn>
+            </div>
+          </Card>
+        </div>
+      ) : (
+        <Card style={{ textAlign:"center", padding:"3rem" }}>
+          <Shield size={40} color={T.muted} style={{ margin:"0 auto 1rem" }}/>
+          <div style={{ color:T.text, fontWeight:700, fontSize:16, marginBottom:8 }}>Nenhum plano encontrado</div>
+          <div style={{ color:T.muted, fontSize:13, marginBottom:"1.5rem" }}>Assine um plano para continuar usando a plataforma.</div>
+          <Btn onClick={onRenew}><CreditCard size={14}/> Ver planos</Btn>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ── ATENDIMENTOS ──────────────────────────────────────────────
+function AttendancesView({ attendances, setAttendances, clients, services, barbers, token, isAdmin, myBarberId, barbershopId }) {
+  const emptyForm = () => ({
+    clientId: "", barberId: isAdmin ? "" : String(myBarberId||""),
+    selectedServices: [], payment: "PIX",
+    date: today(), time: nowTime(), notes: "",
+  });
+
+  const [filterDate,   setFilterDate]   = useState(today());
+  const [filterBarber, setFilterBarber] = useState("");
+  const [showModal,    setShowModal]    = useState(false);
+  const [saving,       setSaving]       = useState(false);
+  const [err,          setErr]          = useState("");
+  const [addSvcId,     setAddSvcId]     = useState("");
+  const [form,         setForm]         = useState(emptyForm);
+
+  const totalPrice = form.selectedServices.reduce((s, sv) => s + sv.price, 0);
+
+  const addService = (svcId) => {
+    if (!svcId) return;
+    const svc = services.find(s => s.id === +svcId);
+    if (!svc || form.selectedServices.find(s => s.serviceId === svc.id)) { setAddSvcId(""); return; }
+    setForm(f => ({ ...f, selectedServices: [...f.selectedServices, { serviceId: svc.id, name: svc.name, price: svc.price }] }));
+    setAddSvcId("");
+  };
+
+  const removeService = (svcId) => setForm(f => ({ ...f, selectedServices: f.selectedServices.filter(s => s.serviceId !== svcId) }));
+
+  const getServiceDisplay = (a) => {
+    const primary = services.find(s => s.id === a.serviceId);
+    const extras  = (a.extraServices || []).map(es => es.name || services.find(s => s.id === es.serviceId)?.name || "").filter(Boolean);
+    return [primary?.name, ...extras].filter(Boolean).join(" + ") || "—";
+  };
+
+  const filtered = useMemo(() =>
     attendances
-      .filter(a=>(!filterDate||a.date===filterDate)&&(!filterBarber||a.barberId===+filterBarber))
-      .sort((a,b)=>b.date.localeCompare(a.date)||b.time.localeCompare(a.time)),
-    [attendances,filterDate,filterBarber]
+      .filter(a => (!filterDate || a.date === filterDate) && (!filterBarber || a.barberId === +filterBarber))
+      .sort((a, b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time)),
+    [attendances, filterDate, filterBarber]
   );
 
   const save = async () => {
-    if (!form.clientId||!form.barberId||!form.serviceId) return setErr("Preencha cliente, barbeiro e serviço.");
+    if (!form.clientId || !form.barberId || form.selectedServices.length === 0)
+      return setErr("Preencha cliente, barbeiro e pelo menos um serviço.");
     setSaving(true); setErr("");
     try {
-      const rows = await api.insert("attendances", { ...fromAtt(form), barbershop_id: barbershopId }, token);
-      setAttendances(prev=>[toAtt(rows[0]),...prev]);
-      setShowModal(false);
-      setForm({ clientId:"", barberId:isAdmin?"":String(myBarberId||""), serviceId:"", price:"", payment:"PIX", date:today(), time:"", notes:"" });
-    } catch(e){ setErr(e.message); }
+      const [primary, ...extras] = form.selectedServices;
+      const rows = await api.insert("attendances", {
+        client_id: +form.clientId, barber_id: +form.barberId,
+        service_id: primary.serviceId, price: totalPrice,
+        payment: form.payment, date: form.date, time: form.time,
+        notes: form.notes, extra_services: extras, barbershop_id: barbershopId,
+      }, token);
+      setAttendances(prev => [toAtt(rows[0]), ...prev]);
+      setShowModal(false); setForm(emptyForm());
+    } catch(e) { setErr(e.message); }
     setSaving(false);
   };
 
   const del = async id => {
     await api.remove("attendances", id, token);
-    setAttendances(prev=>prev.filter(a=>a.id!==id));
+    setAttendances(prev => prev.filter(a => a.id !== id));
   };
 
-  const payColor = {"PIX":T.info,"Dinheiro":T.success,"Cartão Débito":T.accent,"Cartão Crédito":T.accent};
+  const payColor = { "PIX": T.info, "Dinheiro": T.success, "Cartão Débito": T.accent, "Cartão Crédito": T.accent };
+  const stCell   = { padding: "9px 0.75rem" };
 
   return (
     <div>
       <PageHeader
         title="Atendimentos"
-        sub={`${filtered.length} atendimento${filtered.length!==1?"s":""} · ${R$(filtered.reduce((s,a)=>s+a.price,0))}`}
-        right={<Btn onClick={()=>setShowModal(true)}><Plus size={15}/>Novo Atendimento</Btn>}
+        sub={`${filtered.length} atendimento${filtered.length !== 1 ? "s" : ""} · ${R$(filtered.reduce((s, a) => s + a.price, 0))}`}
+        right={<Btn onClick={() => { setForm(emptyForm()); setShowModal(true); }}><Plus size={15}/>Novo Atendimento</Btn>}
       />
 
-      <div style={{ display:"flex", gap:"0.75rem", marginBottom:"1rem" }}>
-        <input type="date" value={filterDate} onChange={e=>setFilterDate(e.target.value)} style={{ background:T.card, border:`1px solid ${T.border}`, borderRadius:8, padding:"0.5rem 0.875rem", color:T.text, fontSize:13, outline:"none", fontFamily:"'DM Sans', sans-serif" }} />
+      <div style={{ display: "flex", gap: "0.75rem", marginBottom: "1rem" }}>
+        <input type="date" value={filterDate} onChange={e => setFilterDate(e.target.value)} style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 8, padding: "0.5rem 0.875rem", color: T.text, fontSize: 13, outline: "none", fontFamily: "'DM Sans', sans-serif" }} />
         {isAdmin && (
-          <select value={filterBarber} onChange={e=>setFilterBarber(e.target.value)} style={{ background:T.card, border:`1px solid ${T.border}`, borderRadius:8, padding:"0.5rem 0.875rem", color:filterBarber?T.text:T.muted, fontSize:13, outline:"none", fontFamily:"'DM Sans', sans-serif" }}>
+          <select value={filterBarber} onChange={e => setFilterBarber(e.target.value)} style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 8, padding: "0.5rem 0.875rem", color: filterBarber ? T.text : T.muted, fontSize: 13, outline: "none", fontFamily: "'DM Sans', sans-serif" }}>
             <option value="">Todos os barbeiros</option>
-            {barbers.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
+            {barbers.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select>
         )}
-        {(filterDate||filterBarber)&&<Btn variant="ghost" sm onClick={()=>{setFilterDate("");setFilterBarber("");}}>Limpar</Btn>}
+        {(filterDate || filterBarber) && <Btn variant="ghost" sm onClick={() => { setFilterDate(""); setFilterBarber(""); }}>Limpar</Btn>}
       </div>
 
-      <Card style={{ padding:0 }}>
-        <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
-          <THead cols={["Horário","Cliente","Barbeiro","Serviço","Valor","Pagamento","Data",""]} />
+      <Card style={{ padding: 0 }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+          <THead cols={["Horário", "Cliente", "Barbeiro", "Serviço(s)", "Valor", "Pagamento", "Data", ""]} />
           <tbody>
-            {filtered.length===0 ? (
-              <tr><td colSpan={8} style={{ textAlign:"center", padding:"3rem", color:T.muted }}>Nenhum atendimento encontrado</td></tr>
-            ) : filtered.map(a=>{
-              const cl=clients.find(c=>c.id===a.clientId), br=barbers.find(b=>b.id===a.barberId), sv=services.find(s=>s.id===a.serviceId);
+            {filtered.length === 0 ? (
+              <tr><td colSpan={8} style={{ textAlign: "center", padding: "3rem", color: T.muted }}>Nenhum atendimento encontrado</td></tr>
+            ) : filtered.map(a => {
+              const cl = clients.find(c => c.id === a.clientId), br = barbers.find(b => b.id === a.barberId);
               return (
-                <tr key={a.id} style={{ borderTop:`1px solid ${T.borderLight}` }}>
-                  <td style={{ padding:"9px 0.75rem", color:T.muted, fontVariantNumeric:"tabular-nums" }}>{a.time}</td>
-                  <td style={{ padding:"9px 0.75rem", color:T.text, fontWeight:500 }}>{cl?.name||"—"}</td>
-                  <td style={{ padding:"9px 0.75rem", color:T.muted }}>{br?.name||"—"}</td>
-                  <td style={{ padding:"9px 0.75rem", color:T.text }}>{sv?.name||"—"}</td>
-                  <td style={{ padding:"9px 0.75rem", color:T.success, fontWeight:600 }}>{R$(a.price)}</td>
-                  <td style={{ padding:"9px 0.75rem" }}>
-                    <span style={{ background:(payColor[a.payment]||T.accent)+"18", color:payColor[a.payment]||T.accent, borderRadius:5, padding:"2px 8px", fontSize:11, fontWeight:700 }}>{a.payment}</span>
+                <tr key={a.id} style={{ borderTop: `1px solid ${T.borderLight}` }}>
+                  <td style={{ ...stCell, color: T.muted, fontVariantNumeric: "tabular-nums" }}>{a.time}</td>
+                  <td style={{ ...stCell, color: T.text, fontWeight: 500 }}>{cl?.name || "—"}</td>
+                  <td style={{ ...stCell, color: T.muted }}>{br?.name || "—"}</td>
+                  <td style={{ ...stCell, color: T.text }}>{getServiceDisplay(a)}</td>
+                  <td style={{ ...stCell, color: T.success, fontWeight: 600 }}>{R$(a.price)}</td>
+                  <td style={stCell}>
+                    <span style={{ background: (payColor[a.payment] || T.accent) + "18", color: payColor[a.payment] || T.accent, borderRadius: 5, padding: "2px 8px", fontSize: 11, fontWeight: 700 }}>{a.payment}</span>
                   </td>
-                  <td style={{ padding:"9px 0.75rem", color:T.muted, fontSize:12 }}>{fDate(a.date)}</td>
-                  <td style={{ padding:"9px 0.75rem", textAlign:"right" }}>
-                    <button onClick={()=>del(a.id)} style={{ background:"none", border:"none", color:T.muted, cursor:"pointer", display:"inline-flex" }}><Trash2 size={14}/></button>
+                  <td style={{ ...stCell, color: T.muted, fontSize: 12 }}>{fDate(a.date)}</td>
+                  <td style={{ ...stCell, textAlign: "right" }}>
+                    <button onClick={() => del(a.id)} style={{ background: "none", border: "none", color: T.muted, cursor: "pointer", display: "inline-flex" }}><Trash2 size={14}/></button>
                   </td>
                 </tr>
               );
@@ -861,35 +1029,80 @@ function AttendancesView({ attendances, setAttendances, clients, services, barbe
         </table>
       </Card>
 
-      {showModal&&(
-        <Modal title="Novo Atendimento" onClose={()=>setShowModal(false)}>
+      {showModal && (
+        <Modal title="Novo Atendimento" onClose={() => setShowModal(false)}>
           <ErrorBar msg={err}/>
-          <FSelect label="Cliente" value={form.clientId} onChange={setF("clientId")}>
+
+          <FSelect label="Cliente" value={form.clientId} onChange={e => setForm(f => ({ ...f, clientId: e.target.value }))}>
             <option value="">Selecione o cliente</option>
-            {clients.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+            {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </FSelect>
-          {isAdmin&&(
-            <FSelect label="Barbeiro" value={form.barberId} onChange={setF("barberId")}>
+
+          {isAdmin && (
+            <FSelect label="Barbeiro" value={form.barberId} onChange={e => setForm(f => ({ ...f, barberId: e.target.value }))}>
               <option value="">Selecione o barbeiro</option>
-              {barbers.filter(b=>b.status==="active").map(b=><option key={b.id} value={b.id}>{b.name} ({b.commission}%)</option>)}
+              {barbers.filter(b => b.status === "active").map(b => <option key={b.id} value={b.id}>{b.name} ({b.commission}%)</option>)}
             </FSelect>
           )}
-          <FSelect label="Serviço" value={form.serviceId} onChange={setF("serviceId")}>
-            <option value="">Selecione o serviço</option>
-            {services.filter(s=>s.active).map(s=><option key={s.id} value={s.id}>{s.name} — {R$(s.price)}</option>)}
+
+          {/* ── Multi-serviço ── */}
+          <FG label="Adicionar Serviço">
+            <select style={{ ...inputSt, appearance: "none" }} value={addSvcId}
+              onChange={e => { setAddSvcId(e.target.value); addService(e.target.value); }}>
+              <option value="">Selecione para adicionar…</option>
+              {services.filter(s => s.active).map(s => <option key={s.id} value={s.id}>{s.name} — {R$(s.price)}</option>)}
+            </select>
+          </FG>
+
+          {form.selectedServices.length > 0 && (
+            <div style={{ marginBottom: "1rem", border: `1px solid ${T.border}`, borderRadius: 10, overflow: "hidden" }}>
+              {form.selectedServices.map(sv => (
+                <div key={sv.serviceId} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", borderBottom: `1px solid ${T.borderLight}`, background: T.surface }}>
+                  <span style={{ color: T.text, fontSize: 13 }}>{sv.name}</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ color: T.success, fontSize: 13, fontWeight: 700 }}>{R$(sv.price)}</span>
+                    <button onClick={() => removeService(sv.serviceId)} style={{ background: "none", border: "none", color: T.danger, cursor: "pointer", display: "inline-flex", padding: 2 }}><X size={14}/></button>
+                  </div>
+                </div>
+              ))}
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 12px", background: T.card }}>
+                <span style={{ color: T.mutedLight, fontSize: 13, fontWeight: 700 }}>Total</span>
+                <span style={{ color: T.success, fontSize: 14, fontWeight: 800 }}>{R$(totalPrice)}</span>
+              </div>
+            </div>
+          )}
+
+          <FSelect label="Pagamento" value={form.payment} onChange={e => setForm(f => ({ ...f, payment: e.target.value }))}>
+            {PAYMENT_OPTS.map(p => <option key={p}>{p}</option>)}
           </FSelect>
+
           <Row>
-            <FG label="Valor cobrado (R$)" half><input style={inputSt} type="number" value={form.price} onChange={setF("price")}/></FG>
-            <FSelect label="Pagamento" value={form.payment} onChange={setF("payment")}>{PAYMENT_OPTS.map(p=><option key={p}>{p}</option>)}</FSelect>
+            <FG label="Data" half>
+              <input style={{ ...inputSt, opacity: isAdmin ? 1 : 0.5, cursor: isAdmin ? "text" : "not-allowed" }}
+                type="date" value={form.date}
+                onChange={isAdmin ? e => setForm(f => ({ ...f, date: e.target.value })) : undefined}
+                readOnly={!isAdmin}/>
+            </FG>
+            <FG label="Horário" half>
+              <input style={{ ...inputSt, opacity: isAdmin ? 1 : 0.5, cursor: isAdmin ? "text" : "not-allowed" }}
+                type="time" value={form.time}
+                onChange={isAdmin ? e => setForm(f => ({ ...f, time: e.target.value })) : undefined}
+                readOnly={!isAdmin}/>
+            </FG>
           </Row>
-          <Row>
-            <FG label="Data" half><input style={inputSt} type="date" value={form.date} onChange={setF("date")}/></FG>
-            <FG label="Horário" half><input style={inputSt} type="time" value={form.time} onChange={setF("time")}/></FG>
-          </Row>
-          <FArea label="Observações (opcional)" value={form.notes} onChange={setF("notes")}/>
-          <Row g="0.5rem" style={{ justifyContent:"flex-end" }}>
-            <Btn variant="ghost" onClick={()=>setShowModal(false)}>Cancelar</Btn>
-            <Btn onClick={save} disabled={saving}>{saving?<RefreshCw size={13} style={{animation:"spin 1s linear infinite"}}/>:<Check size={13}/>} Registrar</Btn>
+          {!isAdmin && (
+            <div style={{ color: T.muted, fontSize: 11, marginTop: -10, marginBottom: 12 }}>
+              Data e horário definidos automaticamente — somente o admin pode alterar.
+            </div>
+          )}
+
+          <FArea label="Observações (opcional)" value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}/>
+
+          <Row g="0.5rem" style={{ justifyContent: "flex-end" }}>
+            <Btn variant="ghost" onClick={() => setShowModal(false)}>Cancelar</Btn>
+            <Btn onClick={save} disabled={saving}>
+              {saving ? <RefreshCw size={13} style={{ animation: "spin 1s linear infinite" }}/> : <Check size={13}/>} Registrar
+            </Btn>
           </Row>
         </Modal>
       )}
@@ -2062,6 +2275,7 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
           { id:"financial", label:"Financeiro",    Icon:DollarSign },
           { id:"reports",   label:"Relatórios",    Icon:FileText },
           { id:"settings",  label:"Configurações", Icon:Settings },
+          { id:"meuPlano",  label:"Meu Plano",     Icon:Shield },
         ] : []),
       ];
 
@@ -2844,6 +3058,7 @@ export default function App() {
         financial:   <FinancialView attendances={attendances} expenses={expenses} setExpenses={setExpenses} token={tok} barbershopId={barbershopId}/>,
         reports:     <ReportsView attendances={attendances} clients={clients} services={services} barbers={barbers} expenses={expenses} shop={shop}/>,
         settings:    <SettingsView token={tok} shop={shop} onShopUpdated={(updatedShop) => { setShop(updatedShop); applyTenantTheme(updatedShop); }} />,
+        meuPlano:    <MeuPlanoView token={tok} userEmail={auth.user?.email} profile={auth.profile} onRenew={() => setShowPlans(true)} />,
       };
 
   return (
