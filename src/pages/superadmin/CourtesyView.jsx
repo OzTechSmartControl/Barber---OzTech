@@ -8,6 +8,7 @@ import {
   Loader2,
   Mail,
   Plus,
+  RotateCcw,
   Search,
   Trash2,
   TrendingUp,
@@ -265,6 +266,25 @@ export default function CourtesyView({
       await reloadLocalRows();
     } catch (e) {
       alert(e.message || "Erro ao revogar acesso.");
+    } finally {
+      setActionLoading("");
+    }
+  };
+
+  const handleUnrevoke = async (id) => {
+    if (!id) return;
+    if (!window.confirm("Reverter esta revogação? O acesso será restaurado como ativo.")) return;
+
+    setActionLoading(id);
+    try {
+      const { error } = await supabase
+        .from("courtesy_access")
+        .update({ status: "active", revoked_at: null, revoked_by: null })
+        .eq("id", id);
+      if (error) throw error;
+      await reloadLocalRows();
+    } catch (e) {
+      alert(e.message || "Erro ao reverter revogação.");
     } finally {
       setActionLoading("");
     }
@@ -537,25 +557,47 @@ export default function CourtesyView({
                         )}
 
                         {row.status === "revoked" && (
-                          <button
-                            onClick={() => handleDelete(row)}
-                            disabled={actionLoading === row.id}
-                            style={{
-                              background: "#2a1111",
-                              border: `1px solid ${T.danger}55`,
-                              borderRadius: 8,
-                              padding: "5px 10px",
-                              color: T.danger,
-                              fontSize: 12,
-                              fontWeight: 800,
-                              cursor: actionLoading === row.id ? "wait" : "pointer",
-                              display: "inline-flex",
-                              gap: 5,
-                              alignItems: "center",
-                            }}
-                          >
-                            <Trash2 size={12} /> Excluir
-                          </button>
+                          <>
+                            <button
+                              onClick={() => handleUnrevoke(row.id)}
+                              disabled={actionLoading === row.id}
+                              style={{
+                                background: `${T.success}18`,
+                                border: `1px solid ${T.success}55`,
+                                borderRadius: 8,
+                                padding: "5px 10px",
+                                color: T.success,
+                                fontSize: 12,
+                                fontWeight: 800,
+                                cursor: actionLoading === row.id ? "wait" : "pointer",
+                                display: "inline-flex",
+                                gap: 5,
+                                alignItems: "center",
+                              }}
+                            >
+                              <RotateCcw size={12} /> Reverter
+                            </button>
+
+                            <button
+                              onClick={() => handleDelete(row)}
+                              disabled={actionLoading === row.id}
+                              style={{
+                                background: "#2a1111",
+                                border: `1px solid ${T.danger}55`,
+                                borderRadius: 8,
+                                padding: "5px 10px",
+                                color: T.danger,
+                                fontSize: 12,
+                                fontWeight: 800,
+                                cursor: actionLoading === row.id ? "wait" : "pointer",
+                                display: "inline-flex",
+                                gap: 5,
+                                alignItems: "center",
+                              }}
+                            >
+                              <Trash2 size={12} /> Excluir
+                            </button>
+                          </>
                         )}
                       </div>
                     </td>
