@@ -550,7 +550,8 @@ export default function SuperAdminView({ section = "dashboard", token }) {
     if (section === "clients") {
       return (
         <ClientsView
-          rows={clients}
+          subscriptions={subscriptions}
+          courtesies={courtesies}
           search={search}
           setSearch={setSearch}
           planFilter={planFilter}
