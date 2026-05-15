@@ -879,7 +879,7 @@ export default function Onboarding({ onComplete, courtesyEmail = "", initialToke
             letterSpacing: ".2px",
           }}
         >
-          Desenvolvido por OzTech SmartControl.
+          Desenvolvido por OzTech SmartControl
         </div>
       </div>
     </div>
