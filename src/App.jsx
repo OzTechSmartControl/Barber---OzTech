@@ -2626,14 +2626,6 @@ export default function App() {
     }
   }, []);
 
-  // Carrega dados toda vez que auth muda e dataLoaded ainda é false.
-  // Isso resolve tanto o refresh da página quanto o retorno pós-pagamento.
-  useEffect(() => {
-    if (auth?.token && auth?.profile?.barbershop_id && !dataLoaded && !showPlans) {
-      loadData(auth.token, auth.profile);
-    }
-  }, [auth, dataLoaded, showPlans, loadData]);
-
   const loadData = useCallback(async (tok, profile) => {
     setLoading(true);
     setDataLoaded(false);
@@ -2734,6 +2726,14 @@ export default function App() {
     }
     await loadData(normalizedAuth.token, normalizedAuth.profile);
   }, [loadData]);
+
+  // Carrega dados toda vez que auth muda e dataLoaded ainda é false.
+  // Isso resolve tanto o refresh da página quanto o retorno pós-pagamento.
+  useEffect(() => {
+    if (auth?.token && auth?.profile?.barbershop_id && !dataLoaded && !showPlans) {
+      loadData(auth.token, auth.profile);
+    }
+  }, [auth, dataLoaded, showPlans, loadData]);
 
   const onLogout = async () => {
     await supabase.auth.signOut();
