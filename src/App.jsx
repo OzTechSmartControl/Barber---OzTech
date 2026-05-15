@@ -2764,7 +2764,7 @@ export default function App() {
   // Tela de planos (antes do login ou assinatura expirada)
   if (showPlans) return (
     <PlansView
-      onBack={() => { setShowPlans(false); setExpiredMsg(""); }}
+      onBack={() => { if (expiredMsg) { onLogout(); } else { setShowPlans(false); setExpiredMsg(""); } }}
       expiredMessage={expiredMsg}
       token={checkoutAuth?.token || checkoutAuth?.access_token}
       user={checkoutAuth?.user}
