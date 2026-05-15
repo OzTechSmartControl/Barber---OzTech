@@ -2294,7 +2294,7 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
             </span>
           </div>
           <div style={{ color:T.mutedLight, fontSize:11, lineHeight:1.45 }}>
-            Controle global da plataforma, clientes, receita e assinaturas.
+            Controle global da plataforma.
           </div>
         </div>
       )}
