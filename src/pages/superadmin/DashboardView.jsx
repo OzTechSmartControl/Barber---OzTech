@@ -193,8 +193,8 @@ function PlanDistribution({ rows = [] }) {
     return (
       <EmptyState
         icon={PieChart}
-        title="Sem distribuição de planos"
-        subtitle="Quando houver planos associados, a distribuição será exibida aqui."
+        title="Sem distribuição de planos ativos"
+        subtitle="Quando houver clientes ativos, a distribuição por modalidade será exibida aqui."
       />
     );
   }
@@ -367,8 +367,8 @@ export default function DashboardView({
         }}
       >
         <ChartShell
-          title="Distribuição de Planos"
-          subtitle="Quantidade de clientes por plano"
+          title="Distribuição de Planos Ativos"
+          subtitle="Clientes ativos por modalidade de acesso"
           icon={PieChart}
         >
           <PlanDistribution rows={planDistribution} />
