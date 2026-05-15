@@ -191,7 +191,7 @@ function normalizeSubscription(item) {
   };
 }
 
-export default function SuperAdminView({ section = "dashboard" }) {
+export default function SuperAdminView({ section = "dashboard", token }) {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
@@ -295,6 +295,12 @@ export default function SuperAdminView({ section = "dashboard" }) {
     setErr("");
 
     try {
+      // Autentica o cliente supabase com o token do usuário logado,
+      // necessário para chamadas RPC que dependem de auth.uid().
+      if (token) {
+        await supabase.auth.setSession({ access_token: token, refresh_token: token });
+      }
+
       const [
         metricsRes,
         customerGrowthRes,
