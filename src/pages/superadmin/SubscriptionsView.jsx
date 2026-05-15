@@ -11,7 +11,7 @@ export default function SubscriptionsView({ subscriptions = [], metrics }) {
     {
       key: "display_plan",
       label: "Plano",
-      render: (row) => (
+      render: (_value, row) => (
         <div>
           <div style={{ color: T.text, fontWeight: 800 }}>
             {row.display_plan || row.plan || "—"}
@@ -25,20 +25,18 @@ export default function SubscriptionsView({ subscriptions = [], metrics }) {
     {
       key: "display_email",
       label: "Pagador",
-      muted: true,
-      render: (row) => row.display_email || row.mp_payer_email || "—",
+      render: (_value, row) =>
+        row.display_email || row.email || row.mp_payer_email || "—",
     },
     {
       key: "status",
       label: "Status",
-      nowrap: true,
-      render: (row) => row.status || "—",
+      render: (_value, row) => row.status || "—",
     },
     {
       key: "amount",
       label: "Valor",
-      nowrap: true,
-      render: (row) => (
+      render: (_value, row) => (
         <span style={{ color: T.success, fontWeight: 800 }}>
           {money(row.amount)}
         </span>
@@ -47,16 +45,12 @@ export default function SubscriptionsView({ subscriptions = [], metrics }) {
     {
       key: "created_at",
       label: "Início",
-      nowrap: true,
-      muted: true,
-      render: (row) => fDate(row.created_at || row.started_at),
+      render: (_value, row) => fDate(row.created_at || row.started_at),
     },
     {
       key: "expires_at",
       label: "Renovação",
-      nowrap: true,
-      muted: true,
-      render: (row) => fDate(row.expires_at),
+      render: (_value, row) => fDate(row.expires_at),
     },
   ];
 
@@ -108,9 +102,10 @@ export default function SubscriptionsView({ subscriptions = [], metrics }) {
 
       <DataTable
         columns={columns}
-        rows={subscriptions}
-        emptyTitle="Nenhuma assinatura registrada"
-        emptySubtitle="Quando um pagamento aprovado for recebido, a assinatura aparecerá aqui."
+        data={subscriptions}
+        title=""
+        searchable={true}
+        pageSize={10}
       />
     </div>
   );
