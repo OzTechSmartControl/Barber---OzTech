@@ -2045,7 +2045,7 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
   const nav = isSuperAdmin
     ? [
         { id:"superadmin_dashboard",      label:"Dashboard",     Icon:LayoutDashboard, desc:"Visão geral" },
-        { id:"superadmin_clients",        label:"Clientes SaaS", Icon:Users,           desc:"Tenants" },
+        { id:"superadmin_clients",        label:"Clientes Ativos", Icon:Users,         desc:"Ativos" },
         { id:"superadmin_finance",        label:"Financeiro",    Icon:DollarSign,     desc:"Receita" },
         { id:"superadmin_subscriptions",  label:"Assinaturas",   Icon:CreditCard,     desc:"Billing" },
         { id:"superadmin_courtesy",       label:"Cortesias",     Icon:Gift,           desc:"Acessos" },

@@ -200,7 +200,7 @@ export default function ClientsView({
       <SectionHeader
         icon={Users}
         title="Clientes Ativos"
-        subtitle="Todos os clientes com acesso ativo à plataforma — assinantes e cortesias"
+        subtitle="Todos os clientes com acesso ativo à plataforma"
       />
 
       <div
