@@ -17,6 +17,25 @@ import ChartCard from "../../components/superadmin/ChartCard";
 import DataTable from "../../components/superadmin/DataTable";
 import SectionHeader from "../../components/superadmin/SectionHeader";
 
+const STATUS_LABEL = {
+  redeemed: "Ativo",
+  paid:     "Pago",
+  pending:  "Pendente",
+  cancelled:"Cancelado",
+  refunded: "Reembolsado",
+};
+
+function calcExpiry(row) {
+  if (row.expires_at) return row.expires_at;
+  const base = row.paid_at || row.created_at;
+  if (!base) return null;
+  const d = new Date(base);
+  if (row.plan === "annual")    d.setFullYear(d.getFullYear() + 1);
+  else if (row.plan === "semestral") d.setMonth(d.getMonth() + 6);
+  else                               d.setMonth(d.getMonth() + 1);
+  return d.toISOString();
+}
+
 export default function FinanceView({
   metrics,
   planDistribution = [],
@@ -50,17 +69,17 @@ export default function FinanceView({
     {
       key: "status",
       label: "Status",
-      render: (_value, row) => row.status || "—",
+      render: (_value, row) => STATUS_LABEL[row.status] || row.status || "—",
     },
     {
       key: "created_at",
-      label: "Criado em",
-      render: (_value, row) => fDate(row.created_at),
+      label: "Contratado em",
+      render: (_value, row) => fDate(row.paid_at || row.created_at),
     },
     {
       key: "expires_at",
       label: "Expira em",
-      render: (_value, row) => fDate(row.expires_at),
+      render: (_value, row) => fDate(calcExpiry(row)),
     },
   ];
 
@@ -80,48 +99,12 @@ export default function FinanceView({
           marginBottom: "1.5rem",
         }}
       >
-        <KpiCard
-          label="Receita mensal"
-          value={money(metrics.mrr)}
-          icon={DollarSign}
-          tone="success"
-        />
-
-        <KpiCard
-          label="Receita prevista"
-          value={money(metrics.arr)}
-          subtitle="ARR projetado"
-          icon={TrendingUp}
-          tone="accent"
-        />
-
-        <KpiCard
-          label="Ticket médio"
-          value={money(metrics.average_ticket)}
-          icon={Activity}
-          tone="info"
-        />
-
-        <KpiCard
-          label="Assinaturas ativas"
-          value={metrics.active_subscriptions}
-          icon={CreditCard}
-          tone="success"
-        />
-
-        <KpiCard
-          label="Inadimplência"
-          value={metrics.overdue_subscriptions}
-          icon={AlertCircle}
-          tone="warning"
-        />
-
-        <KpiCard
-          label="Cancelamentos"
-          value={metrics.cancelled_subscriptions}
-          icon={Ban}
-          tone="danger"
-        />
+        <KpiCard label="Receita mensal"   value={money(metrics.mrr)}            icon={DollarSign}  tone="success" />
+        <KpiCard label="Receita prevista" value={money(metrics.arr)}            icon={TrendingUp}  tone="accent"  subtitle="ARR projetado" />
+        <KpiCard label="Ticket médio"     value={money(metrics.average_ticket)} icon={Activity}    tone="info" />
+        <KpiCard label="Assinaturas ativas"  value={metrics.active_subscriptions}  icon={CreditCard}  tone="success" />
+        <KpiCard label="Inadimplência"    value={metrics.overdue_subscriptions}  icon={AlertCircle} tone="warning" />
+        <KpiCard label="Cancelamentos"    value={metrics.cancelled_subscriptions} icon={Ban}        tone="danger" />
       </div>
 
       <div
@@ -142,7 +125,6 @@ export default function FinanceView({
           type="column"
           icon={BarChart3}
         />
-
         <ChartCard
           title="Receita por Plano"
           subtitle="MRR distribuído por categoria"

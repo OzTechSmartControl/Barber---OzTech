@@ -6,6 +6,25 @@ import DataTable from "../../components/superadmin/DataTable";
 import SectionHeader from "../../components/superadmin/SectionHeader";
 import KpiCard from "../../components/superadmin/KpiCard";
 
+const STATUS_LABEL = {
+  redeemed: "Ativo",
+  paid:     "Pago",
+  pending:  "Pendente",
+  cancelled:"Cancelado",
+  refunded: "Reembolsado",
+};
+
+function calcExpiry(row) {
+  if (row.expires_at) return row.expires_at;
+  const base = row.paid_at || row.created_at;
+  if (!base) return null;
+  const d = new Date(base);
+  if (row.plan === "annual")         d.setFullYear(d.getFullYear() + 1);
+  else if (row.plan === "semestral") d.setMonth(d.getMonth() + 6);
+  else                               d.setMonth(d.getMonth() + 1);
+  return d.toISOString();
+}
+
 export default function SubscriptionsView({ subscriptions = [], metrics }) {
   const columns = [
     {
@@ -31,7 +50,7 @@ export default function SubscriptionsView({ subscriptions = [], metrics }) {
     {
       key: "status",
       label: "Status",
-      render: (_value, row) => row.status || "—",
+      render: (_value, row) => STATUS_LABEL[row.status] || row.status || "—",
     },
     {
       key: "amount",
@@ -43,14 +62,14 @@ export default function SubscriptionsView({ subscriptions = [], metrics }) {
       ),
     },
     {
-      key: "created_at",
-      label: "Início",
-      render: (_value, row) => fDate(row.created_at || row.started_at),
+      key: "paid_at",
+      label: "Contratado em",
+      render: (_value, row) => fDate(row.paid_at || row.created_at),
     },
     {
       key: "expires_at",
-      label: "Renovação",
-      render: (_value, row) => fDate(row.expires_at),
+      label: "Expira em",
+      render: (_value, row) => fDate(calcExpiry(row)),
     },
   ];
 
@@ -70,34 +89,10 @@ export default function SubscriptionsView({ subscriptions = [], metrics }) {
           marginBottom: "1.5rem",
         }}
       >
-        <KpiCard
-          label="Ativas"
-          value={metrics.active_subscriptions}
-          icon={CreditCard}
-          tone="success"
-        />
-
-        <KpiCard
-          label="Inadimplentes"
-          value={metrics.overdue_subscriptions}
-          icon={CreditCard}
-          tone="warning"
-        />
-
-        <KpiCard
-          label="Canceladas"
-          value={metrics.cancelled_subscriptions}
-          icon={CreditCard}
-          tone="danger"
-        />
-
-        <KpiCard
-          label="Gateway"
-          value="MP"
-          subtitle="Mercado Pago"
-          icon={CreditCard}
-          tone="accent"
-        />
+        <KpiCard label="Ativas"       value={metrics.active_subscriptions}   icon={CreditCard} tone="success" />
+        <KpiCard label="Inadimplentes" value={metrics.overdue_subscriptions}  icon={CreditCard} tone="warning" />
+        <KpiCard label="Canceladas"   value={metrics.cancelled_subscriptions} icon={CreditCard} tone="danger"  />
+        <KpiCard label="Gateway"      value="MP" subtitle="Mercado Pago"      icon={CreditCard} tone="accent"  />
       </div>
 
       <DataTable
