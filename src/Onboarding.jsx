@@ -348,7 +348,7 @@ export default function Onboarding({ onComplete, courtesyEmail = "", initialToke
         if (!val.allowed) {
           const reason = val.reason ?? "";
           setErr(
-            reason === "no_active_subscription"
+            reason === "no_paid_checkout_found"
               ? "Este e-mail não possui uma assinatura ativa. Se você acabou de pagar, aguarde alguns segundos e tente novamente. Caso o problema persista, entre em contato com o suporte."
               : "E-mail já vinculado a uma barbearia. Faça login ou use o e-mail utilizado na assinatura."
           );
