@@ -290,17 +290,34 @@ export default function SuperAdminView({ section = "dashboard", token }) {
     return [];
   };
 
+  const SUPABASE_URL  = "https://kqjzontxfwlwmvbddbnv.supabase.co";
+  const SUPABASE_ANON = "sb_publishable_cTk8su9HL7LcXoPQE-bqVQ_5Idjyf1a";
+
+  const fetchSubscriptions = async () => {
+    try {
+      const bearer = token || SUPABASE_ANON;
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/superadmin_list_subscriptions`, {
+        method: "POST",
+        headers: {
+          apikey: SUPABASE_ANON,
+          Authorization: `Bearer ${bearer}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({}),
+      });
+      const json = await res.json();
+      return { data: Array.isArray(json) ? json : [], error: Array.isArray(json) ? null : json };
+    } catch (e) {
+      return { data: [], error: e };
+    }
+  };
+
   const loadAll = async () => {
     setLoading(true);
     setErr("");
 
     try {
-      // Autentica o cliente supabase com o token do usuário logado,
-      // necessário para chamadas RPC que dependem de auth.uid().
-      if (token) {
-        await supabase.auth.setSession({ access_token: token, refresh_token: token });
-      }
-
       const [
         metricsRes,
         customerGrowthRes,
@@ -323,7 +340,7 @@ export default function SuperAdminView({ section = "dashboard", token }) {
           .from("superadmin_saas_overview")
           .select("*")
           .order("barbershop_created_at", { ascending: false }),
-        supabase.rpc("superadmin_list_subscriptions"),
+        fetchSubscriptions(),
       ]);
 
       if (metricsRes.error) throw metricsRes.error;
@@ -332,7 +349,7 @@ export default function SuperAdminView({ section = "dashboard", token }) {
       if (planDistributionRes.error) throw planDistributionRes.error;
       if (alertsRes.error) throw alertsRes.error;
       if (clientsRes.error) throw clientsRes.error;
-      if (subscriptionsRes.error) throw subscriptionsRes.error;
+      if (subscriptionsRes.error) console.warn("subscriptions:", subscriptionsRes.error);
 
       const courtesyRows = await loadCourtesyRows();
 
