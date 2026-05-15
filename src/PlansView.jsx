@@ -121,6 +121,7 @@ export default function PlansView({
   session,
 }) {
   const [loadingPlan, setLoadingPlan] = useState(null);
+  const [payerEmail, setPayerEmail] = useState("");
   const [courtEmail, setCourtEmail] = useState("");
   const [courtLoading, setCourtLoading] = useState(false);
   const [showCourtesyHelp, setShowCourtesyHelp] = useState(false);
@@ -185,6 +186,12 @@ export default function PlansView({
   };
 
   const handlePlanSelect = async (plan) => {
+    const email = payerEmail.trim().toLowerCase();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setErr("Informe um e-mail válido antes de assinar. Você usará esse mesmo e-mail para criar sua conta.");
+      return;
+    }
+
     setLoadingPlan(plan.id);
     setErr("");
     setSuccessMsg("");
@@ -198,6 +205,7 @@ export default function PlansView({
         product_name: "Oz.Barber",
         price: Number(plan.price),
         currency: "BRL",
+        payer_email: email,
         return_url: window.location.origin,
         success_url: `${window.location.origin}/?payment=success&plan=${plan.id}`,
         failure_url: `${window.location.origin}/?payment=failure&plan=${plan.id}`,
@@ -372,6 +380,20 @@ export default function PlansView({
         </div>
 
         <div style={{ width: "100%" }}>
+          <div style={{ marginBottom: "1rem" }}>
+            <label style={{ display: "block", fontSize: 12, color: T.mutedLight, marginBottom: 6, fontWeight: 600 }}>
+              <Mail size={12} style={{ marginRight: 5, verticalAlign: "middle" }} />
+              Seu e-mail (use o mesmo para criar sua conta)
+            </label>
+            <input
+              type="email"
+              placeholder="seuemail@exemplo.com"
+              value={payerEmail}
+              onChange={(e) => setPayerEmail(e.target.value)}
+              style={{ ...inputSt, borderColor: payerEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payerEmail.trim()) ? T.danger : T.border }}
+            />
+          </div>
+
           <ErrMsg msg={err} />
           <SuccessMsg msg={successMsg} />
 
