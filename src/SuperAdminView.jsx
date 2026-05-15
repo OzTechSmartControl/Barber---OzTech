@@ -1,11 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
+  BarChart3,
+  Bell,
   Check,
   Clock,
+  CreditCard,
+  DollarSign,
+  Gift,
   Infinity,
   Loader2,
   RefreshCw,
+  TrendingUp,
+  Users,
   X,
 } from "lucide-react";
 
@@ -675,34 +682,46 @@ export default function SuperAdminView({ section = "dashboard", token }) {
 
       `}</style>
 
-      <div
-        style={{
-          marginBottom: "1.75rem",
-          display: "flex",
-          justifyContent: "flex-end",
-        }}
-      >
-        <button
-          onClick={loadAll}
-          style={{
-            background: T.surface,
-            color: T.text,
-            border: `1px solid ${T.border}`,
-            borderRadius: 10,
-            padding: "0.65rem 1rem",
-            display: "inline-flex",
-            gap: 8,
-            alignItems: "center",
-            cursor: "pointer",
-            fontSize: 13,
-            fontWeight: 700,
-            fontFamily: "'DM Sans', sans-serif",
-          }}
-        >
-          <RefreshCw size={14} />
-          Atualizar
-        </button>
-      </div>
+      {/* ── cabeçalho principal ─────────────────────────────────── */}
+      {(() => {
+        const sectionMeta = {
+          dashboard:     { title: "Dashboard",       subtitle: "Visão executiva, limpa e estratégica da operação SaaS", Icon: BarChart3   },
+          clients:       { title: "Clientes Ativos", subtitle: "Todos os clientes com acesso ativo à plataforma",       Icon: Users       },
+          finance:       { title: "Financeiro",      subtitle: "Métricas financeiras da plataforma SaaS",               Icon: DollarSign  },
+          subscriptions: { title: "Assinaturas",     subtitle: "Centro de assinaturas, recorrência e cobrança",         Icon: CreditCard  },
+          courtesy:      { title: "Cortesias",       subtitle: "Acessos cortesia liberados manualmente",                Icon: Gift        },
+          alerts:        { title: "Alertas",         subtitle: "Eventos e notificações da plataforma",                  Icon: Bell        },
+          analytics:     { title: "Analytics",       subtitle: "Inteligência e métricas avançadas",                     Icon: TrendingUp  },
+        };
+        const meta = sectionMeta[section] || sectionMeta.dashboard;
+        const Icon = meta.Icon;
+        return (
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, marginBottom: "1.75rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <Icon size={28} color={T.accent} />
+              <div>
+                <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: 0, fontSize: 38, letterSpacing: 2.2, color: T.text, lineHeight: 1 }}>
+                  {meta.title}
+                </h1>
+                <div style={{ color: T.muted, fontSize: 13, marginTop: 5 }}>{meta.subtitle}</div>
+              </div>
+            </div>
+            <button
+              onClick={loadAll}
+              style={{
+                background: T.surface, color: T.text, border: `1px solid ${T.border}`,
+                borderRadius: 10, padding: "0.65rem 1rem",
+                display: "inline-flex", gap: 8, alignItems: "center",
+                cursor: "pointer", fontSize: 13, fontWeight: 700,
+                fontFamily: "'DM Sans', sans-serif", flexShrink: 0,
+              }}
+            >
+              <RefreshCw size={14} />
+              Atualizar
+            </button>
+          </div>
+        );
+      })()}
 
       {err && (
         <div

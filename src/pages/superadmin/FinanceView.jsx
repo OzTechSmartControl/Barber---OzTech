@@ -85,11 +85,6 @@ export default function FinanceView({
 
   return (
     <div>
-      <SectionHeader
-        icon={Wallet}
-        title="Financeiro"
-        subtitle="Métricas financeiras da plataforma SaaS, separadas da operação das barbearias"
-      />
 
       <div
         style={{

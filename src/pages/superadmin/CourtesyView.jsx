@@ -322,59 +322,52 @@ export default function CourtesyView({
 
   return (
     <div>
-      <SectionHeader
-        icon={Gift}
-        title="Cortesias"
-        subtitle="Acessos gratuitos doados pelo admin master; não entram como receita"
-        right={
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
-            <button
-              onClick={onNewCourtesy}
-              style={{
-                background: `linear-gradient(135deg, ${T.accent}, #7dd3fc)`,
-                color: "#061018",
-                border: `1px solid ${T.accent}`,
-                borderRadius: 12,
-                padding: "0.72rem 1.05rem",
-                fontSize: 13,
-                fontWeight: 900,
-                cursor: "pointer",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 7,
-                boxShadow: `0 0 0 1px ${T.accentGlow}, 0 0 18px ${T.accentGlow}`,
-                fontFamily: "'DM Sans', sans-serif",
-              }}
-            >
-              <Plus size={14} /> Novo acesso cortesia
-            </button>
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap", marginBottom: "1rem" }}>
+        <button
+          onClick={onNewCourtesy}
+          style={{
+            background: `linear-gradient(135deg, ${T.accent}, #7dd3fc)`,
+            color: "#061018",
+            border: `1px solid ${T.accent}`,
+            borderRadius: 12,
+            padding: "0.72rem 1.05rem",
+            fontSize: 13,
+            fontWeight: 900,
+            cursor: "pointer",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 7,
+            boxShadow: `0 0 0 1px ${T.accentGlow}, 0 0 18px ${T.accentGlow}`,
+            fontFamily: "'DM Sans', sans-serif",
+          }}
+        >
+          <Plus size={14} /> Novo acesso cortesia
+        </button>
 
-            <button
-              onClick={() => {
-                setSelectedRevokeId("");
-                setShowRevokeModal(true);
-              }}
-              style={{
-                background: "linear-gradient(135deg, rgba(240,112,112,.18), rgba(245,158,11,.12))",
-                color: T.danger,
-                border: `1px solid ${T.danger}66`,
-                borderRadius: 12,
-                padding: "0.72rem 1.05rem",
-                fontSize: 13,
-                fontWeight: 900,
-                cursor: "pointer",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 7,
-                boxShadow: `0 0 16px ${T.dangerBg}`,
-                fontFamily: "'DM Sans', sans-serif",
-              }}
-            >
-              Revogar Acesso
-            </button>
-          </div>
-        }
-      />
+        <button
+          onClick={() => {
+            setSelectedRevokeId("");
+            setShowRevokeModal(true);
+          }}
+          style={{
+            background: "linear-gradient(135deg, rgba(240,112,112,.18), rgba(245,158,11,.12))",
+            color: T.danger,
+            border: `1px solid ${T.danger}66`,
+            borderRadius: 12,
+            padding: "0.72rem 1.05rem",
+            fontSize: 13,
+            fontWeight: 900,
+            cursor: "pointer",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 7,
+            boxShadow: `0 0 16px ${T.dangerBg}`,
+            fontFamily: "'DM Sans', sans-serif",
+          }}
+        >
+          Revogar Acesso
+        </button>
+      </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 14, marginBottom: "1.25rem" }}>
         <KpiCard label="Total concedidas" value={displayMetrics.total_courtesies} icon={Gift} tone="accent" />

@@ -75,11 +75,6 @@ export default function SubscriptionsView({ subscriptions = [], metrics }) {
 
   return (
     <div>
-      <SectionHeader
-        icon={CreditCard}
-        title="Assinaturas"
-        subtitle="Centro de assinaturas, recorrência e gateway de pagamento"
-      />
 
       <div
         style={{

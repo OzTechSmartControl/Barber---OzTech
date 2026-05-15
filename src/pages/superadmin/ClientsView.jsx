@@ -197,12 +197,6 @@ export default function ClientsView({
 
   return (
     <div>
-      <SectionHeader
-        icon={Users}
-        title="Clientes Ativos"
-        subtitle="Todos os clientes com acesso ativo à plataforma"
-      />
-
       <div
         style={{
           display: "grid",

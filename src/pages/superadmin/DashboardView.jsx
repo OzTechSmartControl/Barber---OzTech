@@ -277,8 +277,6 @@ export default function DashboardView({
 
   return (
     <div>
-      <SectionHeader icon={BarChart3} title="Dashboard" subtitle="Visão executiva, limpa e estratégica da operação SaaS" />
-
       <div style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(150px, 1fr))", gap: 14, marginBottom: "1.5rem" }}>
         <KpiCard label="MRR"            value={money(metrics.mrr)}             subtitle="Receita recorrente mensal"     icon={DollarSign}  tone="success" />
         <KpiCard label="ARR"            value={money(metrics.arr)}             subtitle="Receita anual projetada"       icon={TrendingUp}  tone="accent"  />

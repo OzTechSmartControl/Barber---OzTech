@@ -102,12 +102,6 @@ function getSource(item = {}) {
 export default function AlertsView({ alerts = [] }) {
   return (
     <div>
-      <SectionHeader
-        icon={Bell}
-        title="Alertas"
-        subtitle="Central de eventos da plataforma em formato de timeline"
-      />
-
       <div style={{ marginTop: "1rem" }}>
         {alerts.map((item, index) => {
           const visual = getAlertVisual(item);

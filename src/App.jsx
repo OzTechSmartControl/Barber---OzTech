@@ -2047,7 +2047,7 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
         { id:"superadmin_dashboard",      label:"Dashboard",     Icon:LayoutDashboard, desc:"Visão geral" },
         { id:"superadmin_clients",        label:"Clientes Ativos", Icon:Users,         desc:"Ativos" },
         { id:"superadmin_finance",        label:"Financeiro",    Icon:DollarSign,     desc:"Receita" },
-        { id:"superadmin_subscriptions",  label:"Assinaturas",   Icon:CreditCard,     desc:"Billing" },
+        { id:"superadmin_subscriptions",  label:"Assinaturas",   Icon:CreditCard,     desc:"Cobrança" },
         { id:"superadmin_courtesy",       label:"Cortesias",     Icon:Gift,           desc:"Acessos" },
         { id:"superadmin_alerts",         label:"Alertas",       Icon:Bell,           desc:"Eventos" },
         { id:"superadmin_analytics",      label:"Analytics",     Icon:TrendingUp,     desc:"Inteligência" },

@@ -6,12 +6,6 @@ import SectionHeader from "../../components/superadmin/SectionHeader";
 export default function AnalyticsView() {
   return (
     <div>
-      <SectionHeader
-        icon={BarChart3}
-        title="Analytics"
-        subtitle="Módulo futuro de inteligência SaaS avançada"
-      />
-
       <EmptyState
         icon={Activity}
         title="Analytics avançado em breve"
