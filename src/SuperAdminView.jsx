@@ -679,28 +679,9 @@ export default function SuperAdminView({ section = "dashboard", token }) {
         style={{
           marginBottom: "1.75rem",
           display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          gap: 16,
+          justifyContent: "flex-end",
         }}
       >
-        <div>
-          <h1
-            style={{
-              fontFamily: "'Bebas Neue', sans-serif",
-              margin: 0,
-              fontSize: 38,
-              letterSpacing: 2.2,
-              color: T.text,
-            }}
-          >
-            Centro de Inteligência SaaS
-          </h1>
-          <div style={{ color: T.muted, fontSize: 13, marginTop: 5 }}>
-            Gestão executiva da plataforma Oz.Barber
-          </div>
-        </div>
-
         <button
           onClick={loadAll}
           style={{
