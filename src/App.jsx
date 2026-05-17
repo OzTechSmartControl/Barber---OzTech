@@ -2881,16 +2881,9 @@ const safeSaveAuth = (authData) => {
 
 export default function App() {
 
-  const isResetPasswordRoute =
-    window.location.pathname === "/reset-password" ||
-    window.location.hash.includes("type=recovery") ||
-    window.location.hash.includes("access_token") ||
-    window.location.search.includes("type=recovery") ||
-    window.location.search.includes("code=");
-
-  if (isResetPasswordRoute) {
-    return <ResetPassword />;
-  }
+  // ── Hooks devem vir ANTES de qualquer return condicional ──────
+  const isMobile   = useIsMobile();
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const [session, setSession] = useState(null);
   const [user, setUser] = useState(null);
@@ -2902,9 +2895,20 @@ export default function App() {
   const [collapsed,    setCollapsed]    = useState(false);
   const [showPlans,      setShowPlans]      = useState(false);
   const [expiredMsg,     setExpiredMsg]     = useState("");
-  const [postPaymentPlan, setPostPaymentPlan] = useState(null); // plano pago recentemente por usuário sem conta
-  const [courtesyEmail,setCourtesyEmail]= useState(null); // e-mail validado como cortesia
+  const [postPaymentPlan, setPostPaymentPlan] = useState(null);
+  const [courtesyEmail,setCourtesyEmail]= useState(null);
   const [shop,         setShop]         = useState(null);
+
+  const isResetPasswordRoute =
+    window.location.pathname === "/reset-password" ||
+    window.location.hash.includes("type=recovery") ||
+    window.location.hash.includes("access_token") ||
+    window.location.search.includes("type=recovery") ||
+    window.location.search.includes("code=");
+
+  if (isResetPasswordRoute) {
+    return <ResetPassword />;
+  }
 
   const [clients,     setClients]     = useState([]);
   const [services,    setServices]    = useState([]);
@@ -3197,11 +3201,6 @@ export default function App() {
     : (barbers.find(b=>b.userId===auth.user?.id)?.name || auth.user?.email || "Usuário");
 
   const activeView = isSuperAdmin ? view : view;
-
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const isMobile = useIsMobile();
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const views = isSuperAdmin
     ? {
