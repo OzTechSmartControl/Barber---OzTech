@@ -230,12 +230,12 @@ const THead = ({ cols }) => (
 );
 
 const PageHeader = ({ title, sub, right }) => (
-  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.75rem" }}>
-    <div>
-      <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 38, letterSpacing: 2.5, margin: "0 0 4px", color: T.text }}>{title}</h1>
+  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.75rem", gap: 12, flexWrap: "wrap" }}>
+    <div style={{ minWidth: 0 }}>
+      <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "clamp(26px, 6vw, 38px)", letterSpacing: 2.5, margin: "0 0 4px", color: T.text }}>{title}</h1>
       {sub && <div style={{ color: T.muted, fontSize: 13 }}>{sub}</div>}
     </div>
-    {right}
+    {right && <div style={{ flexShrink: 0 }}>{right}</div>}
   </div>
 );
 
@@ -623,7 +623,7 @@ const LoadingScreen = () => (
 );
 
 // ── DASHBOARD ─────────────────────────────────────────────────
-function Dashboard({ attendances, clients, services, barbers, isAdmin, myBarberId, onGoReports }) {
+function Dashboard({ attendances, clients, services, barbers, isAdmin, myBarberId, onGoReports, isMobile }) {
   const todayStr   = today();
   const monthStr   = month();
   const myAtts     = isAdmin ? attendances : attendances.filter(a => a.barberId === myBarberId);
@@ -642,7 +642,7 @@ function Dashboard({ attendances, clients, services, barbers, isAdmin, myBarberI
           <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 38, letterSpacing: 2.5, margin: "0 0 4px", color: T.text }}>Olá, {me?.name?.split(" ")[0] || "Barbeiro"}</h1>
           <div style={{ color: T.muted, fontSize: 13 }}>{new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}</div>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "1rem", marginBottom: "1.5rem" }}>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: "1rem", marginBottom: "1.5rem" }}>
           <StatCard label="Atendimentos hoje"  value={todayAtts.length}  icon={Scissors} />
           <StatCard label="Faturamento hoje"    value={R$(todayRev)}     color={T.accent}  icon={DollarSign} />
           <StatCard label="Faturamento do mês"  value={R$(monthRev)}     color={T.success} icon={TrendingUp} />
@@ -650,6 +650,7 @@ function Dashboard({ attendances, clients, services, barbers, isAdmin, myBarberI
         </div>
         <Card>
           <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1.5, color: T.text, marginBottom: "1rem" }}>Últimos atendimentos</div>
+          <div className="mob-scroll-x">
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <THead cols={["Data", "Cliente", "Serviço", "Valor", "Pagamento"]} />
             <tbody>
@@ -668,6 +669,7 @@ function Dashboard({ attendances, clients, services, barbers, isAdmin, myBarberI
               })}
             </tbody>
           </table>
+          </div>
         </Card>
       </div>
     );
@@ -702,16 +704,17 @@ function Dashboard({ attendances, clients, services, barbers, isAdmin, myBarberI
         <div style={{ color: T.muted, fontSize: 13 }}>{new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "1rem", marginBottom: "1.5rem" }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: "1rem", marginBottom: "1.5rem" }}>
         <StatCard label="Atendimentos hoje"  value={allToday.length}                      icon={Scissors} />
         <StatCard label="Faturamento hoje"    value={R$(allToday.reduce((s,a)=>s+a.price,0))} color={T.accent}  icon={DollarSign} />
         <StatCard label="Faturamento do mês"  value={R$(allMonthR)}                        color={T.success} icon={TrendingUp} />
         <StatCard label="Clientes únicos hoje" value={new Set(allToday.map(a=>a.clientId)).size} icon={Users} />
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: "1.5rem", marginBottom: "1.5rem" }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1.4fr 1fr", gap: "1.5rem", marginBottom: "1.5rem" }}>
         <Card>
           <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1.5, color: T.text, marginBottom: "1rem" }}>Ranking Barbeiros — Mês</div>
+          <div className="mob-scroll-x">
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <THead cols={["#", "Barbeiro", "Aten.", "Total", "Comissão", "Ticket Méd."]} />
             <tbody>
@@ -729,6 +732,7 @@ function Dashboard({ attendances, clients, services, barbers, isAdmin, myBarberI
               ))}
             </tbody>
           </table>
+          </div>
         </Card>
 
         <Card>
@@ -748,7 +752,7 @@ function Dashboard({ attendances, clients, services, barbers, isAdmin, myBarberI
       </div>
 
       <div style={{ marginBottom:"0.75rem", fontFamily:"'Bebas Neue', sans-serif", fontSize:18, letterSpacing:1.5, color:T.text }}>Painel de Hoje — Barbeiros</div>
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:"1rem" }}>
+      <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap:"1rem" }}>
         {bToday.map(({ b, count, total }) => (
           <Card key={b.id} style={{ borderLeft:`3px solid ${T.accent}`, borderRadius:"0 12px 12px 0" }}>
             <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12 }}>
@@ -1450,7 +1454,7 @@ function ServicesView({ services, setServices, token, barbershopId }) {
 }
 
 // ── FINANCIAL ────────────────────────────────────────────────
-function FinancialView({ attendances, expenses, setExpenses, token, barbershopId, barbers = [] }) {
+function FinancialView({ attendances, expenses, setExpenses, token, barbershopId, barbers = [], isMobile }) {
   const todayStr   = today();
   const monthStart = todayStr.substring(0, 7) + "-01";
 
@@ -1511,7 +1515,7 @@ function FinancialView({ attendances, expenses, setExpenses, token, barbershopId
       />
 
       {/* ── Filtro de período + Atualizar ── */}
-      <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:"1.5rem", flexWrap:"wrap" }}>
+      <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:"1.5rem", flexWrap:"wrap", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center" }}>
         <div style={{
           display:"flex", alignItems:"center", gap:8,
           background:T.card, border:`1px solid ${T.border}`,
@@ -1545,7 +1549,7 @@ function FinancialView({ attendances, expenses, setExpenses, token, barbershopId
       </div>
 
       {/* ── KPI Cards ── */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(4, 1fr)", gap:"1rem", marginBottom:"1.5rem" }}>
+      <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap:"1rem", marginBottom:"1.5rem" }}>
         <StatCard
           label="RECEITAS"
           value={R$(totalRev)}
@@ -1577,7 +1581,7 @@ function FinancialView({ attendances, expenses, setExpenses, token, barbershopId
       </div>
 
       {/* ── Tabelas ── */}
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1.5rem" }}>
+      <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap:"1.5rem" }}>
         <Card>
           <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:18, letterSpacing:1.5, color:T.text, marginBottom:"1rem" }}>
             Formas de Pagamento
@@ -2833,6 +2837,17 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
 }
 
 // ── MAIN APP ─────────────────────────────────────────────────
+// ── HOOK: detecta mobile ─────────────────────────────────────
+function useIsMobile(bp = 768) {
+  const [m, setM] = useState(() => window.innerWidth < bp);
+  useEffect(() => {
+    const h = () => setM(window.innerWidth < bp);
+    window.addEventListener("resize", h);
+    return () => window.removeEventListener("resize", h);
+  }, [bp]);
+  return m;
+}
+
 const CSS = `
   *{box-sizing:border-box;margin:0;padding:0}
   ::-webkit-scrollbar{width:5px;height:5px}
@@ -2843,6 +2858,8 @@ const CSS = `
   select option{background:${T.surface}}
   input::placeholder,textarea::placeholder{color:${T.muted}}
   @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+  .mob-scroll-x{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .mob-scroll-x table{min-width:520px}
 `;
 
 
@@ -3181,6 +3198,11 @@ export default function App() {
 
   const activeView = isSuperAdmin ? view : view;
 
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const isMobile = useIsMobile();
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
   const views = isSuperAdmin
     ? {
         superadmin_dashboard:     <SuperAdminView token={tok} section="dashboard" />,
@@ -3192,24 +3214,89 @@ export default function App() {
         superadmin_analytics:     <SuperAdminView token={tok} section="analytics" />,
       }
     : {
-        dashboard:   <Dashboard   attendances={attendances} clients={clients}   services={services}  barbers={barbers}    isAdmin={isAdmin} myBarberId={myBarberId} onGoReports={isAdmin?()=>setView('reports'):undefined}/>,
+        dashboard:   <Dashboard   attendances={attendances} clients={clients}   services={services}  barbers={barbers}    isAdmin={isAdmin} myBarberId={myBarberId} onGoReports={isAdmin?()=>setView('reports'):undefined} isMobile={isMobile}/>,
         attendances: <AttendancesView attendances={attendances} setAttendances={setAttendances} clients={clients} services={services} barbers={barbers} token={tok} isAdmin={isAdmin} myBarberId={myBarberId} barbershopId={barbershopId}/>,
         clients:     <ClientsView clients={clients} setClients={setClients} attendances={attendances} services={services} token={tok} isAdmin={isAdmin} barbershopId={barbershopId}/>,
         barbers:     <BarbersView  barbers={barbers} setBarbers={setBarbers} attendances={attendances} token={tok} barbershopId={barbershopId}/>,
         services:    <ServicesView services={services} setServices={setServices} token={tok} barbershopId={barbershopId}/>,
-        financial:   <FinancialView attendances={attendances} expenses={expenses} setExpenses={setExpenses} token={tok} barbershopId={barbershopId} barbers={barbers}/>,
+        financial:   <FinancialView attendances={attendances} expenses={expenses} setExpenses={setExpenses} token={tok} barbershopId={barbershopId} barbers={barbers} isMobile={isMobile}/>,
         reports:     <ReportsView attendances={attendances} clients={clients} services={services} barbers={barbers} expenses={expenses} shop={shop}/>,
         settings:    <SettingsView token={tok} shop={shop} onShopUpdated={(updatedShop) => { setShop(updatedShop); applyTenantTheme(updatedShop); }} />,
         meuPlano:    <MeuPlanoView token={tok} userEmail={auth.user?.email} profile={auth.profile} onRenew={() => setShowPlans(true)} />,
       };
 
+  const shopDisplayName = isSuperAdmin ? "Oz.Barber" : (shop?.name || "Oz.Barber");
+
   return (
-    <div style={{ display:"flex", height:"100vh", background:T.bg, color:T.text, fontFamily:"'DM Sans', sans-serif", overflow:"hidden" }}>
+    <div style={{ display:"flex", height:"100vh", background:T.bg, color:T.text, fontFamily:"'DM Sans', sans-serif", overflow:"hidden", position:"relative" }}>
       <style>{CSS}</style>
-      <Sidebar view={activeView} setView={setView} collapsed={collapsed} setCollapsed={setCollapsed} isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} userName={userName} onLogout={onLogout} shop={shop}/>
-      <main style={{ flex:1, overflow:"auto", padding:"2rem 2.25rem" }}>
-        {views[activeView] || views.superadmin_dashboard}
-      </main>
+
+      {/* Backdrop mobile */}
+      {isMobile && drawerOpen && (
+        <div
+          onClick={() => setDrawerOpen(false)}
+          style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.65)", zIndex:299, backdropFilter:"blur(2px)" }}
+        />
+      )}
+
+      {/* Sidebar: fixed drawer no mobile, normal no desktop */}
+      {isMobile ? (
+        <div style={{
+          position:"fixed", top:0, left: drawerOpen ? 0 : "-100%", bottom:0,
+          zIndex:300, transition:"left .25s cubic-bezier(.4,0,.2,1)",
+          display:"flex",
+        }}>
+          <Sidebar
+            view={activeView}
+            setView={id => { setView(id); setDrawerOpen(false); }}
+            collapsed={false}
+            setCollapsed={() => {}}
+            isAdmin={isAdmin}
+            isSuperAdmin={isSuperAdmin}
+            userName={userName}
+            onLogout={onLogout}
+            shop={shop}
+          />
+        </div>
+      ) : (
+        <Sidebar view={activeView} setView={setView} collapsed={collapsed} setCollapsed={setCollapsed} isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} userName={userName} onLogout={onLogout} shop={shop}/>
+      )}
+
+      {/* Área de conteúdo */}
+      <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden", minWidth:0 }}>
+
+        {/* Top bar mobile */}
+        {isMobile && (
+          <div style={{
+            display:"flex", alignItems:"center", gap:12,
+            padding:"10px 14px",
+            borderBottom:`1px solid ${T.border}`,
+            background:T.sidebar,
+            flexShrink:0,
+            zIndex:10,
+          }}>
+            <button
+              onClick={() => setDrawerOpen(true)}
+              style={{ background:"none", border:"none", color:T.text, cursor:"pointer", display:"flex", padding:6, borderRadius:8 }}
+            >
+              <Menu size={22}/>
+            </button>
+            <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:20, letterSpacing:1.5, color:T.text, flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+              {shopDisplayName}
+            </div>
+            <button
+              onClick={onLogout}
+              style={{ background:"none", border:"none", color:T.muted, cursor:"pointer", display:"flex", padding:6, borderRadius:8 }}
+            >
+              <LogOut size={18}/>
+            </button>
+          </div>
+        )}
+
+        <main style={{ flex:1, overflow:"auto", padding: isMobile ? "1rem" : "2rem 2.25rem" }}>
+          {views[activeView] || views.superadmin_dashboard}
+        </main>
+      </div>
     </div>
   );
 }
