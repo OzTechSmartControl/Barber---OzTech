@@ -1451,99 +1451,193 @@ function ServicesView({ services, setServices, token, barbershopId }) {
 
 // ── FINANCIAL ────────────────────────────────────────────────
 function FinancialView({ attendances, expenses, setExpenses, token, barbershopId, barbers = [] }) {
-  const [showModal, setShowModal] = useState(false);
-  const [saving, setSaving]     = useState(false);
-  const [err, setErr]           = useState("");
-  const [form, setForm]         = useState({ desc:"", amount:"", date:today(), category:"Aluguel" });
+  const todayStr   = today();
+  const monthStart = todayStr.substring(0, 7) + "-01";
+
+  const [filterFrom, setFilterFrom] = useState(monthStart);
+  const [filterTo,   setFilterTo]   = useState(todayStr);
+  const [showModal,  setShowModal]  = useState(false);
+  const [saving,     setSaving]     = useState(false);
+  const [err,        setErr]        = useState("");
+  const [form, setForm] = useState({ desc:"", amount:"", date:todayStr, category:"Aluguel" });
   const setF = k => e => setForm(f=>({...f,[k]:e.target.value}));
 
-  const mStr        = month(), tStr = today();
-  const mAtts       = attendances.filter(a=>a.date.startsWith(mStr));
-  const mRev        = mAtts.reduce((s,a)=>s+a.price,0);
-  const mExp        = expenses.filter(e=>e.date.startsWith(mStr)).reduce((s,e)=>s+e.amount,0);
-  const mCommissions = mAtts.reduce((s,a)=>{ const b=barbers.find(x=>x.id===a.barberId); return s+(a.price*(b?.commission||0)/100); },0);
-  const tAtts       = attendances.filter(a=>a.date===tStr);
-  const profit      = mRev - mExp - mCommissions;
+  // Filter by selected date range
+  const rangeAtts = attendances.filter(a => a.date >= filterFrom && a.date <= filterTo);
+  const rangeExp  = expenses.filter(e => e.date >= filterFrom && e.date <= filterTo);
+
+  const totalRev         = rangeAtts.reduce((s,a) => s + a.price, 0);
+  const totalExp         = rangeExp.reduce((s,e) => s + e.amount, 0);
+  const totalCommissions = rangeAtts.reduce((s,a) => {
+    const b = barbers.find(x => x.id === a.barberId);
+    return s + (a.price * (b?.commission || 0) / 100);
+  }, 0);
+  const profit = totalRev - totalExp - totalCommissions;
 
   const byPay = {};
-  mAtts.forEach(a=>{byPay[a.payment]=(byPay[a.payment]||0)+a.price;});
+  rangeAtts.forEach(a => { byPay[a.payment] = (byPay[a.payment] || 0) + a.price; });
+
+  const handleRefresh = () => {
+    const t = today();
+    setFilterFrom(t.substring(0, 7) + "-01");
+    setFilterTo(t);
+  };
+
+  const periodLabel = filterFrom === filterTo
+    ? fDate(filterFrom)
+    : `${fDate(filterFrom)} → ${fDate(filterTo)}`;
 
   const save = async () => {
-    if (!form.desc||!form.amount) return setErr("Preencha descrição e valor.");
+    if (!form.desc || !form.amount) return setErr("Preencha descrição e valor.");
     setSaving(true); setErr("");
     try {
       const rows = await api.insert("expenses", { description:form.desc, amount:+form.amount, date:form.date, category:form.category, barbershop_id: barbershopId }, token);
-      setExpenses(es=>[toExpense(rows[0]),...es]);
+      setExpenses(es => [toExpense(rows[0]), ...es]);
       setShowModal(false);
       setForm({ desc:"", amount:"", date:today(), category:"Aluguel" });
-    } catch(e){ setErr(e.message); }
+    } catch(e) { setErr(e.message); }
     setSaving(false);
   };
 
   const del = async id => {
     await api.remove("expenses", id, token);
-    setExpenses(es=>es.filter(e=>e.id!==id));
+    setExpenses(es => es.filter(e => e.id !== id));
   };
 
   return (
     <div>
-      <PageHeader title="Financeiro" sub="Mês atual"
-        right={<Btn onClick={()=>setShowModal(true)}><Plus size={15}/>Registrar Despesa</Btn>}
+      <PageHeader title="Financeiro" sub={periodLabel}
+        right={<Btn onClick={() => setShowModal(true)}><Plus size={15}/>Registrar Despesa</Btn>}
       />
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(4, 1fr)", gap:"1rem", marginBottom:"1.5rem" }}>
-        <StatCard label="Receita do Dia"   value={R$(tAtts.reduce((s,a)=>s+a.price,0))} color={T.success} icon={DollarSign} sub={`${tAtts.length} atendimentos`}/>
-        <StatCard label="Receita do Mês"   value={R$(mRev)} color={T.accent}  icon={TrendingUp} sub={`${mAtts.length} atendimentos`}/>
-        <StatCard label="Despesas do Mês"  value={R$(mExp)} color={T.danger}  icon={Tag} sub={`${expenses.filter(e=>e.date.startsWith(mStr)).length} lançamentos`}/>
-        <StatCard label="Lucro do Mês"     value={R$(profit)} color={profit>=0?T.success:T.danger} icon={BadgePercent} sub={`Margem: ${mRev>0?((profit/mRev)*100).toFixed(1):0}% · Comissões: ${R$(mCommissions)}`}/>
+
+      {/* ── Filtro de período + Atualizar ── */}
+      <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:"1.5rem", flexWrap:"wrap" }}>
+        <div style={{
+          display:"flex", alignItems:"center", gap:8,
+          background:T.card, border:`1px solid ${T.border}`,
+          borderRadius:10, padding:"8px 14px",
+        }}>
+          <Calendar size={14} style={{ color:T.muted, flexShrink:0 }} />
+          <span style={{ fontSize:12, color:T.muted }}>De</span>
+          <input
+            type="date" value={filterFrom}
+            onChange={e => setFilterFrom(e.target.value)}
+            style={{ background:"transparent", border:"none", outline:"none", color:T.text, fontSize:13, cursor:"pointer" }}
+          />
+          <span style={{ fontSize:12, color:T.muted, margin:"0 2px" }}>até</span>
+          <input
+            type="date" value={filterTo}
+            onChange={e => setFilterTo(e.target.value)}
+            style={{ background:"transparent", border:"none", outline:"none", color:T.text, fontSize:13, cursor:"pointer" }}
+          />
+        </div>
+        <button
+          onClick={handleRefresh}
+          style={{
+            display:"flex", alignItems:"center", gap:6,
+            background:T.accent, color:"#0a0808",
+            border:"none", borderRadius:10,
+            padding:"9px 16px", fontSize:13, fontWeight:700, cursor:"pointer",
+          }}
+        >
+          <RefreshCw size={13}/>Atualizar
+        </button>
       </div>
 
+      {/* ── KPI Cards ── */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(4, 1fr)", gap:"1rem", marginBottom:"1.5rem" }}>
+        <StatCard
+          label="RECEITAS"
+          value={R$(totalRev)}
+          color={T.success}
+          icon={DollarSign}
+          sub={`${rangeAtts.length} atendimento${rangeAtts.length !== 1 ? "s" : ""}`}
+        />
+        <StatCard
+          label="COMISSÕES"
+          value={R$(totalCommissions)}
+          color={T.info}
+          icon={BadgePercent}
+          sub={`${barbers.length} barbeiro${barbers.length !== 1 ? "s" : ""}`}
+        />
+        <StatCard
+          label="DESPESAS"
+          value={R$(totalExp)}
+          color={T.danger}
+          icon={Tag}
+          sub={`${rangeExp.length} lançamento${rangeExp.length !== 1 ? "s" : ""}`}
+        />
+        <StatCard
+          label="LUCRO"
+          value={R$(profit)}
+          color={profit >= 0 ? T.success : T.danger}
+          icon={TrendingUp}
+          sub={`Margem: ${totalRev > 0 ? ((profit / totalRev) * 100).toFixed(1) : 0}%`}
+        />
+      </div>
+
+      {/* ── Tabelas ── */}
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1.5rem" }}>
         <Card>
-          <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:18, letterSpacing:1.5, color:T.text, marginBottom:"1rem" }}>Formas de Pagamento — Mês</div>
-          {Object.entries(byPay).map(([m,t])=>(
+          <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:18, letterSpacing:1.5, color:T.text, marginBottom:"1rem" }}>
+            Formas de Pagamento
+          </div>
+          {Object.entries(byPay).map(([m, t]) => (
             <div key={m} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"10px 0", borderTop:`1px solid ${T.borderLight}`, fontSize:13 }}>
               <span style={{ color:T.text }}>{m}</span>
               <div style={{ textAlign:"right" }}>
                 <div style={{ color:T.success, fontWeight:600 }}>{R$(t)}</div>
-                <div style={{ fontSize:11, color:T.muted }}>{mRev>0?((t/mRev)*100).toFixed(1):0}%</div>
+                <div style={{ fontSize:11, color:T.muted }}>{totalRev > 0 ? ((t / totalRev) * 100).toFixed(1) : 0}%</div>
               </div>
             </div>
           ))}
-          {Object.keys(byPay).length===0&&<div style={{ textAlign:"center", padding:"1.5rem", color:T.muted }}>Sem dados</div>}
+          {Object.keys(byPay).length === 0 && (
+            <div style={{ textAlign:"center", padding:"1.5rem", color:T.muted }}>Sem dados no período</div>
+          )}
         </Card>
 
         <Card>
-          <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:18, letterSpacing:1.5, color:T.text, marginBottom:"1rem" }}>Despesas</div>
+          <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:18, letterSpacing:1.5, color:T.text, marginBottom:"1rem" }}>
+            Despesas
+          </div>
           <div style={{ maxHeight:300, overflowY:"auto" }}>
-            {expenses.sort((a,b)=>b.date.localeCompare(a.date)).map(e=>(
+            {expenses.sort((a, b) => b.date.localeCompare(a.date)).map(e => (
               <div key={e.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"9px 0", borderTop:`1px solid ${T.borderLight}`, fontSize:13 }}>
                 <div>
                   <div style={{ color:T.text }}>{e.desc}</div>
-                  <div style={{ fontSize:11, color:T.muted, marginTop:2 }}>{fDate(e.date)} · <Badge color={T.muted}>{e.category}</Badge></div>
+                  <div style={{ fontSize:11, color:T.muted, marginTop:2 }}>
+                    {fDate(e.date)} · <Badge color={T.muted}>{e.category}</Badge>
+                  </div>
                 </div>
                 <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                   <span style={{ color:T.danger, fontWeight:600 }}>{R$(e.amount)}</span>
-                  <button onClick={()=>del(e.id)} style={{ background:"none", border:"none", color:T.muted, cursor:"pointer", display:"inline-flex" }}><Trash2 size={12}/></button>
+                  <button onClick={() => del(e.id)} style={{ background:"none", border:"none", color:T.muted, cursor:"pointer", display:"inline-flex" }}>
+                    <Trash2 size={12}/>
+                  </button>
                 </div>
               </div>
             ))}
-            {expenses.length===0&&<div style={{ textAlign:"center", padding:"2rem", color:T.muted }}>Sem despesas cadastradas</div>}
+            {expenses.length === 0 && (
+              <div style={{ textAlign:"center", padding:"2rem", color:T.muted }}>Sem despesas cadastradas</div>
+            )}
           </div>
         </Card>
       </div>
 
-      {showModal&&(
-        <Modal title="Registrar Despesa" onClose={()=>setShowModal(false)}>
+      {showModal && (
+        <Modal title="Registrar Despesa" onClose={() => setShowModal(false)}>
           <ErrorBar msg={err}/>
           <FInput label="Descrição" value={form.desc} onChange={setF("desc")} placeholder="Ex: Aluguel, energia…"/>
           <Row>
             <FG label="Valor (R$)" half><input style={inputSt} type="number" value={form.amount} onChange={setF("amount")}/></FG>
-            <FSelect label="Categoria" value={form.category} onChange={setF("category")}>{EXPENSE_CATS.map(c=><option key={c}>{c}</option>)}</FSelect>
+            <FSelect label="Categoria" value={form.category} onChange={setF("category")}>{EXPENSE_CATS.map(c => <option key={c}>{c}</option>)}</FSelect>
           </Row>
           <FG label="Data"><input style={inputSt} type="date" value={form.date} onChange={setF("date")}/></FG>
           <Row g="0.5rem" style={{ justifyContent:"flex-end" }}>
-            <Btn variant="ghost" onClick={()=>setShowModal(false)}>Cancelar</Btn>
-            <Btn onClick={save} disabled={saving}>{saving?<RefreshCw size={13} style={{animation:"spin 1s linear infinite"}}/>:<Check size={13}/>} Salvar</Btn>
+            <Btn variant="ghost" onClick={() => setShowModal(false)}>Cancelar</Btn>
+            <Btn onClick={save} disabled={saving}>
+              {saving ? <RefreshCw size={13} style={{ animation:"spin 1s linear infinite" }}/> : <Check size={13}/>} Salvar
+            </Btn>
           </Row>
         </Modal>
       )}
