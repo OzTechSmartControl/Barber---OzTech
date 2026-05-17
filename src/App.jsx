@@ -1827,10 +1827,12 @@ function ReportsView({ attendances, clients, services, barbers, expenses, shop }
   const [preview, setPreview]   = useState(null);
   const [printing, setPrinting] = useState(false);
 
-  const mAtts = attendances.filter(a => a.date.startsWith(selMonth));
-  const mExp  = expenses.filter(e => e.date.startsWith(selMonth));
-  const mRev  = mAtts.reduce((s,a)=>s+a.price,0);
-  const mExpT = mExp.reduce((s,e)=>s+e.amount,0);
+  const mAtts        = attendances.filter(a => a.date.startsWith(selMonth));
+  const mExp         = expenses.filter(e => e.date.startsWith(selMonth));
+  const mRev         = mAtts.reduce((s,a)=>s+a.price,0);
+  const mExpT        = mExp.reduce((s,e)=>s+e.amount,0);
+  const mCommissions = mAtts.reduce((s,a)=>{ const b=barbers.find(x=>x.id===a.barberId); return s+(a.price*(b?.commission||0)/100); },0);
+  const mProfit      = mRev - mExpT - mCommissions;
 
   const REPORTS = [
     { id:"revenue",  label:"Faturamento",  desc:"Receitas, despesas, lucro e formas de pagamento", Icon:DollarSign, color:T.success },
@@ -1908,7 +1910,7 @@ function ReportsView({ attendances, clients, services, barbers, expenses, shop }
                 </div>
               </div>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:"1rem" }}>
-                {id==="revenue" && [["Receita",R$(mRev)],["Despesas",R$(mExpT)],["Lucro",R$(mRev-mExpT)],["Atend.",mAtts.length]].map(([l,v])=>(
+                {id==="revenue" && [["Receita",R$(mRev)],["Despesas",R$(mExpT)],["Lucro",R$(mProfit)],["Atend.",mAtts.length]].map(([l,v])=>(
                   <div key={l} style={{ background:T.surface, borderRadius:6, padding:"8px 10px" }}>
                     <div style={{ fontSize:10, color:T.muted, textTransform:"uppercase" }}>{l}</div>
                     <div style={{ fontWeight:600, color:T.text, fontSize:13 }}>{v}</div>
