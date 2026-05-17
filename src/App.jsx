@@ -1717,36 +1717,82 @@ function RevenueReportContent({ attendances, expenses, barbers = [], selMonth, s
   const tAtts = attendances.filter(a => a.date === todayStr);
   const mAtts = attendances.filter(a => a.date.startsWith(mStr));
   const mExp  = expenses.filter(e => e.date.startsWith(mStr));
-  const tRev  = tAtts.reduce((s,a)=>s+a.price,0);
-  const mRev  = mAtts.reduce((s,a)=>s+a.price,0);
-  const mExpT = mExp.reduce((s,e)=>s+e.amount,0);
-  const mCommissions = mAtts.reduce((s,a)=>{ const b=barbers.find(x=>x.id===a.barberId); return s+(a.price*(b?.commission||0)/100); },0);
-  const profit= mRev - mExpT - mCommissions;
-  const byPay = {};
-  mAtts.forEach(a=>{byPay[a.payment]=(byPay[a.payment]||0)+a.price;});
+  const tRev  = tAtts.reduce((s,a) => s + a.price, 0);
+  const mRev  = mAtts.reduce((s,a) => s + a.price, 0);
+  const mExpT = mExp.reduce((s,e) => s + e.amount, 0);
+  const mCommissions = mAtts.reduce((s,a) => {
+    const b = barbers.find(x => x.id === a.barberId);
+    return s + (a.price * (b?.commission || 0) / 100);
+  }, 0);
+  const profit = mRev - mExpT - mCommissions;
+  const byPay  = {};
+  mAtts.forEach(a => { byPay[a.payment] = (byPay[a.payment] || 0) + a.price; });
+
+  // Comissões por barbeiro
+  const barberCommissions = barbers
+    .map(b => {
+      const bAtts = mAtts.filter(a => a.barberId === b.id);
+      const bRev  = bAtts.reduce((s,a) => s + a.price, 0);
+      const bComm = bRev * (b.commission || 0) / 100;
+      return { name: b.name, pct: b.commission || 0, revenue: bRev, commission: bComm, count: bAtts.length };
+    })
+    .filter(x => x.count > 0)
+    .sort((a, b) => b.commission - a.commission);
 
   return (
     <div style={{ fontFamily:"Arial, sans-serif", color:"#111", background:"white", padding:28 }}>
       <ReportHeader title="Relatório de Faturamento" selMonth={selMonth} shop={shop} />
+
+      {/* Resumo — 4 cards */}
       <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:12, marginBottom:20 }}>
-        {[["Atend. Hoje", tAtts.length],["Receita Hoje", R$(tRev)],["Receita Mês", R$(mRev)],["Lucro Mês", R$(profit)]].map(([l,v])=>(
+        {[
+          ["Receita Mês",  R$(mRev)],
+          ["Comissões",    R$(mCommissions)],
+          ["Despesas",     R$(mExpT)],
+          ["Lucro Mês",    R$(profit)],
+        ].map(([l,v]) => (
           <div key={l} style={{ border:"1px solid #ddd", borderRadius:6, padding:"10px 14px", textAlign:"center" }}>
             <div style={{ fontSize:11, color:"#888", textTransform:"uppercase", marginBottom:4 }}>{l}</div>
             <div style={{ fontSize:18, fontWeight:700 }}>{v}</div>
           </div>
         ))}
       </div>
+
+      {/* Formas de Pagamento */}
       <div style={{ fontSize:14, fontWeight:700, marginBottom:8, borderBottom:"1px solid #eee", paddingBottom:4 }}>Formas de Pagamento</div>
       <ReportTable
         cols={["Método","Total","% Receita"]}
-        rows={Object.entries(byPay).map(([m,v])=>[m, {val:R$(v), style:{fontWeight:600}}, mRev>0?((v/mRev)*100).toFixed(1)+"%" :"0%"])}
+        rows={Object.entries(byPay).map(([m,v]) => [m, {val:R$(v), style:{fontWeight:600}}, mRev>0 ? ((v/mRev)*100).toFixed(1)+"%" : "0%"])}
       />
+
+      {/* Comissões por Barbeiro */}
+      <div style={{ fontSize:14, fontWeight:700, marginBottom:8, borderBottom:"1px solid #eee", paddingBottom:4 }}>Comissões do Mês</div>
+      {barberCommissions.length > 0 ? (
+        <ReportTable
+          cols={["Barbeiro","Atend.","Receita Gerada","% Comissão","Valor a Pagar"]}
+          rows={barberCommissions.map(x => [
+            {val: x.name, style:{fontWeight:600}},
+            x.count,
+            R$(x.revenue),
+            x.pct + "%",
+            {val: R$(x.commission), style:{fontWeight:700}},
+          ])}
+          totalRow={["TOTAL COMISSÕES","","","", R$(mCommissions)]}
+        />
+      ) : (
+        <div style={{ fontSize:13, color:"#888", marginBottom:16, paddingBottom:12, borderBottom:"1px solid #eee" }}>
+          Nenhuma comissão registrada no período.
+        </div>
+      )}
+
+      {/* Despesas */}
       <div style={{ fontSize:14, fontWeight:700, marginBottom:8, borderBottom:"1px solid #eee", paddingBottom:4 }}>Despesas do Mês</div>
       <ReportTable
         cols={["Descrição","Categoria","Data","Valor"]}
-        rows={mExp.map(e=>[e.desc, e.category, fDate(e.date), {val:R$(e.amount), style:{fontWeight:600}}])}
-        totalRow={["TOTAL DESPESAS","","",R$(mExpT)]}
+        rows={mExp.map(e => [e.desc, e.category, fDate(e.date), {val:R$(e.amount), style:{fontWeight:600}}])}
+        totalRow={["TOTAL DESPESAS","","", R$(mExpT)]}
       />
+
       <ReportFooter />
     </div>
   );
