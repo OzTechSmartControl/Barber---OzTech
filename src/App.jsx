@@ -1711,7 +1711,7 @@ function ReportHeader({ title, sub, selMonth, shop }) {
   );
 }
 
-function RevenueReportContent({ attendances, expenses, selMonth, shop }) {
+function RevenueReportContent({ attendances, expenses, barbers = [], selMonth, shop }) {
   const todayStr = new Date().toISOString().slice(0,10);
   const mStr  = selMonth;
   const tAtts = attendances.filter(a => a.date === todayStr);
@@ -1720,7 +1720,8 @@ function RevenueReportContent({ attendances, expenses, selMonth, shop }) {
   const tRev  = tAtts.reduce((s,a)=>s+a.price,0);
   const mRev  = mAtts.reduce((s,a)=>s+a.price,0);
   const mExpT = mExp.reduce((s,e)=>s+e.amount,0);
-  const profit= mRev - mExpT;
+  const mCommissions = mAtts.reduce((s,a)=>{ const b=barbers.find(x=>x.id===a.barberId); return s+(a.price*(b?.commission||0)/100); },0);
+  const profit= mRev - mExpT - mCommissions;
   const byPay = {};
   mAtts.forEach(a=>{byPay[a.payment]=(byPay[a.payment]||0)+a.price;});
 
@@ -1843,7 +1844,7 @@ function ReportsView({ attendances, clients, services, barbers, expenses, shop }
   };
 
   const contentMap = {
-    revenue:  <RevenueReportContent  attendances={attendances} expenses={expenses}  selMonth={selMonth} shop={shop} />,
+    revenue:  <RevenueReportContent  attendances={attendances} expenses={expenses}  barbers={barbers}   selMonth={selMonth} shop={shop} />,
     barbers:  <BarberReportContent   attendances={attendances} services={services}  barbers={barbers}   selMonth={selMonth} shop={shop} />,
     services: <ServiceReportContent  attendances={attendances} services={services}  selMonth={selMonth} shop={shop} />,
   };
