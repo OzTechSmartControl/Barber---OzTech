@@ -1450,19 +1450,20 @@ function ServicesView({ services, setServices, token, barbershopId }) {
 }
 
 // ── FINANCIAL ────────────────────────────────────────────────
-function FinancialView({ attendances, expenses, setExpenses, token, barbershopId }) {
+function FinancialView({ attendances, expenses, setExpenses, token, barbershopId, barbers = [] }) {
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving]     = useState(false);
   const [err, setErr]           = useState("");
   const [form, setForm]         = useState({ desc:"", amount:"", date:today(), category:"Aluguel" });
   const setF = k => e => setForm(f=>({...f,[k]:e.target.value}));
 
-  const mStr   = month(), tStr = today();
-  const mAtts  = attendances.filter(a=>a.date.startsWith(mStr));
-  const mRev   = mAtts.reduce((s,a)=>s+a.price,0);
-  const mExp   = expenses.filter(e=>e.date.startsWith(mStr)).reduce((s,e)=>s+e.amount,0);
-  const tAtts  = attendances.filter(a=>a.date===tStr);
-  const profit = mRev - mExp;
+  const mStr        = month(), tStr = today();
+  const mAtts       = attendances.filter(a=>a.date.startsWith(mStr));
+  const mRev        = mAtts.reduce((s,a)=>s+a.price,0);
+  const mExp        = expenses.filter(e=>e.date.startsWith(mStr)).reduce((s,e)=>s+e.amount,0);
+  const mCommissions = mAtts.reduce((s,a)=>{ const b=barbers.find(x=>x.id===a.barberId); return s+(a.price*(b?.commission||0)/100); },0);
+  const tAtts       = attendances.filter(a=>a.date===tStr);
+  const profit      = mRev - mExp - mCommissions;
 
   const byPay = {};
   mAtts.forEach(a=>{byPay[a.payment]=(byPay[a.payment]||0)+a.price;});
@@ -1493,7 +1494,7 @@ function FinancialView({ attendances, expenses, setExpenses, token, barbershopId
         <StatCard label="Receita do Dia"   value={R$(tAtts.reduce((s,a)=>s+a.price,0))} color={T.success} icon={DollarSign} sub={`${tAtts.length} atendimentos`}/>
         <StatCard label="Receita do Mês"   value={R$(mRev)} color={T.accent}  icon={TrendingUp} sub={`${mAtts.length} atendimentos`}/>
         <StatCard label="Despesas do Mês"  value={R$(mExp)} color={T.danger}  icon={Tag} sub={`${expenses.filter(e=>e.date.startsWith(mStr)).length} lançamentos`}/>
-        <StatCard label="Lucro do Mês"     value={R$(profit)} color={profit>=0?T.success:T.danger} icon={BadgePercent} sub={`Margem: ${mRev>0?((profit/mRev)*100).toFixed(1):0}%`}/>
+        <StatCard label="Lucro do Mês"     value={R$(profit)} color={profit>=0?T.success:T.danger} icon={BadgePercent} sub={`Margem: ${mRev>0?((profit/mRev)*100).toFixed(1):0}% · Comissões: ${R$(mCommissions)}`}/>
       </div>
 
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1.5rem" }}>
@@ -3053,7 +3054,7 @@ export default function App() {
         clients:     <ClientsView clients={clients} setClients={setClients} attendances={attendances} services={services} token={tok} isAdmin={isAdmin} barbershopId={barbershopId}/>,
         barbers:     <BarbersView  barbers={barbers} setBarbers={setBarbers} attendances={attendances} token={tok} barbershopId={barbershopId}/>,
         services:    <ServicesView services={services} setServices={setServices} token={tok} barbershopId={barbershopId}/>,
-        financial:   <FinancialView attendances={attendances} expenses={expenses} setExpenses={setExpenses} token={tok} barbershopId={barbershopId}/>,
+        financial:   <FinancialView attendances={attendances} expenses={expenses} setExpenses={setExpenses} token={tok} barbershopId={barbershopId} barbers={barbers}/>,
         reports:     <ReportsView attendances={attendances} clients={clients} services={services} barbers={barbers} expenses={expenses} shop={shop}/>,
         settings:    <SettingsView token={tok} shop={shop} onShopUpdated={(updatedShop) => { setShop(updatedShop); applyTenantTheme(updatedShop); }} />,
         meuPlano:    <MeuPlanoView token={tok} userEmail={auth.user?.email} profile={auth.profile} onRenew={() => setShowPlans(true)} />,
