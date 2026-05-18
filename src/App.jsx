@@ -886,8 +886,10 @@ function Dashboard({ attendances, clients, services, barbers, isAdmin, myBarberI
   }).sort((a, b) => b.total - a.total);
 
   const bToday = barbers.filter(b => b.status === "active").map(b => {
-    const bA = allToday.filter(a => a.barberId === b.id);
-    return { b, count: bA.length, total: bA.reduce((s, a) => s + a.price, 0) };
+    const bA       = allToday.filter(a => a.barberId === b.id);
+    const total    = bA.reduce((s, a) => s + a.price, 0);
+    const servOnly = bA.reduce((s, a) => s + (a.servicesPrice ?? a.price), 0); // base da comissão
+    return { b, count: bA.length, total, servOnly };
   });
 
   return (
@@ -957,13 +959,13 @@ function Dashboard({ attendances, clients, services, barbers, isAdmin, myBarberI
 
       <div style={{ marginBottom:"0.75rem", fontFamily:"'Bebas Neue', sans-serif", fontSize:18, letterSpacing:1.5, color:T.text }}>Painel de Hoje — Barbeiros</div>
       <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap:"1rem" }}>
-        {bToday.map(({ b, count, total }) => (
+        {bToday.map(({ b, count, total, servOnly }) => (
           <Card key={b.id} style={{ borderLeft:`3px solid ${T.accent}`, borderRadius:"0 12px 12px 0" }}>
             <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12 }}>
               <div style={{ width:40, height:40, borderRadius:"50%", background:T.accentGlow, border:`1px solid ${T.accent}44`, display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Bebas Neue', sans-serif", fontSize:18, color:T.accent }}>{b.name.charAt(0)}</div>
               <div style={{ fontWeight:600, color:T.text, fontSize:14 }}>{b.name}</div>
             </div>
-            {[["Atendimentos", count, T.text],["Total produzido", R$(total), T.success],[`Comissão (${b.commission}%)`, R$(total*b.commission/100), T.accent]].map(([l,v,c])=>(
+            {[["Atendimentos", count, T.text],["Total produzido", R$(total), T.success],[`Comissão (${b.commission}%)`, R$(servOnly*b.commission/100), T.accent]].map(([l,v,c])=>(
               <div key={l} style={{ display:"flex", justifyContent:"space-between", fontSize:13, marginBottom:6 }}>
                 <span style={{ color:T.muted }}>{l}</span>
                 <span style={{ color:c, fontWeight:600 }}>{v}</span>
@@ -1666,7 +1668,10 @@ function BarbersView({ barbers, setBarbers, attendances, token, barbershopId }) 
       />
       <div style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:"1rem" }}>
         {barbers.map(b=>{
-          const bA=monthAtts.filter(a=>a.barberId===b.id), total=bA.reduce((s,a)=>s+a.price,0);
+          const bA          = monthAtts.filter(a => a.barberId === b.id);
+          const total       = bA.reduce((s, a) => s + a.price, 0);                          // total pago pelo cliente
+          const servTotal   = bA.reduce((s, a) => s + (a.servicesPrice ?? a.price), 0);     // base da comissão
+          const commission  = servTotal * b.commission / 100;
           return (
             <Card key={b.id} style={{ opacity:b.status==="inactive"?0.55:1 }}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:"1rem" }}>
@@ -1681,7 +1686,7 @@ function BarbersView({ barbers, setBarbers, attendances, token, barbershopId }) 
               {b.userId&&<div style={{ fontSize:11, color:T.success+"aa", marginBottom:"0.75rem", display:"flex", alignItems:"center", gap:4 }}><Check size={11}/>Login configurado</div>}
               {!b.userId&&<div style={{ fontSize:11, color:T.muted, marginBottom:"0.75rem" }}>⚠ Sem login configurado</div>}
               <div style={{ borderTop:`1px solid ${T.borderLight}`, paddingTop:"1rem", display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0.75rem" }}>
-                {[["Comissão",b.commission+"%",T.accent,"big"],["Aten. Mês",bA.length,T.text,"big"],["Total Mês",R$(total),T.success,"sm"],["A receber",R$(total*b.commission/100),T.accent,"sm"]].map(([l,v,c,sz])=>(
+                {[["Comissão",b.commission+"%",T.accent,"big"],["Aten. Mês",bA.length,T.text,"big"],["Total Mês",R$(total),T.success,"sm"],["A receber",R$(commission),T.accent,"sm"]].map(([l,v,c,sz])=>(
                   <div key={l}>
                     <div style={{ fontSize:10, color:T.muted, textTransform:"uppercase", letterSpacing:0.5 }}>{l}</div>
                     <div style={sz==="big"?{fontFamily:"'Bebas Neue', sans-serif",fontSize:26,color:c}:{fontSize:14,fontWeight:600,color:c}}>{v}</div>
@@ -2064,7 +2069,7 @@ function RevenueReportContent({ attendances, expenses, barbers = [], selMonth, s
   const mExpT = mExp.reduce((s,e) => s + e.amount, 0);
   const mCommissions = mAtts.reduce((s,a) => {
     const b = barbers.find(x => x.id === a.barberId);
-    return s + (a.price * (b?.commission || 0) / 100);
+    return s + ((a.servicesPrice ?? a.price) * (b?.commission || 0) / 100); // comissão sobre serviços
   }, 0);
   const profit = mRev - mExpT - mCommissions;
   const byPay  = {};
@@ -2073,9 +2078,10 @@ function RevenueReportContent({ attendances, expenses, barbers = [], selMonth, s
   // Comissões por barbeiro
   const barberCommissions = barbers
     .map(b => {
-      const bAtts = mAtts.filter(a => a.barberId === b.id);
-      const bRev  = bAtts.reduce((s,a) => s + a.price, 0);
-      const bComm = bRev * (b.commission || 0) / 100;
+      const bAtts    = mAtts.filter(a => a.barberId === b.id);
+      const bRev     = bAtts.reduce((s,a) => s + a.price, 0);                        // total pago pelo cliente
+      const bServRev = bAtts.reduce((s,a) => s + (a.servicesPrice ?? a.price), 0);   // base da comissão
+      const bComm    = bServRev * (b.commission || 0) / 100;
       return { name: b.name, pct: b.commission || 0, revenue: bRev, commission: bComm, count: bAtts.length };
     })
     .filter(x => x.count > 0)
@@ -2143,11 +2149,12 @@ function RevenueReportContent({ attendances, expenses, barbers = [], selMonth, s
 function BarberReportContent({ attendances, services, barbers, selMonth, shop }) {
   const mAtts = attendances.filter(a => a.date.startsWith(selMonth));
   const stats = barbers.filter(b=>b.status==="active").map(b=>{
-    const bA = mAtts.filter(a=>a.barberId===b.id);
-    const total = bA.reduce((s,a)=>s+a.price,0);
+    const bA       = mAtts.filter(a=>a.barberId===b.id);
+    const total    = bA.reduce((s,a)=>s+a.price,0);                              // total pago pelo cliente
+    const servOnly = bA.reduce((s,a)=>s+(a.servicesPrice??a.price),0);           // base da comissão
     const sm={}; bA.forEach(a=>{const s=services.find(sv=>sv.id===a.serviceId);if(s)sm[s.name]=(sm[s.name]||0)+1;});
     const top=Object.entries(sm).sort((a,b)=>b[1]-a[1])[0];
-    return {b, count:bA.length, total, commission:total*b.commission/100, ticket:bA.length?total/bA.length:0, top:top?top[0]+" ("+top[1]+"×)":"—"};
+    return {b, count:bA.length, total, commission:servOnly*b.commission/100, ticket:bA.length?total/bA.length:0, top:top?top[0]+" ("+top[1]+"×)":"—"};
   }).sort((a,b)=>b.total-a.total);
 
   return (
@@ -2219,7 +2226,7 @@ function ReportsView({ attendances, clients, services, barbers, expenses, shop, 
   const mExp         = expenses.filter(e => e.date.startsWith(selMonth));
   const mRev         = mAtts.reduce((s,a)=>s+a.price,0);
   const mExpT        = mExp.reduce((s,e)=>s+e.amount,0);
-  const mCommissions = mAtts.reduce((s,a)=>{ const b=barbers.find(x=>x.id===a.barberId); return s+(a.price*(b?.commission||0)/100); },0);
+  const mCommissions = mAtts.reduce((s,a)=>{ const b=barbers.find(x=>x.id===a.barberId); return s+((a.servicesPrice??a.price)*(b?.commission||0)/100); },0); // comissão sobre serviços
   const mProfit      = mRev - mExpT - mCommissions;
 
   const REPORTS = [
