@@ -2474,19 +2474,50 @@ function ReportsView({ attendances, clients, services, barbers, expenses, shop, 
           visibility: hidden;
         }
         @media print {
-          body * { visibility: hidden !important; }
+          /* ── 1. Fundo branco em todo o papel (elimina retângulo preto) */
+          html, body {
+            background: white !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: visible !important;
+          }
+          /* ── 2. Esconde tudo exceto a área de impressão */
+          body * { visibility: hidden !important; background-color: transparent !important; }
           #report-print-area,
           #report-print-area * { visibility: visible !important; }
+          /* ── 3. Área de impressão cobre o papel inteiro */
           #report-print-area {
-            position: fixed !important;
-            inset: 0 !important;
+            position: absolute !important;
             left: 0 !important;
             top: 0 !important;
             width: 100% !important;
             background: white !important;
             z-index: 99999 !important;
             padding: 0 !important;
+            overflow: visible !important;
           }
+          /* ── 4. Tabelas: caber na largura A4 sem overflow */
+          #report-print-area div {
+            overflow: visible !important;
+            max-width: 100% !important;
+          }
+          #report-print-area table {
+            font-size: 9px !important;
+            min-width: 0 !important;
+            width: 100% !important;
+            table-layout: auto !important;
+          }
+          #report-print-area th,
+          #report-print-area td {
+            padding: 4px 5px !important;
+            font-size: 9px !important;
+            white-space: normal !important;
+            word-break: break-word !important;
+          }
+          /* ── 5. Evita quebra de página no meio de linhas de tabela */
+          #report-print-area tr { page-break-inside: avoid !important; }
+          #report-print-area tbody tr:last-child { page-break-after: avoid !important; }
+          /* ── 6. Rodapé fixo de marca */
           .report-brand-footer {
             position: fixed !important;
             left: 0 !important;
@@ -2496,7 +2527,7 @@ function ReportsView({ attendances, clients, services, barbers, expenses, shop, 
             border-top: none !important;
             background: white !important;
           }
-          @page { margin: 1.5cm; size: A4; }
+          @page { margin: 1.5cm; size: A4 portrait; }
         }
       `}</style>
 
