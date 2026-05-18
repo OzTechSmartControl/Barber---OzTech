@@ -213,14 +213,14 @@ const Badge = ({ children, color = T.accent }) => (
 );
 
 const StatCard = ({ label, value, sub, color, icon: Icon }) => (
-  <Card>
-    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
-      <div>
+  <Card style={{ minWidth: 0 }}>
+    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 6 }}>
+      <div style={{ minWidth: 0, flex: 1 }}>
         <div style={{ fontSize: 11, color: T.muted, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 }}>{label}</div>
-        <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 30, letterSpacing: 1, color: color || T.text, lineHeight: 1 }}>{value}</div>
-        {sub && <div style={{ fontSize: 12, color: T.muted, marginTop: 6 }}>{sub}</div>}
+        <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "clamp(20px, 5vw, 30px)", letterSpacing: 1, color: color || T.text, lineHeight: 1, wordBreak: "break-word" }}>{value}</div>
+        {sub && <div style={{ fontSize: 11, color: T.muted, marginTop: 6 }}>{sub}</div>}
       </div>
-      {Icon && <div style={{ background: (color || T.accent) + "18", borderRadius: 10, padding: 10 }}><Icon size={19} color={color || T.accent} /></div>}
+      {Icon && <div style={{ background: (color || T.accent) + "18", borderRadius: 10, padding: 8, flexShrink: 0 }}><Icon size={17} color={color || T.accent} /></div>}
     </div>
   </Card>
 );
@@ -711,11 +711,11 @@ function Dashboard({ attendances, clients, services, barbers, isAdmin, myBarberI
         <StatCard label="Clientes únicos hoje" value={new Set(allToday.map(a=>a.clientId)).size} icon={Users} />
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1.4fr 1fr", gap: "1.5rem", marginBottom: "1.5rem" }}>
-        <Card>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1.4fr 1fr", gap: "1.5rem", marginBottom: "1.5rem", minWidth: 0 }}>
+        <Card style={{ minWidth: 0, overflow: "hidden" }}>
           <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1.5, color: T.text, marginBottom: "1rem" }}>Ranking Barbeiros — Mês</div>
-          <div style={{ overflowX:"auto" }}>
-          <table style={{ width: "100%", minWidth: 420, borderCollapse: "collapse", fontSize: 13 }}>
+          <div style={{ overflowX:"auto", margin:"0 -1.25rem", padding:"0 1.25rem" }}>
+          <table style={{ width: "100%", minWidth: 400, borderCollapse: "collapse", fontSize: 13 }}>
             <THead cols={["#", "Barbeiro", "Aten.", "Total", "Comissão", "Ticket Méd."]} />
             <tbody>
               {bStats.map(({ b, count, total, commission, ticket }, i) => (
@@ -735,16 +735,16 @@ function Dashboard({ attendances, clients, services, barbers, isAdmin, myBarberI
           </div>
         </Card>
 
-        <Card>
+        <Card style={{ minWidth: 0, overflow: "hidden" }}>
           <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1.5, color: T.text, marginBottom: "1rem" }}>Serviços Mais Realizados</div>
           {topSvcs.map(({ svc, n }) => svc && (
             <div key={svc.id} style={{ marginBottom: 13 }}>
               <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4, fontSize:13 }}>
-                <span style={{ color:T.text }}>{svc.name}</span>
-                <span style={{ color:T.muted, fontWeight:600 }}>{n}×</span>
+                <span style={{ color:T.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", marginRight:8 }}>{svc.name}</span>
+                <span style={{ color:T.muted, fontWeight:600, flexShrink:0 }}>{n}×</span>
               </div>
-              <div style={{ background:T.surface, borderRadius:4, height:5 }}>
-                <div style={{ background:T.accent, borderRadius:4, height:5, width:`${(n/maxN)*100}%` }} />
+              <div style={{ background:T.surface, borderRadius:4, height:5, overflow:"hidden" }}>
+                <div style={{ background:T.accent, borderRadius:4, height:5, width:`${(n/maxN)*100}%`, maxWidth:"100%" }} />
               </div>
             </div>
           ))}
@@ -1414,9 +1414,9 @@ function ServicesView({ services, setServices, token, barbershopId }) {
       <PageHeader title="Serviços" sub={`${services.filter(s=>s.active).length} serviços ativos`}
         right={<Btn onClick={()=>{setEditing(null);setForm({name:"",price:"",duration:30,active:true});setShowModal(true);}}><Plus size={15}/>Novo Serviço</Btn>}
       />
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:"1rem" }}>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(160px, 1fr))", gap:"1rem" }}>
         {services.map(svc=>(
-          <Card key={svc.id} style={{ opacity:svc.active?1:0.5 }}>
+          <Card key={svc.id} style={{ opacity:svc.active?1:0.5, minWidth:0 }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:"0.75rem" }}>
               <div style={{ fontSize:16, fontWeight:600, color:T.text }}>{svc.name}</div>
               <div style={{ display:"flex", gap:2 }}>
@@ -2206,7 +2206,7 @@ function SettingsView({ token, shop, onShopUpdated }) {
         </div>
       </Card>
 
-      <div style={{ display:"grid", gridTemplateColumns:"minmax(0, 1.1fr) minmax(320px, .9fr)", gap:"1.25rem", alignItems:"start" }}>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(min(100%, 300px), 1fr))", gap:"1.25rem", alignItems:"start" }}>
         <Card>
           <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:"1.25rem" }}>
             <div style={{ background:T.accentGlow, borderRadius:12, padding:10, display:"flex" }}>
