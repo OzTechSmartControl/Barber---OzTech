@@ -131,7 +131,7 @@ const accessDeniedMessage = (reason) => {
 
 
 // ── TRANSFORMS ────────────────────────────────────────────────
-const toAtt  = a => ({ id: a.id, clientId: a.client_id, barberId: a.barber_id, serviceId: a.service_id, price: +a.price, payment: a.payment, date: a.date, time: a.time || "", notes: a.notes || "", extraServices: Array.isArray(a.extra_services) ? a.extra_services : [] });
+const toAtt  = a => ({ id: a.id, clientId: a.client_id, barberId: a.barber_id, serviceId: a.service_id, price: +a.price, payment: a.payment, date: a.date, time: a.time || "", notes: a.notes || "", extraServices: Array.isArray(a.extra_services) ? a.extra_services : [], productsSold: Array.isArray(a.products_sold) ? a.products_sold : [] });
 const fromAtt = a => ({ client_id: +a.clientId||0, barber_id: +a.barberId||0, service_id: +a.serviceId||0, price: +a.price, payment: a.payment, date: a.date, time: a.time, notes: a.notes, extra_services: a.extraServices||[] });
 const toClient = c => ({ id: c.id, name: c.name, phone: c.phone || "", whatsapp: c.whatsapp || "", birthdate: c.birthdate || "", notes: c.notes || "", points: +c.points });
 const toBarber = b => ({ id: b.id, name: b.name, phone: b.phone || "", commission: +b.commission, status: b.status, userId: b.user_id });
@@ -933,10 +933,10 @@ function MeuPlanoView({ token, userEmail, profile, onRenew }) {
 }
 
 // ── ATENDIMENTOS ──────────────────────────────────────────────
-function AttendancesView({ attendances, setAttendances, clients, services, barbers, token, isAdmin, myBarberId, barbershopId }) {
+function AttendancesView({ attendances, setAttendances, clients, services, barbers, token, isAdmin, myBarberId, barbershopId, products = [], setProducts, setProductSales }) {
   const emptyForm = () => ({
     clientId: "", barberId: isAdmin ? "" : String(myBarberId||""),
-    selectedServices: [], payment: "PIX",
+    selectedServices: [], selectedProducts: [], payment: "PIX",
     date: today(), time: nowTime(), notes: "",
   });
 
@@ -946,10 +946,14 @@ function AttendancesView({ attendances, setAttendances, clients, services, barbe
   const [saving,       setSaving]       = useState(false);
   const [err,          setErr]          = useState("");
   const [addSvcId,     setAddSvcId]     = useState("");
+  const [addProdId,    setAddProdId]    = useState("");
   const [form,         setForm]         = useState(emptyForm);
 
-  const totalPrice = form.selectedServices.reduce((s, sv) => s + sv.price, 0);
+  const totalServices = form.selectedServices.reduce((s, sv) => s + sv.price, 0);
+  const totalProducts = form.selectedProducts.reduce((s, sp) => s + sp.price * sp.quantity, 0);
+  const totalPrice    = totalServices; // preço do atendimento = serviços (base de comissão)
 
+  // ── Serviços ──────────────────────────────────────────────────
   const addService = (svcId) => {
     if (!svcId) return;
     const svc = services.find(s => s.id === +svcId);
@@ -957,14 +961,38 @@ function AttendancesView({ attendances, setAttendances, clients, services, barbe
     setForm(f => ({ ...f, selectedServices: [...f.selectedServices, { serviceId: svc.id, name: svc.name, price: svc.price }] }));
     setAddSvcId("");
   };
-
   const removeService = (svcId) => setForm(f => ({ ...f, selectedServices: f.selectedServices.filter(s => s.serviceId !== svcId) }));
 
+  // ── Produtos ──────────────────────────────────────────────────
+  const addProd = (prodId) => {
+    if (!prodId) return;
+    const prod = products.find(p => p.id === +prodId);
+    if (!prod) { setAddProdId(""); return; }
+    const exists = form.selectedProducts.find(sp => sp.productId === prod.id);
+    if (exists) {
+      setForm(f => ({ ...f, selectedProducts: f.selectedProducts.map(sp => sp.productId === prod.id ? { ...sp, quantity: sp.quantity + 1 } : sp) }));
+    } else {
+      setForm(f => ({ ...f, selectedProducts: [...f.selectedProducts, { productId: prod.id, name: prod.name, price: prod.price, unit: prod.unit, quantity: 1 }] }));
+    }
+    setAddProdId("");
+  };
+  const removeProd = (prodId) => setForm(f => ({ ...f, selectedProducts: f.selectedProducts.filter(sp => sp.productId !== prodId) }));
+  const changeProdQty = (prodId, qty) => {
+    if (qty <= 0) { removeProd(prodId); return; }
+    const prod = products.find(p => p.id === prodId);
+    const max  = prod?.stockCurrent || 99;
+    setForm(f => ({ ...f, selectedProducts: f.selectedProducts.map(sp => sp.productId === prodId ? { ...sp, quantity: Math.min(qty, max) } : sp) }));
+  };
+
+  // ── Display ───────────────────────────────────────────────────
   const getServiceDisplay = (a) => {
     const primary = services.find(s => s.id === a.serviceId);
     const extras  = (a.extraServices || []).map(es => es.name || services.find(s => s.id === es.serviceId)?.name || "").filter(Boolean);
-    return [primary?.name, ...extras].filter(Boolean).join(" + ") || "—";
+    const prods   = (a.productsSold || []).map(sp => sp.name + (sp.quantity > 1 ? ` ×${sp.quantity}` : ""));
+    return [...[primary?.name, ...extras].filter(Boolean), ...prods].join(" + ") || "—";
   };
+
+  const hasProdsSold = (a) => (a.productsSold || []).length > 0;
 
   const filtered = useMemo(() =>
     attendances
@@ -973,19 +1001,62 @@ function AttendancesView({ attendances, setAttendances, clients, services, barbe
     [attendances, filterDate, filterBarber]
   );
 
+  // ── Save ──────────────────────────────────────────────────────
   const save = async () => {
     if (!form.clientId || !form.barberId || form.selectedServices.length === 0)
       return setErr("Preencha cliente, barbeiro e pelo menos um serviço.");
     setSaving(true); setErr("");
     try {
       const [primary, ...extras] = form.selectedServices;
+
+      // Validar estoque dos produtos selecionados
+      for (const sp of form.selectedProducts) {
+        const prod = products.find(p => p.id === sp.productId);
+        if (prod && sp.quantity > prod.stockCurrent)
+          throw new Error(`Estoque insuficiente para "${sp.name}" (disponível: ${prod.stockCurrent}).`);
+      }
+
+      // 1. Salva o atendimento (preço = serviços)
+      const productsSoldPayload = form.selectedProducts.map(sp => ({
+        productId: sp.productId, name: sp.name, price: sp.price, quantity: sp.quantity, unit: sp.unit,
+      }));
       const rows = await api.insert("attendances", {
         client_id: +form.clientId, barber_id: +form.barberId,
         service_id: primary.serviceId, price: totalPrice,
         payment: form.payment, date: form.date, time: form.time,
-        notes: form.notes, extra_services: extras, barbershop_id: barbershopId,
+        notes: form.notes, extra_services: extras,
+        products_sold: productsSoldPayload,
+        barbershop_id: barbershopId,
       }, token);
       setAttendances(prev => [toAtt(rows[0]), ...prev]);
+
+      // 2. Para cada produto: cria product_sale + decrementa estoque + movimento
+      for (const sp of form.selectedProducts) {
+        try {
+          const saleRows = await api.insert("product_sales", {
+            product_id:  sp.productId,
+            barber_id:   +form.barberId || null,
+            quantity:    sp.quantity,
+            unit_price:  sp.price,
+            total_price: sp.price * sp.quantity,
+            payment:     form.payment,
+            sold_at:     new Date().toISOString(),
+          }, token);
+          if (setProductSales) setProductSales(prev => [toProductSale(saleRows[0]), ...prev]);
+
+          const newStock = Math.max(0, (products.find(p => p.id === sp.productId)?.stockCurrent || 0) - sp.quantity);
+          await api.update("products", sp.productId, { stock_current: newStock }, token);
+          if (setProducts) setProducts(ps => ps.map(p => p.id === sp.productId ? { ...p, stockCurrent: newStock } : p));
+
+          await api.insert("stock_movements", {
+            product_id: sp.productId, type: "venda",
+            quantity: sp.quantity, reason: "Venda via atendimento",
+          }, token);
+        } catch(prodErr) {
+          console.warn("Erro ao processar produto no atendimento:", prodErr);
+        }
+      }
+
       setShowModal(false); setForm(emptyForm());
     } catch(e) { setErr(e.message); }
     setSaving(false);
@@ -1031,7 +1102,14 @@ function AttendancesView({ attendances, setAttendances, clients, services, barbe
                   <td style={{ ...stCell, color: T.muted, fontVariantNumeric: "tabular-nums" }}>{a.time}</td>
                   <td style={{ ...stCell, color: T.text, fontWeight: 500 }}>{cl?.name || "—"}</td>
                   <td style={{ ...stCell, color: T.muted }}>{br?.name || "—"}</td>
-                  <td style={{ ...stCell, color: T.text }}>{getServiceDisplay(a)}</td>
+                  <td style={{ ...stCell, color: T.text }}>
+                    {getServiceDisplay(a)}
+                    {hasProdsSold(a) && (
+                      <span style={{ marginLeft:6, background:`${T.accent}18`, color:T.accent, borderRadius:4, padding:"1px 6px", fontSize:10, fontWeight:700 }}>
+                        +{(a.productsSold||[]).reduce((s,p)=>s+p.quantity,0)} prod.
+                      </span>
+                    )}
+                  </td>
                   <td style={{ ...stCell, color: T.success, fontWeight: 600 }}>{R$(a.price)}</td>
                   <td style={stCell}>
                     <span style={{ background: (payColor[a.payment] || T.accent) + "18", color: payColor[a.payment] || T.accent, borderRadius: 5, padding: "2px 8px", fontSize: 11, fontWeight: 700 }}>{a.payment}</span>
@@ -1084,9 +1162,53 @@ function AttendancesView({ attendances, setAttendances, clients, services, barbe
                 </div>
               ))}
               <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 12px", background: T.card }}>
-                <span style={{ color: T.mutedLight, fontSize: 13, fontWeight: 700 }}>Total</span>
-                <span style={{ color: T.success, fontSize: 14, fontWeight: 800 }}>{R$(totalPrice)}</span>
+                <span style={{ color: T.mutedLight, fontSize: 13, fontWeight: 700 }}>Subtotal serviços</span>
+                <span style={{ color: T.success, fontSize: 14, fontWeight: 800 }}>{R$(totalServices)}</span>
               </div>
+            </div>
+          )}
+
+          {/* ── Produtos (opcional) ── */}
+          {products.filter(p => p.active && p.stockCurrent > 0).length > 0 && (
+            <FG label="Adicionar Produto (opcional)">
+              <select style={{ ...inputSt, appearance: "none" }} value={addProdId}
+                onChange={e => { setAddProdId(e.target.value); addProd(e.target.value); }}>
+                <option value="">Selecione um produto…</option>
+                {products.filter(p => p.active && p.stockCurrent > 0).map(p =>
+                  <option key={p.id} value={p.id}>{p.name} — {R$(p.price)} (estoque: {p.stockCurrent} {p.unit})</option>
+                )}
+              </select>
+            </FG>
+          )}
+
+          {form.selectedProducts.length > 0 && (
+            <div style={{ marginBottom: "1rem", border: `1px solid ${T.accent}33`, borderRadius: 10, overflow: "hidden" }}>
+              {form.selectedProducts.map(sp => (
+                <div key={sp.productId} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderBottom: `1px solid ${T.borderLight}`, background: T.surface }}>
+                  <span style={{ color: T.text, fontSize: 13, flex: 1 }}>{sp.name}</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    <button onClick={() => changeProdQty(sp.productId, sp.quantity - 1)}
+                      style={{ background: T.card, border: `1px solid ${T.border}`, color: T.text, width: 24, height: 24, borderRadius: 5, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, lineHeight: 1 }}>−</button>
+                    <span style={{ color: T.text, fontSize: 13, fontWeight: 700, minWidth: 22, textAlign: "center" }}>{sp.quantity}</span>
+                    <button onClick={() => changeProdQty(sp.productId, sp.quantity + 1)}
+                      style={{ background: T.card, border: `1px solid ${T.border}`, color: T.text, width: 24, height: 24, borderRadius: 5, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, lineHeight: 1 }}>+</button>
+                  </div>
+                  <span style={{ color: T.accent, fontSize: 13, fontWeight: 700, minWidth: 64, textAlign: "right" }}>{R$(sp.price * sp.quantity)}</span>
+                  <button onClick={() => removeProd(sp.productId)} style={{ background: "none", border: "none", color: T.danger, cursor: "pointer", display: "inline-flex", padding: 2 }}><X size={14}/></button>
+                </div>
+              ))}
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 12px", background: T.card }}>
+                <span style={{ color: T.mutedLight, fontSize: 13, fontWeight: 700 }}>Subtotal produtos</span>
+                <span style={{ color: T.accent, fontSize: 14, fontWeight: 800 }}>{R$(totalProducts)}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Total geral (quando há serviços + produtos) */}
+          {form.selectedServices.length > 0 && form.selectedProducts.length > 0 && (
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: T.accentGlow, border: `1px solid ${T.accent}44`, borderRadius: 8, padding: "10px 14px", marginBottom: "1rem" }}>
+              <span style={{ color: T.accent, fontSize: 13, fontWeight: 800 }}>Total geral</span>
+              <span style={{ color: T.accent, fontSize: 16, fontWeight: 900 }}>{R$(totalServices + totalProducts)}</span>
             </div>
           )}
 
@@ -3585,7 +3707,7 @@ export default function App() {
       }
     : {
         dashboard:   <Dashboard   attendances={attendances} clients={clients} services={services} barbers={barbers} products={products} isAdmin={isAdmin} myBarberId={myBarberId} onGoReports={isAdmin?()=>setView('reports'):undefined} isMobile={isMobile}/>,
-        attendances: <AttendancesView attendances={attendances} setAttendances={setAttendances} clients={clients} services={services} barbers={barbers} token={tok} isAdmin={isAdmin} myBarberId={myBarberId} barbershopId={barbershopId}/>,
+        attendances: <AttendancesView attendances={attendances} setAttendances={setAttendances} clients={clients} services={services} barbers={barbers} token={tok} isAdmin={isAdmin} myBarberId={myBarberId} barbershopId={barbershopId} products={products} setProducts={setProducts} setProductSales={setProductSales}/>,
         clients:     <ClientsView clients={clients} setClients={setClients} attendances={attendances} services={services} token={tok} isAdmin={isAdmin} barbershopId={barbershopId}/>,
         barbers:     <BarbersView  barbers={barbers} setBarbers={setBarbers} attendances={attendances} token={tok} barbershopId={barbershopId}/>,
         services:    <ServicesView services={services} setServices={setServices} token={tok} barbershopId={barbershopId}/>,
