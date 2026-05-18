@@ -250,13 +250,22 @@ const THead = ({ cols }) => (
   <thead><tr>{cols.map(c => <th key={c} style={{ textAlign: "left", padding: "0 0.75rem 10px", fontSize: 10, fontWeight: 700, color: T.muted, textTransform: "uppercase", letterSpacing: 0.8 }}>{c}</th>)}</tr></thead>
 );
 
-const PageHeader = ({ title, sub, right }) => (
+const PageHeader = ({ title, sub, right, onRefresh }) => (
   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.75rem", gap: 12, flexWrap: "wrap" }}>
     <div style={{ minWidth: 0 }}>
       <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "clamp(26px, 6vw, 38px)", letterSpacing: 2.5, margin: "0 0 4px", color: T.text }}>{title}</h1>
       {sub && <div style={{ color: T.muted, fontSize: 13 }}>{sub}</div>}
     </div>
-    {right && <div style={{ flexShrink: 0 }}>{right}</div>}
+    {(right || onRefresh) && (
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0, flexWrap: "wrap" }}>
+        {onRefresh && (
+          <Btn variant="ghost" onClick={onRefresh}>
+            <RefreshCw size={14}/>Atualizar
+          </Btn>
+        )}
+        {right}
+      </div>
+    )}
   </div>
 );
 
@@ -886,7 +895,7 @@ const LoadingScreen = () => (
 );
 
 // ── DASHBOARD ─────────────────────────────────────────────────
-function Dashboard({ attendances, clients, services, barbers, isAdmin, myBarberId, onGoReports, isMobile, products = [] }) {
+function Dashboard({ attendances, clients, services, barbers, isAdmin, myBarberId, onGoReports, isMobile, products = [], onRefresh }) {
   const todayStr   = today();
   const monthStr   = month();
   const myAtts     = isAdmin ? attendances : attendances.filter(a => a.barberId === myBarberId);
@@ -967,10 +976,11 @@ function Dashboard({ attendances, clients, services, barbers, isAdmin, myBarberI
 
   return (
     <div>
-      <div style={{ marginBottom: "1.75rem" }}>
-        <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 38, letterSpacing: 2.5, margin: "0 0 4px", color: T.text }}>Dashboard</h1>
-        <div style={{ color: T.muted, fontSize: 13 }}>{new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</div>
-      </div>
+      <PageHeader
+        title="Dashboard"
+        sub={new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+        onRefresh={onRefresh}
+      />
 
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: "1rem", marginBottom: "1.5rem" }}>
         <StatCard label="Atendimentos hoje"  value={allToday.length}                      icon={Scissors} />
@@ -1351,6 +1361,7 @@ function AttendancesView({ attendances, setAttendances, clients, services, barbe
       <PageHeader
         title="Atendimentos"
         sub={`${filtered.length} atendimento${filtered.length !== 1 ? "s" : ""} · ${R$(filtered.reduce((s, a) => s + a.price, 0))} · ${periodLabel}`}
+        onRefresh={onRefresh}
         right={<Btn onClick={() => { setForm(emptyForm()); setShowModal(true); }}><Plus size={15}/>Novo Atendimento</Btn>}
       />
 
@@ -1374,11 +1385,6 @@ function AttendancesView({ attendances, setAttendances, clients, services, barbe
           Mês atual
         </Btn>
 
-        {onRefresh && (
-          <Btn variant="ghost" sm onClick={onRefresh} style={{ marginLeft: "auto" }}>
-            <RefreshCw size={13}/>Atualizar
-          </Btn>
-        )}
       </div>
 
       <Card style={{ padding: 0, overflowX: "auto" }}>
@@ -1566,7 +1572,7 @@ function AttendancesView({ attendances, setAttendances, clients, services, barbe
 }
 
 // ── CLIENTS ───────────────────────────────────────────────────
-function ClientsView({ clients, setClients, attendances, services, token, isAdmin, barbershopId }) {
+function ClientsView({ clients, setClients, attendances, services, token, isAdmin, barbershopId, onRefresh }) {
   const [search, setSearch]     = useState("");
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing]   = useState(null);
@@ -1605,6 +1611,7 @@ function ClientsView({ clients, setClients, attendances, services, token, isAdmi
       <PageHeader
         title="Clientes"
         sub={`${clients.length} clientes${bdays.length>0?` · 🎂 ${bdays.length} aniversariante${bdays.length>1?"s":""} este mês`:""}`}
+        onRefresh={onRefresh}
         right={<Btn onClick={openAdd}><Plus size={15}/>Novo Cliente</Btn>}
       />
       <div style={{ position:"relative", marginBottom:"1rem" }}>
@@ -1698,7 +1705,7 @@ function ClientsView({ clients, setClients, attendances, services, token, isAdmi
 }
 
 // ── BARBERS ───────────────────────────────────────────────────
-function BarbersView({ barbers, setBarbers, attendances, token, barbershopId }) {
+function BarbersView({ barbers, setBarbers, attendances, token, barbershopId, onRefresh }) {
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing]   = useState(null);
   const [saving, setSaving]     = useState(false);
@@ -1766,6 +1773,7 @@ function BarbersView({ barbers, setBarbers, attendances, token, barbershopId }) 
   return (
     <div>
       <PageHeader title="Barbeiros" sub={`${barbers.filter(b=>b.status==="active").length} ativos`}
+        onRefresh={onRefresh}
         right={<Btn onClick={()=>{setEditing(null);setForm({name:"",phone:"",commission:40,status:"active",email:"",password:""});setShowModal(true);}}><Plus size={15}/>Novo Barbeiro</Btn>}
       />
       <div style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:"1rem" }}>
@@ -1830,7 +1838,7 @@ function BarbersView({ barbers, setBarbers, attendances, token, barbershopId }) 
 }
 
 // ── SERVICES ─────────────────────────────────────────────────
-function ServicesView({ services, setServices, token, barbershopId }) {
+function ServicesView({ services, setServices, token, barbershopId, onRefresh }) {
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing]   = useState(null);
   const [saving, setSaving]     = useState(false);
@@ -1868,6 +1876,7 @@ function ServicesView({ services, setServices, token, barbershopId }) {
   return (
     <div>
       <PageHeader title="Serviços" sub={`${services.filter(s=>s.active).length} serviços ativos`}
+        onRefresh={onRefresh}
         right={<Btn onClick={()=>{setEditing(null);setForm({name:"",price:"",duration:30,active:true});setShowModal(true);}}><Plus size={15}/>Novo Serviço</Btn>}
       />
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(160px, 1fr))", gap:"1rem" }}>
@@ -1910,7 +1919,7 @@ function ServicesView({ services, setServices, token, barbershopId }) {
 }
 
 // ── FINANCIAL ────────────────────────────────────────────────
-function FinancialView({ attendances, expenses, setExpenses, token, barbershopId, barbers = [], isMobile, productSales = [] }) {
+function FinancialView({ attendances, expenses, setExpenses, token, barbershopId, barbers = [], isMobile, productSales = [], onRefresh }) {
   const todayStr   = today();
   const monthStart = todayStr.substring(0, 7) + "-01";
 
@@ -1970,6 +1979,7 @@ function FinancialView({ attendances, expenses, setExpenses, token, barbershopId
   return (
     <div>
       <PageHeader title="Financeiro" sub={periodLabel}
+        onRefresh={onRefresh}
         right={<Btn onClick={() => setShowModal(true)}><Plus size={15}/>Registrar Despesa</Btn>}
       />
 
@@ -2435,7 +2445,7 @@ function ServiceReportContent({ attendances, services, selMonth, shop }) {
   );
 }
 
-function ReportsView({ attendances, clients, services, barbers, expenses, shop, isMobile }) {
+function ReportsView({ attendances, clients, services, barbers, expenses, shop, isMobile, onRefresh }) {
   const [selMonth, setSelMonth] = useState(month());
   const [preview, setPreview]   = useState(null);
   const [printing, setPrinting] = useState(false);
@@ -2537,7 +2547,7 @@ function ReportsView({ attendances, clients, services, barbers, expenses, shop, 
         </div>
       )}
 
-      <PageHeader title="Relatórios" sub={"Mês: "+selMonth} right={
+      <PageHeader title="Relatórios" sub={"Mês: "+selMonth} onRefresh={onRefresh} right={
         <input type="month" value={selMonth} onChange={e=>setSelMonth(e.target.value)}
           style={{ background:T.card, border:"1px solid "+T.border, borderRadius:8, padding:"0.5rem 0.875rem", color:T.text, fontSize:13, outline:"none", fontFamily:"'DM Sans', sans-serif" }}/>
       }/>
@@ -3039,7 +3049,7 @@ function SettingsView({ token, shop, onShopUpdated, themeMode = "dark", onToggle
 // ── PRODUCTS ──────────────────────────────────────────────────
 const UNIT_OPTS  = ["un", "ml", "g", "kg", "L", "cx", "pct"];
 
-function ProductsView({ products, setProducts, productSales, setProductSales, barbers, token, barbershopId, isMobile }) {
+function ProductsView({ products, setProducts, productSales, setProductSales, barbers, token, barbershopId, isMobile, onRefresh }) {
   const [tab, setTab]             = useState("produtos");
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing]     = useState(null);
@@ -3153,6 +3163,7 @@ function ProductsView({ products, setProducts, productSales, setProductSales, ba
       <PageHeader
         title="Produtos"
         sub={`${products.filter(p=>p.active).length} ativos · ${products.length} total`}
+        onRefresh={onRefresh}
         right={<Btn onClick={openAdd}><Plus size={15}/>Novo Produto</Btn>}
       />
 
@@ -4247,14 +4258,14 @@ export default function App() {
         superadmin_analytics:     <SuperAdminView token={tok} section="analytics" />,
       }
     : {
-        dashboard:   <Dashboard   attendances={attendances} clients={clients} services={services} barbers={barbers} products={products} isAdmin={isAdmin} myBarberId={myBarberId} onGoReports={isAdmin?()=>setView('reports'):undefined} isMobile={isMobile}/>,
+        dashboard:   <Dashboard   attendances={attendances} clients={clients} services={services} barbers={barbers} products={products} isAdmin={isAdmin} myBarberId={myBarberId} onGoReports={isAdmin?()=>setView('reports'):undefined} isMobile={isMobile} onRefresh={() => loadData(tok, auth.profile)}/>,
         attendances: <AttendancesView attendances={attendances} setAttendances={setAttendances} clients={clients} services={services} barbers={barbers} token={tok} isAdmin={isAdmin} myBarberId={myBarberId} barbershopId={barbershopId} products={products} setProducts={setProducts} setProductSales={setProductSales} onRefresh={() => loadData(tok, auth.profile)}/>,
-        clients:     <ClientsView clients={clients} setClients={setClients} attendances={attendances} services={services} token={tok} isAdmin={isAdmin} barbershopId={barbershopId}/>,
-        barbers:     <BarbersView  barbers={barbers} setBarbers={setBarbers} attendances={attendances} token={tok} barbershopId={barbershopId}/>,
-        services:    <ServicesView services={services} setServices={setServices} token={tok} barbershopId={barbershopId}/>,
-        produtos:    <ProductsView products={products} setProducts={setProducts} productSales={productSales} setProductSales={setProductSales} barbers={barbers} token={tok} barbershopId={barbershopId} isMobile={isMobile}/>,
-        financial:   <FinancialView attendances={attendances} expenses={expenses} setExpenses={setExpenses} token={tok} barbershopId={barbershopId} barbers={barbers} isMobile={isMobile} productSales={productSales}/>,
-        reports:     <ReportsView attendances={attendances} clients={clients} services={services} barbers={barbers} expenses={expenses} shop={shop} isMobile={isMobile}/>,
+        clients:     <ClientsView clients={clients} setClients={setClients} attendances={attendances} services={services} token={tok} isAdmin={isAdmin} barbershopId={barbershopId} onRefresh={() => loadData(tok, auth.profile)}/>,
+        barbers:     <BarbersView  barbers={barbers} setBarbers={setBarbers} attendances={attendances} token={tok} barbershopId={barbershopId} onRefresh={() => loadData(tok, auth.profile)}/>,
+        services:    <ServicesView services={services} setServices={setServices} token={tok} barbershopId={barbershopId} onRefresh={() => loadData(tok, auth.profile)}/>,
+        produtos:    <ProductsView products={products} setProducts={setProducts} productSales={productSales} setProductSales={setProductSales} barbers={barbers} token={tok} barbershopId={barbershopId} isMobile={isMobile} onRefresh={() => loadData(tok, auth.profile)}/>,
+        financial:   <FinancialView attendances={attendances} expenses={expenses} setExpenses={setExpenses} token={tok} barbershopId={barbershopId} barbers={barbers} isMobile={isMobile} productSales={productSales} onRefresh={() => loadData(tok, auth.profile)}/>,
+        reports:     <ReportsView attendances={attendances} clients={clients} services={services} barbers={barbers} expenses={expenses} shop={shop} isMobile={isMobile} onRefresh={() => loadData(tok, auth.profile)}/>,
         settings:    <SettingsView token={tok} shop={shop} onShopUpdated={(updatedShop) => { setShop(updatedShop); applyTenantTheme(updatedShop, themeMode); }} themeMode={themeMode} onToggleTheme={toggleTheme}/>,
         meuPlano:    <MeuPlanoView token={tok} userEmail={auth.user?.email} profile={auth.profile} onRenew={() => setShowPlans(true)} />,
       };
