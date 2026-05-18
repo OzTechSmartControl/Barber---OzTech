@@ -172,7 +172,7 @@ const resetTenantTheme = () => {
 // ── HELPERS ───────────────────────────────────────────────────
 const R$   = v => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(+v || 0);
 const fDate = s => s ? new Date(s + "T12:00:00").toLocaleDateString("pt-BR") : "—";
-const today   = () => new Date().toISOString().slice(0, 10);
+const today   = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
 const nowTime = () => { const n = new Date(); return `${String(n.getHours()).padStart(2,"0")}:${String(n.getMinutes()).padStart(2,"0")}`; };
 const month = () => today().slice(0, 7);
 const nextId = arr => Math.max(0, ...arr.map(x => x.id)) + 1;
@@ -940,7 +940,8 @@ function AttendancesView({ attendances, setAttendances, clients, services, barbe
     date: today(), time: nowTime(), notes: "",
   });
 
-  const [filterDate,   setFilterDate]   = useState(today());
+  const [filterFrom,   setFilterFrom]   = useState(() => { const t = today(); return t.substring(0,7) + "-01"; });
+  const [filterTo,     setFilterTo]     = useState(today);
   const [filterBarber, setFilterBarber] = useState("");
   const [showModal,    setShowModal]    = useState(false);
   const [saving,       setSaving]       = useState(false);
@@ -994,11 +995,19 @@ function AttendancesView({ attendances, setAttendances, clients, services, barbe
 
   const hasProdsSold = (a) => (a.productsSold || []).length > 0;
 
+  const periodLabel = filterFrom === filterTo
+    ? fDate(filterFrom)
+    : `${fDate(filterFrom)} → ${fDate(filterTo)}`;
+
   const filtered = useMemo(() =>
     attendances
-      .filter(a => (!filterDate || a.date === filterDate) && (!filterBarber || a.barberId === +filterBarber))
+      .filter(a =>
+        (!filterFrom || a.date >= filterFrom) &&
+        (!filterTo   || a.date <= filterTo)   &&
+        (!filterBarber || a.barberId === +filterBarber)
+      )
       .sort((a, b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time)),
-    [attendances, filterDate, filterBarber]
+    [attendances, filterFrom, filterTo, filterBarber]
   );
 
   // ── Save ──────────────────────────────────────────────────────
@@ -1074,19 +1083,33 @@ function AttendancesView({ attendances, setAttendances, clients, services, barbe
     <div>
       <PageHeader
         title="Atendimentos"
-        sub={`${filtered.length} atendimento${filtered.length !== 1 ? "s" : ""} · ${R$(filtered.reduce((s, a) => s + a.price, 0))}`}
+        sub={`${filtered.length} atendimento${filtered.length !== 1 ? "s" : ""} · ${R$(filtered.reduce((s, a) => s + a.price, 0))} · ${periodLabel}`}
         right={<Btn onClick={() => { setForm(emptyForm()); setShowModal(true); }}><Plus size={15}/>Novo Atendimento</Btn>}
       />
 
-      <div style={{ display: "flex", gap: "0.75rem", marginBottom: "1rem", flexWrap: "wrap" }}>
-        <input type="date" value={filterDate} onChange={e => setFilterDate(e.target.value)} style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 8, padding: "0.5rem 0.875rem", color: T.text, fontSize: 13, outline: "none", fontFamily: "'DM Sans', sans-serif", flex: "1 1 140px" }} />
+      <div style={{ display: "flex", gap: "0.75rem", marginBottom: "1rem", flexWrap: "wrap", alignItems: "center" }}>
+        {/* Filtro de período */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, background: T.card, border: `1px solid ${T.border}`, borderRadius: 10, padding: "7px 12px", flex: "1 1 260px" }}>
+          <Calendar size={14} style={{ color: T.muted, flexShrink: 0 }}/>
+          <span style={{ fontSize: 12, color: T.muted, whiteSpace: "nowrap" }}>De</span>
+          <input type="date" value={filterFrom} onChange={e => setFilterFrom(e.target.value)}
+            style={{ background: "transparent", border: "none", outline: "none", color: T.text, fontSize: 13, cursor: "pointer", minWidth: 0, flex: 1 }}/>
+          <span style={{ fontSize: 12, color: T.muted, whiteSpace: "nowrap" }}>até</span>
+          <input type="date" value={filterTo} onChange={e => setFilterTo(e.target.value)}
+            style={{ background: "transparent", border: "none", outline: "none", color: T.text, fontSize: 13, cursor: "pointer", minWidth: 0, flex: 1 }}/>
+        </div>
+
         {isAdmin && (
-          <select value={filterBarber} onChange={e => setFilterBarber(e.target.value)} style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 8, padding: "0.5rem 0.875rem", color: filterBarber ? T.text : T.muted, fontSize: 13, outline: "none", fontFamily: "'DM Sans', sans-serif", flex: "1 1 160px" }}>
+          <select value={filterBarber} onChange={e => setFilterBarber(e.target.value)}
+            style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 8, padding: "0.5rem 0.875rem", color: filterBarber ? T.text : T.muted, fontSize: 13, outline: "none", fontFamily: "'DM Sans', sans-serif", flex: "1 1 160px" }}>
             <option value="">Todos os barbeiros</option>
             {barbers.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select>
         )}
-        {(filterDate || filterBarber) && <Btn variant="ghost" sm onClick={() => { setFilterDate(""); setFilterBarber(""); }}>Limpar</Btn>}
+
+        <Btn variant="ghost" sm onClick={() => { const t = today(); setFilterFrom(t.substring(0,7)+"-01"); setFilterTo(t); setFilterBarber(""); }}>
+          Mês atual
+        </Btn>
       </div>
 
       <Card style={{ padding: 0, overflowX: "auto" }}>
