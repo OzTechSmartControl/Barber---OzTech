@@ -2059,49 +2059,66 @@ function ReportHeader({ title, sub, selMonth, shop }) {
 }
 
 function RevenueReportContent({ attendances, expenses, barbers = [], selMonth, shop }) {
-  const todayStr = new Date().toISOString().slice(0,10);
-  const mStr  = selMonth;
-  const tAtts = attendances.filter(a => a.date === todayStr);
-  const mAtts = attendances.filter(a => a.date.startsWith(mStr));
-  const mExp  = expenses.filter(e => e.date.startsWith(mStr));
-  const tRev  = tAtts.reduce((s,a) => s + a.price, 0);
-  const mRev  = mAtts.reduce((s,a) => s + a.price, 0);
+  const mStr   = selMonth;
+  const mAtts  = attendances.filter(a => a.date.startsWith(mStr));
+  const mExp   = expenses.filter(e => e.date.startsWith(mStr));
+
+  // Receita separada por serviços e produtos
+  const mServRev = mAtts.reduce((s,a) => s + (a.servicesPrice ?? a.price), 0);
+  const mRev     = mAtts.reduce((s,a) => s + a.price, 0);
+  const mProdRev = mRev - mServRev;
+
   const mExpT = mExp.reduce((s,e) => s + e.amount, 0);
   const mCommissions = mAtts.reduce((s,a) => {
     const b = barbers.find(x => x.id === a.barberId);
-    return s + ((a.servicesPrice ?? a.price) * (b?.commission || 0) / 100); // comissão sobre serviços
+    return s + ((a.servicesPrice ?? a.price) * (b?.commission || 0) / 100);
   }, 0);
   const profit = mRev - mExpT - mCommissions;
-  const byPay  = {};
+
+  const byPay = {};
   mAtts.forEach(a => { byPay[a.payment] = (byPay[a.payment] || 0) + a.price; });
 
-  // Comissões por barbeiro
+  // Comissões por barbeiro com breakdown serviços / produtos
   const barberCommissions = barbers
     .map(b => {
       const bAtts    = mAtts.filter(a => a.barberId === b.id);
-      const bRev     = bAtts.reduce((s,a) => s + a.price, 0);                        // total pago pelo cliente
-      const bServRev = bAtts.reduce((s,a) => s + (a.servicesPrice ?? a.price), 0);   // base da comissão
+      const bTotal   = bAtts.reduce((s,a) => s + a.price, 0);
+      const bServRev = bAtts.reduce((s,a) => s + (a.servicesPrice ?? a.price), 0);
+      const bProdRev = bTotal - bServRev;
       const bComm    = bServRev * (b.commission || 0) / 100;
-      return { name: b.name, pct: b.commission || 0, revenue: bRev, commission: bComm, count: bAtts.length };
+      return { name: b.name, pct: b.commission || 0, servRev: bServRev, prodRev: bProdRev, total: bTotal, commission: bComm, count: bAtts.length };
     })
     .filter(x => x.count > 0)
-    .sort((a, b) => b.commission - a.commission);
+    .sort((a, b) => b.total - a.total);
+
+  const accentColor = shop?.accent_color || "#b5a642";
 
   return (
     <div style={{ fontFamily:"Arial, sans-serif", color:"#111", background:"white", padding:28 }}>
       <ReportHeader title="Relatório de Faturamento" selMonth={selMonth} shop={shop} />
 
-      {/* Resumo — 4 cards */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:12, marginBottom:20 }}>
+      {/* Resumo — 6 cards: Serviços | Produtos | Total | Comissões | Despesas | Lucro */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10, marginBottom:8 }}>
         {[
-          ["Receita Mês",  R$(mRev)],
-          ["Comissões",    R$(mCommissions)],
-          ["Despesas",     R$(mExpT)],
-          ["Lucro Mês",    R$(profit)],
-        ].map(([l,v]) => (
+          ["Rec. Serviços", R$(mServRev), "#166534"],
+          ["Rec. Produtos", R$(mProdRev), "#1e40af"],
+          ["Total Mês",     R$(mRev),     "#111"],
+        ].map(([l,v,c]) => (
           <div key={l} style={{ border:"1px solid #ddd", borderRadius:6, padding:"10px 14px", textAlign:"center" }}>
-            <div style={{ fontSize:11, color:"#888", textTransform:"uppercase", marginBottom:4 }}>{l}</div>
-            <div style={{ fontSize:18, fontWeight:700 }}>{v}</div>
+            <div style={{ fontSize:10, color:"#888", textTransform:"uppercase", marginBottom:3 }}>{l}</div>
+            <div style={{ fontSize:17, fontWeight:700, color:c }}>{v}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10, marginBottom:20 }}>
+        {[
+          ["Comissões", R$(mCommissions), accentColor],
+          ["Despesas",  R$(mExpT),        "#991b1b"],
+          ["Lucro Mês", R$(profit),       "#166534"],
+        ].map(([l,v,c]) => (
+          <div key={l} style={{ border:"1px solid #ddd", borderRadius:6, padding:"10px 14px", textAlign:"center" }}>
+            <div style={{ fontSize:10, color:"#888", textTransform:"uppercase", marginBottom:3 }}>{l}</div>
+            <div style={{ fontSize:17, fontWeight:700, color:c }}>{v}</div>
           </div>
         ))}
       </div>
@@ -2115,17 +2132,29 @@ function RevenueReportContent({ attendances, expenses, barbers = [], selMonth, s
 
       {/* Comissões por Barbeiro */}
       <div style={{ fontSize:14, fontWeight:700, marginBottom:8, borderBottom:"1px solid #eee", paddingBottom:4 }}>Comissões do Mês</div>
+      <div style={{ fontSize:11, color:"#888", marginBottom:8, fontStyle:"italic" }}>
+        * Comissão calculada somente sobre o valor de serviços prestados.
+      </div>
       {barberCommissions.length > 0 ? (
         <ReportTable
-          cols={["Barbeiro","Atend.","Receita Gerada","% Comissão","Valor a Pagar"]}
+          cols={["Barbeiro","Atend.","Serviços","Produtos","Total","% Comissão","Comissão (s/ serv.)"]}
           rows={barberCommissions.map(x => [
             {val: x.name, style:{fontWeight:600}},
             x.count,
-            R$(x.revenue),
+            {val: R$(x.servRev), style:{color:"#166534", fontWeight:600}},
+            {val: R$(x.prodRev), style:{color:"#1e40af", fontWeight:600}},
+            {val: R$(x.total),   style:{fontWeight:700}},
             x.pct + "%",
-            {val: R$(x.commission), style:{fontWeight:700}},
+            {val: R$(x.commission), style:{fontWeight:700, color: accentColor}},
           ])}
-          totalRow={["TOTAL COMISSÕES","","","", R$(mCommissions)]}
+          totalRow={[
+            "TOTAL","",
+            R$(mServRev),
+            R$(mProdRev),
+            R$(mRev),
+            "",
+            R$(mCommissions),
+          ]}
         />
       ) : (
         <div style={{ fontSize:13, color:"#888", marginBottom:16, paddingBottom:12, borderBottom:"1px solid #eee" }}>
@@ -2148,35 +2177,45 @@ function RevenueReportContent({ attendances, expenses, barbers = [], selMonth, s
 
 function BarberReportContent({ attendances, services, barbers, selMonth, shop }) {
   const mAtts = attendances.filter(a => a.date.startsWith(selMonth));
+  const accentColor = shop?.accent_color || "#b5a642";
+
   const stats = barbers.filter(b=>b.status==="active").map(b=>{
     const bA       = mAtts.filter(a=>a.barberId===b.id);
-    const total    = bA.reduce((s,a)=>s+a.price,0);                              // total pago pelo cliente
-    const servOnly = bA.reduce((s,a)=>s+(a.servicesPrice??a.price),0);           // base da comissão
-    const sm={}; bA.forEach(a=>{const s=services.find(sv=>sv.id===a.serviceId);if(s)sm[s.name]=(sm[s.name]||0)+1;});
+    const total    = bA.reduce((s,a)=>s+a.price,0);
+    const servOnly = bA.reduce((s,a)=>s+(a.servicesPrice??a.price),0);
+    const prodOnly = total - servOnly;
+    const commission = servOnly * b.commission / 100;
+    const sm={}; bA.forEach(a=>{const sv=services.find(sv=>sv.id===a.serviceId);if(sv)sm[sv.name]=(sm[sv.name]||0)+1;});
     const top=Object.entries(sm).sort((a,b)=>b[1]-a[1])[0];
-    return {b, count:bA.length, total, commission:servOnly*b.commission/100, ticket:bA.length?total/bA.length:0, top:top?top[0]+" ("+top[1]+"×)":"—"};
+    return {b, count:bA.length, total, servOnly, prodOnly, commission, ticket:bA.length?total/bA.length:0, top:top?top[0]+" ("+top[1]+"×)":"—"};
   }).sort((a,b)=>b.total-a.total);
 
   return (
     <div style={{ fontFamily:"Arial, sans-serif", color:"#111", background:"white", padding:28 }}>
       <ReportHeader title="Relatório por Barbeiro" selMonth={selMonth} shop={shop} />
+      <div style={{ fontSize:11, color:"#888", marginBottom:8, fontStyle:"italic" }}>
+        * Comissão calculada somente sobre o valor de serviços prestados.
+      </div>
       <ReportTable
-        cols={["#","Barbeiro","Atend.","Total","Comissão","Ticket Méd.","Serviço Top"]}
-        rows={stats.map(({b,count,total,commission,ticket,top},i)=>[
-          {val:i+1, style:{color:shop?.accent_color || T.accent, fontWeight:700}},
+        cols={["#","Barbeiro","Atend.","Serviços","Produtos","Total","Comissão*","Ticket Méd."]}
+        rows={stats.map(({b,count,total,servOnly,prodOnly,commission,ticket},i)=>[
+          {val:i+1, style:{color:accentColor, fontWeight:700}},
           {val:b.name, style:{fontWeight:600}},
           count,
-          {val:R$(total), style:{fontWeight:700}},
-          {val:R$(commission)+" ("+b.commission+"%)", style:{color:shop?.accent_color || T.accent, fontWeight:600}},
+          {val:R$(servOnly), style:{color:"#166534", fontWeight:600}},
+          {val:R$(prodOnly), style:{color:"#1e40af", fontWeight:600}},
+          {val:R$(total),    style:{fontWeight:700}},
+          {val:R$(commission)+" ("+b.commission+"%)", style:{color:accentColor, fontWeight:600}},
           R$(ticket),
-          {val:top, style:{color:"#555"}}
         ])}
         totalRow={[
           "TOTAL GERAL","",
           stats.reduce((s,x)=>s+x.count,0),
+          R$(stats.reduce((s,x)=>s+x.servOnly,0)),
+          R$(stats.reduce((s,x)=>s+x.prodOnly,0)),
           R$(stats.reduce((s,x)=>s+x.total,0)),
           R$(stats.reduce((s,x)=>s+x.commission,0)),
-          "","",
+          "",
         ]}
       />
       <ReportFooter />
