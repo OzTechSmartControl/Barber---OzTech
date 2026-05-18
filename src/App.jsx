@@ -131,7 +131,7 @@ const accessDeniedMessage = (reason) => {
 
 
 // ── TRANSFORMS ────────────────────────────────────────────────
-const toAtt  = a => ({ id: a.id, clientId: a.client_id, barberId: a.barber_id, serviceId: a.service_id, price: +a.price, payment: a.payment, date: a.date, time: a.time || "", notes: a.notes || "", extraServices: Array.isArray(a.extra_services) ? a.extra_services : [], productsSold: Array.isArray(a.products_sold) ? a.products_sold : [] });
+const toAtt  = a => ({ id: a.id, clientId: a.client_id, barberId: a.barber_id, serviceId: a.service_id, price: +a.price, servicesPrice: +(a.services_price ?? a.price), payment: a.payment, date: a.date, time: a.time || "", notes: a.notes || "", extraServices: Array.isArray(a.extra_services) ? a.extra_services : [], productsSold: Array.isArray(a.products_sold) ? a.products_sold : [] });
 const fromAtt = a => ({ client_id: +a.clientId||0, barber_id: +a.barberId||0, service_id: +a.serviceId||0, price: +a.price, payment: a.payment, date: a.date, time: a.time, notes: a.notes, extra_services: a.extraServices||[] });
 const toClient = c => ({ id: c.id, name: c.name, phone: c.phone || "", whatsapp: c.whatsapp || "", birthdate: c.birthdate || "", notes: c.notes || "", points: +c.points });
 const toBarber = b => ({ id: b.id, name: b.name, phone: b.phone || "", commission: +b.commission, status: b.status, userId: b.user_id });
@@ -825,7 +825,8 @@ function Dashboard({ attendances, clients, services, barbers, isAdmin, myBarberI
   // Barbeiro: painel próprio
   if (!isAdmin) {
     const me = barbers.find(b => b.id === myBarberId);
-    const commission = monthRev * (me?.commission || 0) / 100;
+    const monthServRev = monthAtts.reduce((s, a) => s + (a.servicesPrice ?? a.price), 0); // base da comissão
+    const commission   = monthServRev * (me?.commission || 0) / 100;
     return (
       <div>
         <div style={{ marginBottom: "1.75rem" }}>
@@ -836,7 +837,7 @@ function Dashboard({ attendances, clients, services, barbers, isAdmin, myBarberI
           <StatCard label="Atendimentos hoje"  value={todayAtts.length}  icon={Scissors} />
           <StatCard label="Faturamento hoje"    value={R$(todayRev)}     color={T.accent}  icon={DollarSign} />
           <StatCard label="Faturamento do mês"  value={R$(monthRev)}     color={T.success} icon={TrendingUp} />
-          <StatCard label="Comissão do mês"     value={R$(commission)}   color={T.accent}  icon={BadgePercent} sub={`${me?.commission || 0}% sobre ${R$(monthRev)}`} />
+          <StatCard label="Comissão do mês"     value={R$(commission)}   color={T.accent}  icon={BadgePercent} sub={`${me?.commission || 0}% sobre serviços (${R$(monthServRev)})`} />
         </div>
         <Card>
           <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1.5, color: T.text, marginBottom: "1rem" }}>Últimos atendimentos</div>
@@ -879,8 +880,9 @@ function Dashboard({ attendances, clients, services, barbers, isAdmin, myBarberI
 
   const bStats = barbers.filter(b => b.status === "active").map(b => {
     const bA = allMonth.filter(a => a.barberId === b.id);
-    const total = bA.reduce((s, a) => s + a.price, 0);
-    return { b, count: bA.length, total, commission: total * b.commission / 100, ticket: bA.length ? total / bA.length : 0 };
+    const total        = bA.reduce((s, a) => s + a.price, 0);                           // total pago pelo cliente
+    const servicesOnly = bA.reduce((s, a) => s + (a.servicesPrice ?? a.price), 0);      // base da comissão
+    return { b, count: bA.length, total, commission: servicesOnly * b.commission / 100, ticket: bA.length ? total / bA.length : 0 };
   }).sort((a, b) => b.total - a.total);
 
   const bToday = barbers.filter(b => b.status === "active").map(b => {
@@ -1138,7 +1140,7 @@ function AttendancesView({ attendances, setAttendances, clients, services, barbe
 
   const totalServices = form.selectedServices.reduce((s, sv) => s + sv.price, 0);
   const totalProducts = form.selectedProducts.reduce((s, sp) => s + sp.price * sp.quantity, 0);
-  const totalPrice    = totalServices; // preço do atendimento = serviços (base de comissão)
+  const totalPrice    = totalServices + totalProducts; // total que o cliente paga
 
   // ── Serviços ──────────────────────────────────────────────────
   const addService = (svcId) => {
@@ -1217,7 +1219,7 @@ function AttendancesView({ attendances, setAttendances, clients, services, barbe
       }));
       const rows = await api.insert("attendances", {
         client_id: +form.clientId, barber_id: +form.barberId,
-        service_id: primary.serviceId, price: totalPrice,
+        service_id: primary.serviceId, price: totalPrice, services_price: totalServices,
         payment: form.payment, date: form.date, time: form.time,
         notes: form.notes, extra_services: extras,
         products_sold: productsSoldPayload,
@@ -1366,7 +1368,12 @@ function AttendancesView({ attendances, setAttendances, clients, services, barbe
                 </div>
               ))}
               <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 12px", background: T.card }}>
-                <span style={{ color: T.mutedLight, fontSize: 13, fontWeight: 700 }}>Subtotal serviços</span>
+                <div>
+                  <span style={{ color: T.mutedLight, fontSize: 13, fontWeight: 700 }}>Subtotal serviços</span>
+                  {totalProducts > 0 && (
+                    <div style={{ color: T.muted, fontSize: 10, marginTop: 1 }}>base da comissão do barbeiro</div>
+                  )}
+                </div>
                 <span style={{ color: T.success, fontSize: 14, fontWeight: 800 }}>{R$(totalServices)}</span>
               </div>
             </div>
@@ -1813,13 +1820,13 @@ function FinancialView({ attendances, expenses, setExpenses, token, barbershopId
   const rangeExp      = expenses.filter(e => e.date >= filterFrom && e.date <= filterTo);
   const rangeProdSales = productSales.filter(s => s.date >= filterFrom && s.date <= filterTo);
 
-  const totalServRev     = rangeAtts.reduce((s,a) => s + a.price, 0);
+  const totalServRev     = rangeAtts.reduce((s,a) => s + (a.servicesPrice ?? a.price), 0); // somente serviços
   const totalProdRev     = rangeProdSales.reduce((s,ps) => s + ps.totalPrice, 0);
   const totalRev         = totalServRev + totalProdRev;
   const totalExp         = rangeExp.reduce((s,e) => s + e.amount, 0);
   const totalCommissions = rangeAtts.reduce((s,a) => {
     const b = barbers.find(x => x.id === a.barberId);
-    return s + (a.price * (b?.commission || 0) / 100);
+    return s + ((a.servicesPrice ?? a.price) * (b?.commission || 0) / 100); // comissão sobre serviços
   }, 0);
   const profit = totalRev - totalExp - totalCommissions;
 
