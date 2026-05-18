@@ -2224,33 +2224,100 @@ function BarberReportContent({ attendances, services, barbers, selMonth, shop })
 }
 
 function ServiceReportContent({ attendances, services, selMonth, shop }) {
-  const mAtts = attendances.filter(a => a.date.startsWith(selMonth));
-  const sm={};
-  mAtts.forEach(a=>{
-    const s=services.find(sv=>sv.id===a.serviceId);
-    if(!s) return;
-    if(!sm[s.id]) sm[s.id]={name:s.name, price:s.price, count:0, total:0};
-    sm[s.id].count++;
-    sm[s.id].total+=a.price;
+  const mAtts      = attendances.filter(a => a.date.startsWith(selMonth));
+  const accentColor = shop?.accent_color || "#b5a642";
+
+  // ── Ranking de Serviços ───────────────────────────────────────
+  // Conta serviço primário + extras; usa servicesPrice como receita do primário
+  const sm = {};
+  mAtts.forEach(a => {
+    const servRev = a.servicesPrice ?? a.price; // receita de serviços do atendimento
+
+    // Serviço primário
+    const prim = services.find(sv => sv.id === a.serviceId);
+    if (prim) {
+      if (!sm[prim.id]) sm[prim.id] = { name: prim.name, price: prim.price, count: 0, total: 0 };
+      sm[prim.id].count++;
+      sm[prim.id].total += prim.price; // usa preço de tabela do serviço
+    }
+
+    // Serviços extras
+    (a.extraServices || []).forEach(es => {
+      const sv = es.serviceId ? services.find(x => x.id === es.serviceId) : null;
+      const name  = sv?.name  || es.name  || "Serviço extra";
+      const price = sv?.price || es.price || 0;
+      const key   = sv?.id    || name;
+      if (!sm[key]) sm[key] = { name, price, count: 0, total: 0 };
+      sm[key].count++;
+      sm[key].total += price;
+    });
   });
-  const rows=Object.values(sm).sort((a,b)=>b.total-a.total);
-  const gt=rows.reduce((s,r)=>s+r.total,0);
+  const svcRows = Object.values(sm).sort((a, b) => b.total - a.total);
+  const svcGt   = svcRows.reduce((s, r) => s + r.total, 0);
+
+  // ── Ranking de Produtos ───────────────────────────────────────
+  const pm = {};
+  mAtts.forEach(a => {
+    (a.productsSold || []).forEach(p => {
+      const key = p.productId || p.name;
+      if (!pm[key]) pm[key] = { name: p.name, price: p.price, count: 0, total: 0 };
+      pm[key].count += p.quantity || 1;
+      pm[key].total += p.price * (p.quantity || 1);
+    });
+  });
+  const prodRows = Object.values(pm).sort((a, b) => b.total - a.total);
+  const prodGt   = prodRows.reduce((s, r) => s + r.total, 0);
 
   return (
     <div style={{ fontFamily:"Arial, sans-serif", color:"#111", background:"white", padding:28 }}>
-      <ReportHeader title="Relatório por Serviço" selMonth={selMonth} shop={shop} />
-      <ReportTable
-        cols={["#","Serviço","Preço Tabela","Qtd.","Total Gerado","% Receita"]}
-        rows={rows.map(({name,price,count,total},i)=>[
-          {val:i+1, style:{color:shop?.accent_color || T.accent, fontWeight:700}},
-          {val:name, style:{fontWeight:600}},
-          {val:R$(price), style:{color:"#555"}},
-          count+"×",
-          {val:R$(total), style:{fontWeight:700}},
-          {val:(gt>0?((total/gt)*100).toFixed(1):0)+"%", style:{color:"#555"}}
-        ])}
-        totalRow={["TOTAL","",rows.reduce((s,r)=>s+r.count,0)+"×", R$(gt),"",""]}
-      />
+      <ReportHeader title="Relatório por Atendimento" selMonth={selMonth} shop={shop} />
+
+      {/* ── Serviços ── */}
+      <div style={{ fontSize:14, fontWeight:700, marginBottom:8, borderBottom:"1px solid #eee", paddingBottom:4 }}>
+        Ranking de Serviços
+      </div>
+      {svcRows.length > 0 ? (
+        <ReportTable
+          cols={["#","Serviço","Preço Tabela","Qtd.","Total Gerado","% Receita"]}
+          rows={svcRows.map(({name,price,count,total},i)=>[
+            {val:i+1, style:{color:accentColor, fontWeight:700}},
+            {val:name, style:{fontWeight:600}},
+            {val:R$(price), style:{color:"#555"}},
+            count+"×",
+            {val:R$(total), style:{color:"#166534", fontWeight:700}},
+            {val:(svcGt>0?((total/svcGt)*100).toFixed(1):0)+"%", style:{color:"#555"}},
+          ])}
+          totalRow={["TOTAL","", svcRows.reduce((s,r)=>s+r.count,0)+"×", {val:R$(svcGt), style:{fontWeight:700}},"",""]}
+        />
+      ) : (
+        <div style={{ fontSize:13, color:"#888", marginBottom:16, paddingBottom:12, borderBottom:"1px solid #eee" }}>
+          Nenhum serviço registrado no período.
+        </div>
+      )}
+
+      {/* ── Produtos ── */}
+      <div style={{ fontSize:14, fontWeight:700, margin:"20px 0 8px", borderBottom:"1px solid #eee", paddingBottom:4 }}>
+        Ranking de Produtos Vendidos em Atendimentos
+      </div>
+      {prodRows.length > 0 ? (
+        <ReportTable
+          cols={["#","Produto","Preço Unit.","Qtd.","Total Gerado","% Receita"]}
+          rows={prodRows.map(({name,price,count,total},i)=>[
+            {val:i+1, style:{color:accentColor, fontWeight:700}},
+            {val:name, style:{fontWeight:600}},
+            {val:R$(price), style:{color:"#555"}},
+            count+"×",
+            {val:R$(total), style:{color:"#1e40af", fontWeight:700}},
+            {val:(prodGt>0?((total/prodGt)*100).toFixed(1):0)+"%", style:{color:"#555"}},
+          ])}
+          totalRow={["TOTAL","", prodRows.reduce((s,r)=>s+r.count,0)+"×", {val:R$(prodGt), style:{fontWeight:700}},"",""]}
+        />
+      ) : (
+        <div style={{ fontSize:13, color:"#888", marginBottom:16, paddingBottom:12, borderBottom:"1px solid #eee" }}>
+          Nenhum produto vendido via atendimento no período.
+        </div>
+      )}
+
       <ReportFooter />
     </div>
   );
@@ -2269,9 +2336,9 @@ function ReportsView({ attendances, clients, services, barbers, expenses, shop, 
   const mProfit      = mRev - mExpT - mCommissions;
 
   const REPORTS = [
-    { id:"revenue",  label:"Faturamento",  desc:"Receitas, despesas, lucro e formas de pagamento", Icon:DollarSign, color:T.success },
-    { id:"barbers",  label:"Por Barbeiro",  desc:"Ranking, produção, comissões e ticket médio",      Icon:Award,      color:T.accent  },
-    { id:"services", label:"Por Serviço",   desc:"Serviços mais realizados e receita gerada",        Icon:Scissors,   color:T.info    },
+    { id:"revenue",  label:"Faturamento",     desc:"Receitas, despesas, lucro e formas de pagamento",          Icon:DollarSign, color:T.success },
+    { id:"barbers",  label:"Por Barbeiro",     desc:"Ranking, produção, comissões e ticket médio",              Icon:Award,      color:T.accent  },
+    { id:"services", label:"Por Atendimento",  desc:"Ranking de serviços e produtos vendidos no período",       Icon:Scissors,   color:T.info    },
   ];
 
   const handlePrint = () => {
@@ -2358,14 +2425,27 @@ function ReportsView({ attendances, clients, services, barbers, expenses, shop, 
                   </div>;
                 })}
                 {id==="services" && (()=>{
-                  const sm={}; mAtts.forEach(a=>{sm[a.serviceId]=(sm[a.serviceId]||0)+1;});
-                  return Object.entries(sm).sort((a,b)=>b[1]-a[1]).slice(0,4).map(([sid,n])=>{
-                    const s=services.find(sv=>sv.id===+sid);
-                    return s?<div key={sid} style={{ background:T.surface, borderRadius:6, padding:"8px 10px" }}>
-                      <div style={{ fontSize:10, color:T.muted, textTransform:"uppercase", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{s.name}</div>
-                      <div style={{ fontWeight:600, color:T.text, fontSize:13 }}>{n}×</div>
-                    </div>:null;
-                  });
+                  // Top 2 serviços
+                  const sm={}; mAtts.forEach(a=>{ sm[a.serviceId]=(sm[a.serviceId]||0)+1; });
+                  const topSvc = Object.entries(sm).sort((a,b)=>b[1]-a[1]).slice(0,2);
+                  // Top 2 produtos (via productsSold nos atendimentos)
+                  const pm={}; mAtts.forEach(a=>(a.productsSold||[]).forEach(p=>{ pm[p.name]=(pm[p.name]||0)+(p.quantity||1); }));
+                  const topProd = Object.entries(pm).sort((a,b)=>b[1]-a[1]).slice(0,2);
+                  return [
+                    ...topSvc.map(([sid,n])=>{
+                      const s=services.find(sv=>sv.id===+sid);
+                      return s ? <div key={"s"+sid} style={{ background:T.surface, borderRadius:6, padding:"8px 10px" }}>
+                        <div style={{ fontSize:9, color:T.muted, textTransform:"uppercase", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>✂ {s.name}</div>
+                        <div style={{ fontWeight:600, color:T.text, fontSize:13 }}>{n}×</div>
+                      </div> : null;
+                    }),
+                    ...topProd.map(([name,n])=>(
+                      <div key={"p"+name} style={{ background:T.surface, borderRadius:6, padding:"8px 10px" }}>
+                        <div style={{ fontSize:9, color:T.accent, textTransform:"uppercase", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>📦 {name}</div>
+                        <div style={{ fontWeight:600, color:T.text, fontSize:13 }}>{n}×</div>
+                      </div>
+                    )),
+                  ];
                 })()}
               </div>
               <Btn style={{ width:"100%", justifyContent:"center" }}><FileText size={14}/>Visualizar e Imprimir</Btn>
