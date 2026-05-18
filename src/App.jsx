@@ -11,6 +11,7 @@ import {
   Phone, LogOut, Lock, Mail, CreditCard, Banknote, Smartphone,
   BadgePercent, AlertCircle, RefreshCw, FileText, Download, Calendar, Bell, Gift,
   Settings, Upload, Palette, Image, Shield, Clock, Layers,
+  ShoppingCart, Package,
 } from "lucide-react";
 
 (() => {
@@ -135,7 +136,9 @@ const fromAtt = a => ({ client_id: +a.clientId||0, barber_id: +a.barberId||0, se
 const toClient = c => ({ id: c.id, name: c.name, phone: c.phone || "", whatsapp: c.whatsapp || "", birthdate: c.birthdate || "", notes: c.notes || "", points: +c.points });
 const toBarber = b => ({ id: b.id, name: b.name, phone: b.phone || "", commission: +b.commission, status: b.status, userId: b.user_id });
 const toService = s => ({ id: s.id, name: s.name, price: +s.price, duration: +s.duration, active: s.active });
-const toExpense = e => ({ id: e.id, desc: e.description, amount: +e.amount, date: e.date, category: e.category || "" });
+const toExpense     = e => ({ id: e.id, desc: e.description, amount: +e.amount, date: e.date, category: e.category || "" });
+const toProduct     = p => ({ id: p.id, name: p.name, description: p.description || "", price: +(p.price||0), cost: +(p.cost||0), stockCurrent: +(p.stock_current||0), stockMinimum: +(p.stock_minimum||0), unit: p.unit || "un", active: p.active !== false });
+const toProductSale = s => ({ id: s.id, productId: s.product_id, barberId: s.barber_id, quantity: +(s.quantity||1), unitPrice: +(s.unit_price||0), totalPrice: +(s.total_price||0), payment: s.payment || "PIX", date: (s.sold_at||s.created_at||"").substring(0,10) });
 
 // ── THEME ─────────────────────────────────────────────────────
 const T = {
@@ -176,6 +179,7 @@ const nextId = arr => Math.max(0, ...arr.map(x => x.id)) + 1;
 
 const PAYMENT_OPTS = ["Dinheiro", "PIX", "Cartão Débito", "Cartão Crédito"];
 const EXPENSE_CATS = ["Aluguel", "Insumos", "Energia", "Internet", "Manutenção", "Marketing", "Outros"];
+const WARN_COLOR   = "#f59e0b";
 
 // ── SHARED UI ─────────────────────────────────────────────────
 const inputSt = { width: "100%", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 8, padding: "0.6rem 0.875rem", color: T.text, fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "'DM Sans', sans-serif" };
@@ -623,7 +627,7 @@ const LoadingScreen = () => (
 );
 
 // ── DASHBOARD ─────────────────────────────────────────────────
-function Dashboard({ attendances, clients, services, barbers, isAdmin, myBarberId, onGoReports, isMobile }) {
+function Dashboard({ attendances, clients, services, barbers, isAdmin, myBarberId, onGoReports, isMobile, products = [] }) {
   const todayStr   = today();
   const monthStr   = month();
   const myAtts     = isAdmin ? attendances : attendances.filter(a => a.barberId === myBarberId);
@@ -679,6 +683,7 @@ function Dashboard({ attendances, clients, services, barbers, isAdmin, myBarberI
   const allToday  = attendances.filter(a => a.date === todayStr);
   const allMonth  = attendances.filter(a => a.date.startsWith(monthStr));
   const allMonthR = allMonth.reduce((s, a) => s + a.price, 0);
+  const lowStockProds = products.filter(p => p.active && p.stockCurrent <= p.stockMinimum);
 
   const svcCount = {};
   allMonth.forEach(a => { svcCount[a.serviceId] = (svcCount[a.serviceId] || 0) + 1; });
@@ -710,6 +715,17 @@ function Dashboard({ attendances, clients, services, barbers, isAdmin, myBarberI
         <StatCard label="Faturamento do mês"  value={R$(allMonthR)}                        color={T.success} icon={TrendingUp} />
         <StatCard label="Clientes únicos hoje" value={new Set(allToday.map(a=>a.clientId)).size} icon={Users} />
       </div>
+
+      {/* Low stock alert */}
+      {lowStockProds.length > 0 && (
+        <div style={{ background:`${WARN_COLOR}18`, border:`1px solid ${WARN_COLOR}44`, borderRadius:10, padding:"0.75rem 1rem", marginBottom:"1.5rem", display:"flex", alignItems:"center", gap:10 }}>
+          <AlertCircle size={15} color={WARN_COLOR}/>
+          <span style={{ color:WARN_COLOR, fontSize:13, fontWeight:700 }}>
+            {lowStockProds.length} produto{lowStockProds.length>1?"s":""} com estoque baixo:{" "}
+            {lowStockProds.map(p=>`${p.name} (${p.stockCurrent} ${p.unit})`).join(", ")}
+          </span>
+        </div>
+      )}
 
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1.4fr 1fr", gap: "1.5rem", marginBottom: "1.5rem", minWidth: 0 }}>
         <Card style={{ minWidth: 0, overflow: "hidden" }}>
@@ -1454,7 +1470,7 @@ function ServicesView({ services, setServices, token, barbershopId }) {
 }
 
 // ── FINANCIAL ────────────────────────────────────────────────
-function FinancialView({ attendances, expenses, setExpenses, token, barbershopId, barbers = [], isMobile }) {
+function FinancialView({ attendances, expenses, setExpenses, token, barbershopId, barbers = [], isMobile, productSales = [] }) {
   const todayStr   = today();
   const monthStart = todayStr.substring(0, 7) + "-01";
 
@@ -1467,10 +1483,13 @@ function FinancialView({ attendances, expenses, setExpenses, token, barbershopId
   const setF = k => e => setForm(f=>({...f,[k]:e.target.value}));
 
   // Filter by selected date range
-  const rangeAtts = attendances.filter(a => a.date >= filterFrom && a.date <= filterTo);
-  const rangeExp  = expenses.filter(e => e.date >= filterFrom && e.date <= filterTo);
+  const rangeAtts     = attendances.filter(a => a.date >= filterFrom && a.date <= filterTo);
+  const rangeExp      = expenses.filter(e => e.date >= filterFrom && e.date <= filterTo);
+  const rangeProdSales = productSales.filter(s => s.date >= filterFrom && s.date <= filterTo);
 
-  const totalRev         = rangeAtts.reduce((s,a) => s + a.price, 0);
+  const totalServRev     = rangeAtts.reduce((s,a) => s + a.price, 0);
+  const totalProdRev     = rangeProdSales.reduce((s,ps) => s + ps.totalPrice, 0);
+  const totalRev         = totalServRev + totalProdRev;
   const totalExp         = rangeExp.reduce((s,e) => s + e.amount, 0);
   const totalCommissions = rangeAtts.reduce((s,a) => {
     const b = barbers.find(x => x.id === a.barberId);
@@ -1555,7 +1574,7 @@ function FinancialView({ attendances, expenses, setExpenses, token, barbershopId
           value={R$(totalRev)}
           color={T.success}
           icon={DollarSign}
-          sub={`${rangeAtts.length} atendimento${rangeAtts.length !== 1 ? "s" : ""}`}
+          sub={totalProdRev > 0 ? `${rangeAtts.length} atend. + ${R$(totalProdRev)} produtos` : `${rangeAtts.length} atendimento${rangeAtts.length !== 1 ? "s" : ""}`}
         />
         <StatCard
           label="COMISSÕES"
@@ -2399,8 +2418,342 @@ function SettingsView({ token, shop, onShopUpdated }) {
 
 
 
+// ── PRODUCTS ──────────────────────────────────────────────────
+const UNIT_OPTS  = ["un", "ml", "g", "kg", "L", "cx", "pct"];
+
+function ProductsView({ products, setProducts, productSales, setProductSales, barbers, token, barbershopId, isMobile }) {
+  const [tab, setTab]             = useState("produtos");
+  const [showModal, setShowModal] = useState(false);
+  const [editing, setEditing]     = useState(null);
+  const [saving, setSaving]       = useState(false);
+  const [err, setErr]             = useState("");
+
+  const emptyForm = () => ({ name:"", description:"", price:"", cost:"0", stockCurrent:"0", stockMinimum:"5", unit:"un", active: true });
+  const [form, setForm]           = useState(emptyForm());
+  const setF = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
+
+  // Stock entry modal
+  const [stockModal, setStockModal]   = useState(null);
+  const [stockQty, setStockQty]       = useState("1");
+  const [stockReason, setStockReason] = useState("");
+  const [stockSaving, setStockSaving] = useState(false);
+
+  // Sale modal
+  const [saleModal, setSaleModal] = useState(null);
+  const [saleForm, setSaleForm]   = useState({ qty:"1", barberId:"", payment:"PIX" });
+  const [saleSaving, setSaleSaving] = useState(false);
+  const [saleErr, setSaleErr]     = useState("");
+
+  const lowStock = products.filter(p => p.active && p.stockCurrent <= p.stockMinimum);
+
+  const stockColor = p => {
+    if (p.stockCurrent === 0) return T.danger;
+    if (p.stockCurrent <= p.stockMinimum) return WARN_COLOR;
+    return T.success;
+  };
+
+  // ── CRUD ──────────────────────────────────────────────────────
+  const openAdd  = () => { setEditing(null); setForm(emptyForm()); setErr(""); setShowModal(true); };
+  const openEdit = p  => { setEditing(p.id); setForm({ name:p.name, description:p.description, price:String(p.price), cost:String(p.cost), stockCurrent:String(p.stockCurrent), stockMinimum:String(p.stockMinimum), unit:p.unit, active:p.active }); setErr(""); setShowModal(true); };
+
+  const saveProduct = async () => {
+    if (!form.name || !form.price) return setErr("Nome e preço são obrigatórios.");
+    setSaving(true); setErr("");
+    try {
+      const body = { name:form.name, description:form.description, price:+form.price, cost:+(form.cost||0), stock_current:+(form.stockCurrent||0), stock_minimum:+(form.stockMinimum||0), unit:form.unit||"un", active:form.active, barbershop_id:barbershopId };
+      if (editing) {
+        await api.update("products", editing, body, token);
+        setProducts(ps => ps.map(p => p.id===editing ? toProduct({...body, id:editing}) : p));
+      } else {
+        const rows = await api.insert("products", body, token);
+        setProducts(ps => [toProduct(rows[0]), ...ps]);
+      }
+      setShowModal(false);
+    } catch(e) { setErr(e.message); }
+    setSaving(false);
+  };
+
+  const delProduct = async id => {
+    if (!window.confirm("Deletar produto?")) return;
+    await api.remove("products", id, token);
+    setProducts(ps => ps.filter(p => p.id !== id));
+  };
+
+  const toggleProduct = async p => {
+    await api.update("products", p.id, { active: !p.active }, token);
+    setProducts(ps => ps.map(x => x.id===p.id ? { ...x, active:!x.active } : x));
+  };
+
+  // ── STOCK ENTRY ───────────────────────────────────────────────
+  const doStockEntry = async () => {
+    const qty = +stockQty;
+    if (!qty || qty <= 0) return;
+    setStockSaving(true);
+    try {
+      const newStock = stockModal.stockCurrent + qty;
+      await api.update("products", stockModal.id, { stock_current: newStock }, token);
+      setProducts(ps => ps.map(p => p.id===stockModal.id ? { ...p, stockCurrent: newStock } : p));
+      await api.insert("stock_movements", { product_id:stockModal.id, type:"entrada", quantity:qty, reason:stockReason||"Entrada de estoque" }, token);
+      setStockModal(null); setStockQty("1"); setStockReason("");
+    } catch(e) { alert(e.message); }
+    setStockSaving(false);
+  };
+
+  // ── SALE ──────────────────────────────────────────────────────
+  const doSale = async () => {
+    const qty = +saleForm.qty;
+    if (!qty || qty <= 0) return setSaleErr("Quantidade inválida.");
+    if (qty > saleModal.stockCurrent) return setSaleErr("Estoque insuficiente.");
+    setSaleSaving(true); setSaleErr("");
+    try {
+      const unitPrice  = saleModal.price;
+      const totalPrice = unitPrice * qty;
+      const rows = await api.insert("product_sales", {
+        product_id: saleModal.id,
+        barber_id:  saleForm.barberId || null,
+        quantity:   qty,
+        unit_price: unitPrice,
+        total_price:totalPrice,
+        payment:    saleForm.payment,
+        sold_at:    new Date().toISOString(),
+      }, token);
+      setProductSales(ps => [toProductSale(rows[0]), ...ps]);
+      const newStock = saleModal.stockCurrent - qty;
+      await api.update("products", saleModal.id, { stock_current: newStock }, token);
+      setProducts(ps => ps.map(p => p.id===saleModal.id ? { ...p, stockCurrent: newStock } : p));
+      await api.insert("stock_movements", { product_id:saleModal.id, type:"venda", quantity:qty, reason:`Venda — ${saleForm.payment}` }, token);
+      setSaleModal(null); setSaleForm({ qty:"1", barberId:"", payment:"PIX" });
+    } catch(e) { setSaleErr(e.message); }
+    setSaleSaving(false);
+  };
+
+  const totalSalesRev = productSales.reduce((s, ps) => s + ps.totalPrice, 0);
+
+  return (
+    <div>
+      <PageHeader
+        title="Produtos"
+        sub={`${products.filter(p=>p.active).length} ativos · ${products.length} total`}
+        right={<Btn onClick={openAdd}><Plus size={15}/>Novo Produto</Btn>}
+      />
+
+      {/* Low stock alert */}
+      {lowStock.length > 0 && (
+        <div style={{ background:`${WARN_COLOR}18`, border:`1px solid ${WARN_COLOR}44`, borderRadius:10, padding:"0.75rem 1rem", marginBottom:"1.25rem", display:"flex", alignItems:"center", gap:10 }}>
+          <AlertCircle size={16} color={WARN_COLOR}/>
+          <span style={{ color:WARN_COLOR, fontSize:13, fontWeight:700 }}>
+            {lowStock.length} produto{lowStock.length>1?"s":""} com estoque baixo ou zerado: {lowStock.map(p=>p.name).join(", ")}
+          </span>
+        </div>
+      )}
+
+      {/* Tabs */}
+      <div style={{ display:"flex", gap:8, marginBottom:"1.25rem" }}>
+        {[["produtos","Produtos"],["vendas","Histórico de Vendas"]].map(([id,label]) => (
+          <button key={id} onClick={() => setTab(id)} style={{
+            background: tab===id ? T.accent : T.card,
+            color: tab===id ? "#0a0808" : T.muted,
+            border: `1px solid ${tab===id ? T.accent : T.border}`,
+            borderRadius:8, padding:"0.5rem 1.1rem", fontSize:13, fontWeight:700,
+            cursor:"pointer", fontFamily:"'DM Sans', sans-serif",
+          }}>
+            {label}
+          </button>
+        ))}
+        {tab==="vendas" && productSales.length > 0 && (
+          <div style={{ marginLeft:"auto", display:"flex", alignItems:"center", fontSize:13, color:T.success, fontWeight:700, gap:6 }}>
+            <DollarSign size={14}/> Total vendas: {R$(totalSalesRev)}
+          </div>
+        )}
+      </div>
+
+      {/* ── Tab Produtos ── */}
+      {tab === "produtos" && (
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(200px, 1fr))", gap:"1rem" }}>
+          {products.map(p => (
+            <Card key={p.id} style={{ opacity:p.active?1:0.55, minWidth:0 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:"0.75rem" }}>
+                <div style={{ fontSize:14, fontWeight:700, color:T.text, lineHeight:1.3, minWidth:0, flex:1 }}>{p.name}</div>
+                <div style={{ display:"flex", gap:2, flexShrink:0, marginLeft:6 }}>
+                  <button onClick={() => openEdit(p)} style={{ background:"none", border:"none", color:T.muted, cursor:"pointer", display:"inline-flex" }}><Edit2 size={13}/></button>
+                  <button onClick={() => delProduct(p.id)} style={{ background:"none", border:"none", color:T.muted, cursor:"pointer", display:"inline-flex" }}><Trash2 size={13}/></button>
+                </div>
+              </div>
+
+              {p.description && (
+                <div style={{ fontSize:11, color:T.muted, marginBottom:10, lineHeight:1.4 }}>{p.description}</div>
+              )}
+
+              <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:28, color:T.accent, letterSpacing:1, lineHeight:1, marginBottom:10 }}>{R$(p.price)}</div>
+
+              {/* Estoque indicator */}
+              <div style={{ background:T.surface, borderRadius:8, padding:"8px 10px", marginBottom:10 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                  <span style={{ fontSize:11, color:T.muted, textTransform:"uppercase", letterSpacing:0.5 }}>Estoque</span>
+                  <span style={{ fontSize:14, fontWeight:900, color:stockColor(p) }}>{p.stockCurrent} {p.unit}</span>
+                </div>
+                <div style={{ fontSize:11, color:T.muted, marginTop:2 }}>Mín: {p.stockMinimum} {p.unit}</div>
+              </div>
+
+              {/* Action buttons */}
+              <div style={{ display:"flex", gap:6 }}>
+                <button
+                  onClick={() => { setStockModal(p); setStockQty("1"); setStockReason(""); }}
+                  style={{ flex:1, background:T.surface, border:`1px solid ${T.border}`, color:T.text, borderRadius:7, padding:"6px 8px", fontSize:11, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:4, fontFamily:"'DM Sans', sans-serif" }}
+                >
+                  <Package size={12}/> Entrada
+                </button>
+                <button
+                  onClick={() => { if(p.stockCurrent>0){ setSaleModal(p); setSaleForm({qty:"1",barberId:"",payment:"PIX"}); setSaleErr(""); } }}
+                  disabled={p.stockCurrent === 0}
+                  style={{ flex:1, background:p.stockCurrent===0?T.surface:T.accentGlow, border:`1px solid ${p.stockCurrent===0?T.border:T.accent+"44"}`, color:p.stockCurrent===0?T.muted:T.accent, borderRadius:7, padding:"6px 8px", fontSize:11, fontWeight:700, cursor:p.stockCurrent===0?"not-allowed":"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:4, fontFamily:"'DM Sans', sans-serif" }}
+                >
+                  <ShoppingCart size={12}/> Vender
+                </button>
+              </div>
+
+              {/* Active toggle */}
+              <button
+                onClick={() => toggleProduct(p)}
+                style={{ width:"100%", marginTop:8, background:"none", border:`1px solid ${p.active?T.success+"44":T.border}`, color:p.active?T.success:T.muted, borderRadius:6, padding:"4px", fontSize:10, fontWeight:700, cursor:"pointer", fontFamily:"'DM Sans', sans-serif" }}
+              >
+                {p.active ? "ATIVO" : "INATIVO"}
+              </button>
+            </Card>
+          ))}
+          {products.length === 0 && (
+            <div style={{ gridColumn:"1/-1", textAlign:"center", padding:"3rem", color:T.muted, fontSize:14 }}>
+              Nenhum produto cadastrado. Clique em "Novo Produto" para começar.
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Tab Vendas ── */}
+      {tab === "vendas" && (
+        <Card style={{ padding:0, overflowX:"auto" }}>
+          <table style={{ width:"100%", minWidth:560, borderCollapse:"collapse", fontSize:13 }}>
+            <THead cols={["Data","Produto","Qtd.","Valor Unit.","Total","Pagamento","Barbeiro"]}/>
+            <tbody>
+              {productSales.length === 0 ? (
+                <tr><td colSpan={7} style={{ textAlign:"center", padding:"3rem", color:T.muted }}>Nenhuma venda registrada.</td></tr>
+              ) : productSales.slice(0, 100).map(s => {
+                const prod = products.find(p => p.id === s.productId);
+                const barb = barbers.find(b => b.id === s.barberId);
+                return (
+                  <tr key={s.id} style={{ borderTop:`1px solid ${T.borderLight}` }}>
+                    <td style={{ padding:"9px 0.75rem", color:T.muted }}>{fDate(s.date)}</td>
+                    <td style={{ padding:"9px 0.75rem", color:T.text, fontWeight:500 }}>{prod?.name||"—"}</td>
+                    <td style={{ padding:"9px 0.75rem", color:T.muted }}>{s.quantity}×</td>
+                    <td style={{ padding:"9px 0.75rem", color:T.muted }}>{R$(s.unitPrice)}</td>
+                    <td style={{ padding:"9px 0.75rem", color:T.success, fontWeight:700 }}>{R$(s.totalPrice)}</td>
+                    <td style={{ padding:"9px 0.75rem" }}><Badge>{s.payment}</Badge></td>
+                    <td style={{ padding:"9px 0.75rem", color:T.muted }}>{barb?.name||"—"}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </Card>
+      )}
+
+      {/* ── Modal: CRUD Produto ── */}
+      {showModal && (
+        <Modal title={editing ? "Editar Produto" : "Novo Produto"} onClose={() => setShowModal(false)}>
+          <ErrorBar msg={err}/>
+          <FInput label="Nome do produto" value={form.name} onChange={setF("name")} placeholder="Ex: Pomada Matte"/>
+          <FArea  label="Descrição (opcional)" value={form.description} onChange={setF("description")} placeholder="Breve descrição do produto"/>
+          <Row>
+            <FG label="Preço de venda (R$)" half><input style={inputSt} type="number" min="0" step="0.01" value={form.price} onChange={setF("price")}/></FG>
+            <FG label="Custo (R$)" half><input style={inputSt} type="number" min="0" step="0.01" value={form.cost} onChange={setF("cost")}/></FG>
+          </Row>
+          <Row>
+            <FG label="Estoque atual" half><input style={inputSt} type="number" min="0" value={form.stockCurrent} onChange={setF("stockCurrent")}/></FG>
+            <FG label="Estoque mínimo" half><input style={inputSt} type="number" min="0" value={form.stockMinimum} onChange={setF("stockMinimum")}/></FG>
+          </Row>
+          <Row>
+            <FG label="Unidade" half>
+              <select style={{ ...inputSt, appearance:"none" }} value={form.unit} onChange={setF("unit")}>
+                {UNIT_OPTS.map(u => <option key={u}>{u}</option>)}
+              </select>
+            </FG>
+            <FG label="Status" half>
+              <select style={{ ...inputSt, appearance:"none" }} value={form.active ? "1" : "0"} onChange={e => setForm(f => ({ ...f, active: e.target.value === "1" }))}>
+                <option value="1">Ativo</option>
+                <option value="0">Inativo</option>
+              </select>
+            </FG>
+          </Row>
+          <Row g="0.5rem" style={{ justifyContent:"flex-end" }}>
+            <Btn variant="ghost" onClick={() => setShowModal(false)}>Cancelar</Btn>
+            <Btn onClick={saveProduct} disabled={saving}>
+              {saving ? <RefreshCw size={13} style={{ animation:"spin 1s linear infinite" }}/> : <Check size={13}/>}
+              {editing ? "Atualizar" : "Cadastrar"}
+            </Btn>
+          </Row>
+        </Modal>
+      )}
+
+      {/* ── Modal: Entrada de Estoque ── */}
+      {stockModal && (
+        <Modal title={`Entrada de Estoque — ${stockModal.name}`} onClose={() => setStockModal(null)}>
+          <div style={{ background:T.surface, borderRadius:8, padding:"10px 14px", marginBottom:"1rem", fontSize:13 }}>
+            <div style={{ color:T.muted }}>Estoque atual: <span style={{ color:stockColor(stockModal), fontWeight:800 }}>{stockModal.stockCurrent} {stockModal.unit}</span></div>
+          </div>
+          <FG label="Quantidade a adicionar">
+            <input style={inputSt} type="number" min="1" value={stockQty} onChange={e => setStockQty(e.target.value)}/>
+          </FG>
+          <FG label="Motivo (opcional)">
+            <input style={inputSt} value={stockReason} onChange={e => setStockReason(e.target.value)} placeholder="Ex: Compra fornecedor"/>
+          </FG>
+          <Row g="0.5rem" style={{ justifyContent:"flex-end" }}>
+            <Btn variant="ghost" onClick={() => setStockModal(null)}>Cancelar</Btn>
+            <Btn onClick={doStockEntry} disabled={stockSaving}>
+              {stockSaving ? <RefreshCw size={13} style={{ animation:"spin 1s linear infinite" }}/> : <Package size={13}/>}
+              Confirmar Entrada
+            </Btn>
+          </Row>
+        </Modal>
+      )}
+
+      {/* ── Modal: Venda ── */}
+      {saleModal && (
+        <Modal title={`Vender — ${saleModal.name}`} onClose={() => setSaleModal(null)}>
+          <ErrorBar msg={saleErr}/>
+          <div style={{ background:T.surface, borderRadius:8, padding:"10px 14px", marginBottom:"1rem", fontSize:13 }}>
+            <div style={{ color:T.muted }}>Preço unitário: <span style={{ color:T.accent, fontWeight:800 }}>{R$(saleModal.price)}</span></div>
+            <div style={{ color:T.muted, marginTop:4 }}>Estoque disponível: <span style={{ color:stockColor(saleModal), fontWeight:800 }}>{saleModal.stockCurrent} {saleModal.unit}</span></div>
+          </div>
+          <FG label="Quantidade">
+            <input style={inputSt} type="number" min="1" max={saleModal.stockCurrent} value={saleForm.qty} onChange={e => setSaleForm(f => ({ ...f, qty:e.target.value }))}/>
+          </FG>
+          {+saleForm.qty > 0 && (
+            <div style={{ background:T.accentGlow, border:`1px solid ${T.accent}33`, borderRadius:8, padding:"8px 12px", marginBottom:"1rem", fontSize:14, color:T.accent, fontWeight:800 }}>
+              Total: {R$(saleModal.price * +saleForm.qty)}
+            </div>
+          )}
+          <FSelect label="Forma de pagamento" value={saleForm.payment} onChange={e => setSaleForm(f => ({ ...f, payment:e.target.value }))}>
+            {PAYMENT_OPTS.map(p => <option key={p}>{p}</option>)}
+          </FSelect>
+          <FSelect label="Barbeiro responsável (opcional)" value={saleForm.barberId} onChange={e => setSaleForm(f => ({ ...f, barberId:e.target.value }))}>
+            <option value="">Sem barbeiro</option>
+            {barbers.filter(b => b.status === "active").map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+          </FSelect>
+          <Row g="0.5rem" style={{ justifyContent:"flex-end" }}>
+            <Btn variant="ghost" onClick={() => setSaleModal(null)}>Cancelar</Btn>
+            <Btn onClick={doSale} disabled={saleSaving}>
+              {saleSaving ? <RefreshCw size={13} style={{ animation:"spin 1s linear infinite" }}/> : <ShoppingCart size={13}/>}
+              Confirmar Venda
+            </Btn>
+          </Row>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
 // ── SIDEBAR ──────────────────────────────────────────────────
-function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin, userName, onLogout, shop }) {
+function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin, userName, onLogout, shop, lowStockCount = 0 }) {
   const nav = isSuperAdmin
     ? [
         { id:"superadmin_dashboard",      label:"Dashboard",     Icon:LayoutDashboard, desc:"Visão geral" },
@@ -2418,6 +2771,7 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
         ...(isAdmin ? [
           { id:"barbers",   label:"Barbeiros",     Icon:Award },
           { id:"services",  label:"Serviços",      Icon:Tag },
+          { id:"produtos",  label:"Produtos",      Icon:Package, badge: lowStockCount },
           { id:"financial", label:"Financeiro",    Icon:DollarSign },
           { id:"reports",   label:"Relatórios",    Icon:FileText },
           { id:"settings",  label:"Configurações", Icon:Settings },
@@ -2666,7 +3020,7 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
           overflowY:"auto",
         }}
       >
-        {nav.map(({id,label,Icon,desc}) => {
+        {nav.map(({id,label,Icon,desc,badge}) => {
           const active = view === id;
 
           return (
@@ -2749,10 +3103,15 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
               </span>
 
               {!collapsed && (
-                <span style={{ minWidth:0, flex:1 }}>
-                  <span style={{ display:"block", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+                <span style={{ minWidth:0, flex:1, display:"flex", alignItems:"center", gap:6 }}>
+                  <span style={{ display:"block", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", flex:1 }}>
                     {label}
                   </span>
+                  {badge > 0 && (
+                    <span style={{ background:WARN_COLOR, color:"#0a0808", borderRadius:999, fontSize:9, fontWeight:900, padding:"2px 6px", lineHeight:1.4, flexShrink:0 }}>
+                      {badge}
+                    </span>
+                  )}
                   {isSuperAdmin && desc && (
                     <span
                       style={{
@@ -2910,11 +3269,13 @@ export default function App() {
     return <ResetPassword />;
   }
 
-  const [clients,     setClients]     = useState([]);
-  const [services,    setServices]    = useState([]);
-  const [barbers,     setBarbers]     = useState([]);
-  const [attendances, setAttendances] = useState([]);
-  const [expenses,    setExpenses]    = useState([]);
+  const [clients,      setClients]      = useState([]);
+  const [services,     setServices]     = useState([]);
+  const [barbers,      setBarbers]      = useState([]);
+  const [attendances,  setAttendances]  = useState([]);
+  const [expenses,     setExpenses]     = useState([]);
+  const [products,     setProducts]     = useState([]);
+  const [productSales, setProductSales] = useState([]);
 
   useEffect(() => {
     let mounted = true;
@@ -3022,6 +3383,8 @@ export default function App() {
         setBarbers([]);
         setAttendances([]);
         setExpenses([]);
+        setProducts([]);
+        setProductSales([]);
         setView("superadmin_dashboard");
         setDataLoaded(true);
         return;
@@ -3052,13 +3415,15 @@ export default function App() {
         ? withShop("select=*&order=date.desc,time.desc")
         : withShop(`select=*&barber_id=eq.${profile.barber_id}&order=date.desc,time.desc`);
 
-      const [shopRows, brs, cls, svcs, atts, exps] = await Promise.all([
-        api.list("barbershops", `id=eq.${shopId}&select=*`, tok),
-        api.list("barbers",     withShop("select=*&order=name"), tok),
-        api.list("clients",     withShop("select=*&order=name"), tok),
-        api.list("services",    withShop("select=*&order=name"), tok),
-        api.list("attendances", attQuery, tok),
-        isAdm ? api.list("expenses", withShop("select=*&order=date.desc"), tok) : Promise.resolve([]),
+      const [shopRows, brs, cls, svcs, atts, exps, prods, prodSales] = await Promise.all([
+        api.list("barbershops",  `id=eq.${shopId}&select=*`, tok),
+        api.list("barbers",      withShop("select=*&order=name"), tok),
+        api.list("clients",      withShop("select=*&order=name"), tok),
+        api.list("services",     withShop("select=*&order=name"), tok),
+        api.list("attendances",  attQuery, tok),
+        isAdm ? api.list("expenses",     withShop("select=*&order=date.desc"), tok) : Promise.resolve([]),
+        isAdm ? api.list("products",     withShop("select=*&order=name"), tok)      : Promise.resolve([]),
+        isAdm ? api.list("product_sales","select=*&order=sold_at.desc", tok)        : Promise.resolve([]),
       ]);
 
       const currentShop = ensureArray(shopRows)[0] || null;
@@ -3070,6 +3435,8 @@ export default function App() {
       setServices(ensureArray(svcs).map(toService));
       setAttendances(ensureArray(atts).map(toAtt));
       setExpenses(ensureArray(exps).map(toExpense));
+      setProducts(ensureArray(prods).map(toProduct));
+      setProductSales(ensureArray(prodSales).map(toProductSale));
       setDataLoaded(true);
     } catch(e) {
       console.error(e);
@@ -3125,6 +3492,8 @@ export default function App() {
     setBarbers([]);
     setAttendances([]);
     setExpenses([]);
+    setProducts([]);
+    setProductSales([]);
     setDataLoaded(false);
     setView("dashboard");
     setShowPlans(false);
@@ -3202,6 +3571,8 @@ export default function App() {
 
   const activeView = isSuperAdmin ? view : view;
 
+  const lowStockCount = products.filter(p => p.active && p.stockCurrent <= p.stockMinimum).length;
+
   const views = isSuperAdmin
     ? {
         superadmin_dashboard:     <SuperAdminView token={tok} section="dashboard" />,
@@ -3213,12 +3584,13 @@ export default function App() {
         superadmin_analytics:     <SuperAdminView token={tok} section="analytics" />,
       }
     : {
-        dashboard:   <Dashboard   attendances={attendances} clients={clients}   services={services}  barbers={barbers}    isAdmin={isAdmin} myBarberId={myBarberId} onGoReports={isAdmin?()=>setView('reports'):undefined} isMobile={isMobile}/>,
+        dashboard:   <Dashboard   attendances={attendances} clients={clients} services={services} barbers={barbers} products={products} isAdmin={isAdmin} myBarberId={myBarberId} onGoReports={isAdmin?()=>setView('reports'):undefined} isMobile={isMobile}/>,
         attendances: <AttendancesView attendances={attendances} setAttendances={setAttendances} clients={clients} services={services} barbers={barbers} token={tok} isAdmin={isAdmin} myBarberId={myBarberId} barbershopId={barbershopId}/>,
         clients:     <ClientsView clients={clients} setClients={setClients} attendances={attendances} services={services} token={tok} isAdmin={isAdmin} barbershopId={barbershopId}/>,
         barbers:     <BarbersView  barbers={barbers} setBarbers={setBarbers} attendances={attendances} token={tok} barbershopId={barbershopId}/>,
         services:    <ServicesView services={services} setServices={setServices} token={tok} barbershopId={barbershopId}/>,
-        financial:   <FinancialView attendances={attendances} expenses={expenses} setExpenses={setExpenses} token={tok} barbershopId={barbershopId} barbers={barbers} isMobile={isMobile}/>,
+        produtos:    <ProductsView products={products} setProducts={setProducts} productSales={productSales} setProductSales={setProductSales} barbers={barbers} token={tok} barbershopId={barbershopId} isMobile={isMobile}/>,
+        financial:   <FinancialView attendances={attendances} expenses={expenses} setExpenses={setExpenses} token={tok} barbershopId={barbershopId} barbers={barbers} isMobile={isMobile} productSales={productSales}/>,
         reports:     <ReportsView attendances={attendances} clients={clients} services={services} barbers={barbers} expenses={expenses} shop={shop} isMobile={isMobile}/>,
         settings:    <SettingsView token={tok} shop={shop} onShopUpdated={(updatedShop) => { setShop(updatedShop); applyTenantTheme(updatedShop); }} />,
         meuPlano:    <MeuPlanoView token={tok} userEmail={auth.user?.email} profile={auth.profile} onRenew={() => setShowPlans(true)} />,
@@ -3255,10 +3627,11 @@ export default function App() {
             userName={userName}
             onLogout={onLogout}
             shop={shop}
+            lowStockCount={lowStockCount}
           />
         </div>
       ) : (
-        <Sidebar view={activeView} setView={setView} collapsed={collapsed} setCollapsed={setCollapsed} isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} userName={userName} onLogout={onLogout} shop={shop}/>
+        <Sidebar view={activeView} setView={setView} collapsed={collapsed} setCollapsed={setCollapsed} isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} userName={userName} onLogout={onLogout} shop={shop} lowStockCount={lowStockCount}/>
       )}
 
       {/* Área de conteúdo */}
