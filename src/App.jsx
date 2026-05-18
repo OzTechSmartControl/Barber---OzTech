@@ -249,6 +249,192 @@ const ErrorBar = ({ msg }) => msg ? (
   </div>
 ) : null;
 
+// ── DATE RANGE PICKER ─────────────────────────────────────────
+const DRP_MONTHS = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+const DRP_WDAYS  = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+
+function DateRangePicker({ from, to, onChange }) {
+  const [open,      setOpen]      = useState(false);
+  const [step,      setStep]      = useState("from");
+  const [hover,     setHover]     = useState(null);
+  const [tempFrom,  setTempFrom]  = useState(null);
+  const [viewYear,  setViewYear]  = useState(() => { const d = from ? new Date(from + "T00:00") : new Date(); return d.getFullYear(); });
+  const [viewMonth, setViewMonth] = useState(() => { const d = from ? new Date(from + "T00:00") : new Date(); return d.getMonth(); });
+
+  const openPicker = () => {
+    const d = from ? new Date(from + "T00:00") : new Date();
+    setViewYear(d.getFullYear());
+    setViewMonth(d.getMonth());
+    setTempFrom(from || null);
+    setStep("from");
+    setHover(null);
+    setOpen(true);
+  };
+
+  const toISO = (y, m, d) => `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+
+  const prevMonth = () => {
+    if (viewMonth === 0) { setViewYear(y => y - 1); setViewMonth(11); }
+    else setViewMonth(m => m - 1);
+  };
+  const nextMonth = () => {
+    if (viewMonth === 11) { setViewYear(y => y + 1); setViewMonth(0); }
+    else setViewMonth(m => m + 1);
+  };
+
+  const handleDay = (day) => {
+    const iso = toISO(viewYear, viewMonth, day);
+    if (step === "from") {
+      setTempFrom(iso);
+      setStep("to");
+      setHover(null);
+    } else {
+      let f = tempFrom, t2 = iso;
+      if (f && t2 < f) { const tmp = f; f = t2; t2 = tmp; }
+      onChange({ from: f || iso, to: t2 });
+      setOpen(false);
+      setStep("from");
+      setHover(null);
+      setTempFrom(null);
+    }
+  };
+
+  const firstDay    = new Date(viewYear, viewMonth, 1).getDay();
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < firstDay; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+  const todayISO = today();
+
+  // Range display with hover preview
+  const dispFrom = (step === "to" && hover && tempFrom)
+    ? (hover < tempFrom ? hover : tempFrom)
+    : (step === "to" ? (tempFrom || from) : from);
+  const dispTo = (step === "to" && hover && tempFrom)
+    ? (hover < tempFrom ? tempFrom : hover)
+    : (step === "to" ? null : to);
+
+  const label = (from && to)
+    ? (from === to ? fDate(from) : `${fDate(from)} → ${fDate(to)}`)
+    : "Selecionar período";
+
+  return (
+    <div style={{ position: "relative", display: "inline-block" }}>
+      {/* Trigger */}
+      <button
+        onClick={() => open ? setOpen(false) : openPicker()}
+        style={{
+          display: "flex", alignItems: "center", gap: 8,
+          background: T.card, border: `1px solid ${open ? T.accent : T.border}`,
+          borderRadius: 10, padding: "8px 14px", cursor: "pointer",
+          color: T.text, fontSize: 13, fontWeight: 600,
+          fontFamily: "'DM Sans', sans-serif",
+        }}
+      >
+        <Calendar size={14} style={{ color: open ? T.accent : T.muted, flexShrink: 0 }} />
+        <span>{label}</span>
+      </button>
+
+      {open && (
+        <>
+          {/* Backdrop */}
+          <div style={{ position: "fixed", inset: 0, zIndex: 498 }} onClick={() => setOpen(false)} />
+
+          {/* Dropdown */}
+          <div style={{
+            position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 499,
+            width: 294, background: T.card, border: `1px solid ${T.border}`,
+            borderRadius: 16, boxShadow: "0 8px 32px rgba(0,0,0,0.45)",
+            padding: "1rem", userSelect: "none",
+          }}>
+            {/* Hint */}
+            <div style={{ textAlign: "center", fontSize: 11, color: T.muted, marginBottom: "0.75rem", letterSpacing: 0.4 }}>
+              {step === "from" ? "Selecione a data inicial" : "Selecione a data final"}
+            </div>
+
+            {/* Month navigation */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.5rem" }}>
+              <button onClick={prevMonth} style={{ background: "none", border: "none", color: T.text, cursor: "pointer", fontSize: 20, padding: "0 8px", lineHeight: 1, fontFamily: "sans-serif" }}>‹</button>
+              <span style={{ color: T.text, fontWeight: 700, fontSize: 13 }}>{DRP_MONTHS[viewMonth]} {viewYear}</span>
+              <button onClick={nextMonth} style={{ background: "none", border: "none", color: T.text, cursor: "pointer", fontSize: 20, padding: "0 8px", lineHeight: 1, fontFamily: "sans-serif" }}>›</button>
+            </div>
+
+            {/* Week day headers */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", marginBottom: 2 }}>
+              {DRP_WDAYS.map(w => (
+                <div key={w} style={{ textAlign: "center", fontSize: 10, color: T.muted, fontWeight: 700, paddingBottom: 4 }}>{w}</div>
+              ))}
+            </div>
+
+            {/* Day cells */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)" }}>
+              {cells.map((day, i) => {
+                if (!day) return <div key={`e${i}`} />;
+                const iso     = toISO(viewYear, viewMonth, day);
+                const isStart = iso === dispFrom;
+                const isEnd   = iso === dispTo;
+                const isEndpt = isStart || isEnd;
+                const inRange = dispFrom && dispTo && iso > dispFrom && iso < dispTo;
+                const isToday = iso === todayISO;
+                const isHov   = step === "to" && iso === hover;
+
+                return (
+                  <div
+                    key={day}
+                    onMouseEnter={() => step === "to" && setHover(iso)}
+                    onMouseLeave={() => step === "to" && setHover(null)}
+                    onClick={() => handleDay(day)}
+                    style={{
+                      position: "relative",
+                      height: 36, display: "flex", alignItems: "center", justifyContent: "center",
+                      cursor: "pointer",
+                      background: inRange
+                        ? `${T.accent}1a`
+                        : (isStart && dispTo)   ? `linear-gradient(to right, transparent 50%, ${T.accent}1a 50%)`
+                        : (isEnd   && dispFrom) ? `linear-gradient(to left,  transparent 50%, ${T.accent}1a 50%)`
+                        : "transparent",
+                    }}
+                  >
+                    <div style={{
+                      width: 32, height: 32, borderRadius: "50%",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 12,
+                      fontWeight: isEndpt ? 800 : 400,
+                      color: isEndpt ? "#0a0808" : (inRange ? T.accent : T.text),
+                      background: isEndpt ? T.accent : (isHov ? `${T.accent}33` : "transparent"),
+                      border: isToday && !isEndpt ? `1.5px solid ${T.accent}88` : "1.5px solid transparent",
+                      transition: "background 0.1s",
+                    }}>
+                      {day}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Footer */}
+            <div style={{ display: "flex", gap: 8, marginTop: "0.875rem", justifyContent: "flex-end" }}>
+              <button
+                onClick={() => { onChange({ from: "", to: "" }); setOpen(false); }}
+                style={{ background: "none", border: `1px solid ${T.border}`, borderRadius: 8, padding: "5px 12px", fontSize: 12, color: T.muted, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
+              >
+                Limpar
+              </button>
+              <button
+                onClick={() => { const t = today(); onChange({ from: t.substring(0, 7) + "-01", to: t }); setOpen(false); }}
+                style={{ background: T.accent, border: "none", borderRadius: 8, padding: "5px 12px", fontSize: 12, fontWeight: 700, color: "#0a0808", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
+              >
+                Mês atual
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ── LOGIN VIEW ────────────────────────────────────────────────
 const LoginView = ({ onLogin, onShowPlans }) => {
   const [email, setEmail] = useState("");
@@ -1089,15 +1275,11 @@ function AttendancesView({ attendances, setAttendances, clients, services, barbe
 
       <div style={{ display: "flex", gap: "0.75rem", marginBottom: "1rem", flexWrap: "wrap", alignItems: "center" }}>
         {/* Filtro de período */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, background: T.card, border: `1px solid ${T.border}`, borderRadius: 10, padding: "7px 12px", flex: "1 1 260px" }}>
-          <Calendar size={14} style={{ color: T.muted, flexShrink: 0 }}/>
-          <span style={{ fontSize: 12, color: T.muted, whiteSpace: "nowrap" }}>De</span>
-          <input type="date" value={filterFrom} onChange={e => setFilterFrom(e.target.value)}
-            style={{ background: "transparent", border: "none", outline: "none", color: T.text, fontSize: 13, cursor: "pointer", minWidth: 0, flex: 1 }}/>
-          <span style={{ fontSize: 12, color: T.muted, whiteSpace: "nowrap" }}>até</span>
-          <input type="date" value={filterTo} onChange={e => setFilterTo(e.target.value)}
-            style={{ background: "transparent", border: "none", outline: "none", color: T.text, fontSize: 13, cursor: "pointer", minWidth: 0, flex: 1 }}/>
-        </div>
+        <DateRangePicker
+          from={filterFrom}
+          to={filterTo}
+          onChange={({ from, to }) => { setFilterFrom(from); setFilterTo(to); }}
+        />
 
         {isAdmin && (
           <select value={filterBarber} onChange={e => setFilterBarber(e.target.value)}
@@ -1680,25 +1862,11 @@ function FinancialView({ attendances, expenses, setExpenses, token, barbershopId
 
       {/* ── Filtro de período + Atualizar ── */}
       <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:"1.5rem", flexWrap:"wrap", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center" }}>
-        <div style={{
-          display:"flex", alignItems:"center", gap:8,
-          background:T.card, border:`1px solid ${T.border}`,
-          borderRadius:10, padding:"8px 14px",
-        }}>
-          <Calendar size={14} style={{ color:T.muted, flexShrink:0 }} />
-          <span style={{ fontSize:12, color:T.muted }}>De</span>
-          <input
-            type="date" value={filterFrom}
-            onChange={e => setFilterFrom(e.target.value)}
-            style={{ background:"transparent", border:"none", outline:"none", color:T.text, fontSize:13, cursor:"pointer" }}
-          />
-          <span style={{ fontSize:12, color:T.muted, margin:"0 2px" }}>até</span>
-          <input
-            type="date" value={filterTo}
-            onChange={e => setFilterTo(e.target.value)}
-            style={{ background:"transparent", border:"none", outline:"none", color:T.text, fontSize:13, cursor:"pointer" }}
-          />
-        </div>
+        <DateRangePicker
+          from={filterFrom}
+          to={filterTo}
+          onChange={({ from, to }) => { setFilterFrom(from); setFilterTo(to); }}
+        />
         <button
           onClick={handleRefresh}
           style={{
