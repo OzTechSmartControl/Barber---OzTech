@@ -3249,7 +3249,7 @@ export default function App() {
             view={activeView}
             setView={id => { setView(id); setDrawerOpen(false); }}
             collapsed={false}
-            setCollapsed={() => {}}
+            setCollapsed={() => setDrawerOpen(false)}
             isAdmin={isAdmin}
             isSuperAdmin={isSuperAdmin}
             userName={userName}
