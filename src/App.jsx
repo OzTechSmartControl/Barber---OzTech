@@ -1227,15 +1227,16 @@ function AttendancesView({ attendances, setAttendances, clients, services, barbe
 
       // 2. Para cada produto: cria product_sale + decrementa estoque + movimento
       for (const sp of form.selectedProducts) {
-        try {
+        {
           const saleRows = await api.insert("product_sales", {
-            product_id:  sp.productId,
-            barber_id:   +form.barberId || null,
-            quantity:    sp.quantity,
-            unit_price:  sp.price,
-            total_price: sp.price * sp.quantity,
-            payment:     form.payment,
-            sold_at:     new Date().toISOString(),
+            product_id:    sp.productId,
+            barber_id:     +form.barberId || null,
+            barbershop_id: barbershopId,
+            quantity:      sp.quantity,
+            unit_price:    sp.price,
+            total_price:   sp.price * sp.quantity,
+            payment:       form.payment,
+            sold_at:       new Date().toISOString(),
           }, token);
           if (setProductSales) setProductSales(prev => [toProductSale(saleRows[0]), ...prev]);
 
@@ -1244,11 +1245,9 @@ function AttendancesView({ attendances, setAttendances, clients, services, barbe
           if (setProducts) setProducts(ps => ps.map(p => p.id === sp.productId ? { ...p, stockCurrent: newStock } : p));
 
           await api.insert("stock_movements", {
-            product_id: sp.productId, type: "venda",
-            quantity: sp.quantity, reason: "Venda via atendimento",
+            product_id: sp.productId, barbershop_id: barbershopId,
+            type: "venda", quantity: sp.quantity, reason: "Venda via atendimento",
           }, token);
-        } catch(prodErr) {
-          console.warn("Erro ao processar produto no atendimento:", prodErr);
         }
       }
 
@@ -2806,7 +2805,7 @@ function ProductsView({ products, setProducts, productSales, setProductSales, ba
       const newStock = stockModal.stockCurrent + qty;
       await api.update("products", stockModal.id, { stock_current: newStock }, token);
       setProducts(ps => ps.map(p => p.id===stockModal.id ? { ...p, stockCurrent: newStock } : p));
-      await api.insert("stock_movements", { product_id:stockModal.id, type:"entrada", quantity:qty, reason:stockReason||"Entrada de estoque" }, token);
+      await api.insert("stock_movements", { product_id:stockModal.id, barbershop_id:barbershopId, type:"entrada", quantity:qty, reason:stockReason||"Entrada de estoque" }, token);
       setStockModal(null); setStockQty("1"); setStockReason("");
     } catch(e) { alert(e.message); }
     setStockSaving(false);
@@ -2822,19 +2821,20 @@ function ProductsView({ products, setProducts, productSales, setProductSales, ba
       const unitPrice  = saleModal.price;
       const totalPrice = unitPrice * qty;
       const rows = await api.insert("product_sales", {
-        product_id: saleModal.id,
-        barber_id:  saleForm.barberId || null,
-        quantity:   qty,
-        unit_price: unitPrice,
-        total_price:totalPrice,
-        payment:    saleForm.payment,
-        sold_at:    new Date().toISOString(),
+        product_id:    saleModal.id,
+        barber_id:     saleForm.barberId || null,
+        barbershop_id: barbershopId,
+        quantity:      qty,
+        unit_price:    unitPrice,
+        total_price:   totalPrice,
+        payment:       saleForm.payment,
+        sold_at:       new Date().toISOString(),
       }, token);
       setProductSales(ps => [toProductSale(rows[0]), ...ps]);
       const newStock = saleModal.stockCurrent - qty;
       await api.update("products", saleModal.id, { stock_current: newStock }, token);
       setProducts(ps => ps.map(p => p.id===saleModal.id ? { ...p, stockCurrent: newStock } : p));
-      await api.insert("stock_movements", { product_id:saleModal.id, type:"venda", quantity:qty, reason:`Venda — ${saleForm.payment}` }, token);
+      await api.insert("stock_movements", { product_id:saleModal.id, barbershop_id:barbershopId, type:"venda", quantity:qty, reason:`Venda — ${saleForm.payment}` }, token);
       setSaleModal(null); setSaleForm({ qty:"1", barberId:"", payment:"PIX" });
     } catch(e) { setSaleErr(e.message); }
     setSaleSaving(false);
