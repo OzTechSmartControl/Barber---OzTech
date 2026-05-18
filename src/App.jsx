@@ -199,26 +199,27 @@ const EXPENSE_CATS = ["Aluguel", "Insumos", "Energia", "Internet", "Manutenção
 const WARN_COLOR   = "#f59e0b";
 
 // ── SHARED UI ─────────────────────────────────────────────────
-const inputSt = { width: "100%", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 8, padding: "0.6rem 0.875rem", color: T.text, fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "'DM Sans', sans-serif" };
+const inputSt = { width: "100%", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 8, padding: "0.6rem 0.875rem", color: T.text, fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "'DM Sans', sans-serif", WebkitAppearance: "none", MozAppearance: "none", appearance: "none", colorScheme: "dark" };
 
 const Modal = ({ title, onClose, children }) => (
-  <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem", backdropFilter: "blur(4px)" }}>
-    <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 14, width: "100%", maxWidth: 500, maxHeight: "90vh", overflow: "auto" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "1.25rem 1.5rem", borderBottom: `1px solid ${T.border}` }}>
+  <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", zIndex: 1000, display: "flex", alignItems: "flex-end", justifyContent: "center", padding: "0", backdropFilter: "blur(4px)" }}
+    onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+    <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: "18px 18px 0 0", width: "100%", maxWidth: 540, maxHeight: "92vh", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "1.25rem 1.5rem", borderBottom: `1px solid ${T.border}`, flexShrink: 0 }}>
         <h3 style={{ margin: 0, fontFamily: "'Bebas Neue', sans-serif", fontSize: 21, letterSpacing: 1.5, color: T.text }}>{title}</h3>
         <button onClick={onClose} style={{ background: "none", border: "none", color: T.muted, cursor: "pointer", display: "flex" }}><X size={18} /></button>
       </div>
-      <div style={{ padding: "1.5rem" }}>{children}</div>
+      <div style={{ padding: "1.5rem", overflowY: "auto", WebkitOverflowScrolling: "touch", flex: 1, paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom))" }}>{children}</div>
     </div>
   </div>
 );
 
 const FLabel = ({ c }) => <div style={{ fontSize: 11, fontWeight: 600, color: T.muted, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.8 }}>{c}</div>;
-const FG = ({ label, children, half }) => <div style={{ marginBottom: "1rem", flex: half ? 1 : undefined }}>{label && <FLabel c={label} />}{children}</div>;
+const FG = ({ label, children, half }) => <div style={{ marginBottom: "1rem", flex: half ? "1 1 140px" : undefined, minWidth: half ? 0 : undefined }}>{label && <FLabel c={label} />}{children}</div>;
 const FInput  = ({ label, ...p }) => <FG label={label}><input style={inputSt} {...p} /></FG>;
-const FSelect = ({ label, children, ...p }) => <FG label={label}><select style={{ ...inputSt, appearance: "none" }} {...p}>{children}</select></FG>;
-const FArea   = ({ label, ...p }) => <FG label={label}><textarea style={{ ...inputSt, resize: "vertical", minHeight: 72, fontFamily: "'DM Sans', sans-serif" }} {...p} /></FG>;
-const Row     = ({ children, g = "1rem", style }) => <div style={{ display: "flex", gap: g, ...style }}>{children}</div>;
+const FSelect = ({ label, children, ...p }) => <FG label={label}><select style={{ ...inputSt }} {...p}>{children}</select></FG>;
+const FArea   = ({ label, ...p }) => <FG label={label}><textarea style={{ ...inputSt, resize: "vertical", minHeight: 72, fontFamily: "'DM Sans', sans-serif", WebkitAppearance: "auto", appearance: "auto" }} {...p} /></FG>;
+const Row     = ({ children, g = "1rem", style }) => <div style={{ display: "flex", gap: g, flexWrap: "wrap", ...style }}>{children}</div>;
 
 const Btn = ({ children, variant = "primary", sm, style, ...p }) => {
   const v = { primary: { background: T.accent, color: "#0a0808", border: "none" }, ghost: { background: T.surface, color: T.text, border: `1px solid ${T.border}` }, danger: { background: T.dangerBg, color: T.danger, border: `1px solid ${T.danger}44` } };
@@ -1705,7 +1706,7 @@ function ClientsView({ clients, setClients, attendances, services, token, isAdmi
 }
 
 // ── BARBERS ───────────────────────────────────────────────────
-function BarbersView({ barbers, setBarbers, attendances, token, barbershopId, onRefresh }) {
+function BarbersView({ barbers, setBarbers, attendances, token, barbershopId, onRefresh, isMobile }) {
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing]   = useState(null);
   const [saving, setSaving]     = useState(false);
@@ -1776,7 +1777,7 @@ function BarbersView({ barbers, setBarbers, attendances, token, barbershopId, on
         onRefresh={onRefresh}
         right={<Btn onClick={()=>{setEditing(null);setForm({name:"",phone:"",commission:40,status:"active",email:"",password:""});setShowModal(true);}}><Plus size={15}/>Novo Barbeiro</Btn>}
       />
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:"1rem" }}>
+      <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap:"1rem" }}>
         {barbers.map(b=>{
           const bA          = monthAtts.filter(a => a.barberId === b.id);
           const total       = bA.reduce((s, a) => s + a.price, 0);                          // total pago pelo cliente
@@ -2203,27 +2204,18 @@ function RevenueReportContent({ attendances, expenses, barbers = [], selMonth, s
       <ReportHeader title="Relatório de Faturamento" selMonth={selMonth} shop={shop} />
 
       {/* Resumo — 6 cards: Serviços | Produtos | Total | Comissões | Despesas | Lucro */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10, marginBottom:8 }}>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(110px, 1fr))", gap:8, marginBottom:20 }}>
         {[
           ["Rec. Serviços", R$(mServRev), "#166534"],
           ["Rec. Produtos", R$(mProdRev), "#1e40af"],
           ["Total Mês",     R$(mRev),     "#111"],
+          ["Comissões",     R$(mCommissions), accentColor],
+          ["Despesas",      R$(mExpT),        "#991b1b"],
+          ["Lucro Mês",     R$(profit),       "#166534"],
         ].map(([l,v,c]) => (
-          <div key={l} style={{ border:"1px solid #ddd", borderRadius:6, padding:"10px 14px", textAlign:"center" }}>
-            <div style={{ fontSize:10, color:"#888", textTransform:"uppercase", marginBottom:3 }}>{l}</div>
-            <div style={{ fontSize:17, fontWeight:700, color:c }}>{v}</div>
-          </div>
-        ))}
-      </div>
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10, marginBottom:20 }}>
-        {[
-          ["Comissões", R$(mCommissions), accentColor],
-          ["Despesas",  R$(mExpT),        "#991b1b"],
-          ["Lucro Mês", R$(profit),       "#166534"],
-        ].map(([l,v,c]) => (
-          <div key={l} style={{ border:"1px solid #ddd", borderRadius:6, padding:"10px 14px", textAlign:"center" }}>
-            <div style={{ fontSize:10, color:"#888", textTransform:"uppercase", marginBottom:3 }}>{l}</div>
-            <div style={{ fontSize:17, fontWeight:700, color:c }}>{v}</div>
+          <div key={l} style={{ border:"1px solid #ddd", borderRadius:6, padding:"8px 10px", textAlign:"center" }}>
+            <div style={{ fontSize:9, color:"#888", textTransform:"uppercase", marginBottom:3, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{l}</div>
+            <div style={{ fontSize:15, fontWeight:700, color:c, whiteSpace:"nowrap" }}>{v}</div>
           </div>
         ))}
       </div>
@@ -2597,7 +2589,7 @@ function ReportsView({ attendances, clients, services, barbers, expenses, shop, 
               Imprimir / Salvar PDF
             </Btn>
           </div>
-          <Card style={{ background:"white", color:"black", overflowX:"auto", padding:"1rem" }}>
+          <Card style={{ background:"white", color:"black", overflowX:"auto", padding: isMobile ? "0.5rem" : "1rem" }}>
             {contentMap[preview]}
           </Card>
         </div>
@@ -4244,7 +4236,7 @@ export default function App() {
         dashboard:   <Dashboard   attendances={attendances} clients={clients} services={services} barbers={barbers} products={products} isAdmin={isAdmin} myBarberId={myBarberId} onGoReports={isAdmin?()=>setView('reports'):undefined} isMobile={isMobile} onRefresh={() => loadData(tok, auth.profile)}/>,
         attendances: <AttendancesView attendances={attendances} setAttendances={setAttendances} clients={clients} services={services} barbers={barbers} token={tok} isAdmin={isAdmin} myBarberId={myBarberId} barbershopId={barbershopId} products={products} setProducts={setProducts} setProductSales={setProductSales} onRefresh={() => loadData(tok, auth.profile)}/>,
         clients:     <ClientsView clients={clients} setClients={setClients} attendances={attendances} services={services} token={tok} isAdmin={isAdmin} barbershopId={barbershopId} onRefresh={() => loadData(tok, auth.profile)}/>,
-        barbers:     <BarbersView  barbers={barbers} setBarbers={setBarbers} attendances={attendances} token={tok} barbershopId={barbershopId} onRefresh={() => loadData(tok, auth.profile)}/>,
+        barbers:     <BarbersView  barbers={barbers} setBarbers={setBarbers} attendances={attendances} token={tok} barbershopId={barbershopId} onRefresh={() => loadData(tok, auth.profile)} isMobile={isMobile}/>,
         services:    <ServicesView services={services} setServices={setServices} token={tok} barbershopId={barbershopId} onRefresh={() => loadData(tok, auth.profile)}/>,
         produtos:    <ProductsView products={products} setProducts={setProducts} productSales={productSales} setProductSales={setProductSales} barbers={barbers} token={tok} barbershopId={barbershopId} isMobile={isMobile} onRefresh={() => loadData(tok, auth.profile)}/>,
         financial:   <FinancialView attendances={attendances} expenses={expenses} setExpenses={setExpenses} token={tok} barbershopId={barbershopId} barbers={barbers} isMobile={isMobile} productSales={productSales} onRefresh={() => loadData(tok, auth.profile)}/>,
