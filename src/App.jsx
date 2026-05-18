@@ -11,7 +11,7 @@ import {
   Phone, LogOut, Lock, Mail, CreditCard, Banknote, Smartphone,
   BadgePercent, AlertCircle, RefreshCw, FileText, Download, Calendar, Bell, Gift,
   Settings, Upload, Palette, Image, Shield, Clock, Layers,
-  ShoppingCart, Package,
+  ShoppingCart, Package, Sun, Moon,
 } from "lucide-react";
 
 (() => {
@@ -141,7 +141,7 @@ const toProduct     = p => ({ id: p.id, name: p.name, description: p.description
 const toProductSale = s => ({ id: s.id, productId: s.product_id, barberId: s.barber_id, quantity: +(s.quantity||1), unitPrice: +(s.unit_price||0), totalPrice: +(s.total_price||0), payment: s.payment || "PIX", date: (s.sold_at||s.created_at||"").substring(0,10) });
 
 // ── THEME ─────────────────────────────────────────────────────
-const T = {
+const T_DARK = {
   bg: "#0b0b0e", surface: "#13131a", card: "#1a1a24", border: "#2a2a3a",
   borderLight: "#222230", accent: "#4db8ff", accentGlow: "#4db8ff22",
   text: "#ece8e0", muted: "#706b63", mutedLight: "#9a9590",
@@ -149,23 +149,40 @@ const T = {
   info: "#60a5fa", infoBg: "#60a5fa18", sidebar: "#0e0e14",
 };
 
-const DEFAULT_T = { ...T };
+const T_LIGHT = {
+  bg: "#f0f0f5", surface: "#ffffff", card: "#ffffff", border: "#dde1ea",
+  borderLight: "#e8eaf0", accent: "#4db8ff", accentGlow: "#4db8ff22",
+  text: "#1a1a2e", muted: "#6b7280", mutedLight: "#9ca3af",
+  success: "#16a34a", successBg: "#16a34a18", danger: "#dc2626", dangerBg: "#dc262618",
+  info: "#2563eb", infoBg: "#2563eb18", sidebar: "#e8e8f0",
+};
 
-const normalizeHex = (value, fallback = DEFAULT_T.accent) => {
+// Mutável em runtime — inicializado com o modo salvo
+const _savedMode = typeof localStorage !== "undefined" ? (localStorage.getItem("oz_theme") || "dark") : "dark";
+const T = { ...(_savedMode === "light" ? T_LIGHT : T_DARK) };
+
+const normalizeHex = (value, fallback = "#4db8ff") => {
   if (!value || typeof value !== "string") return fallback;
   const hex = value.trim();
   return /^#[0-9A-Fa-f]{6}$/.test(hex) ? hex : fallback;
 };
 
-const applyTenantTheme = (shop) => {
+const applyThemeMode = (mode) => {
+  Object.assign(T, mode === "light" ? T_LIGHT : T_DARK);
+  document.body.style.background = T.bg;
+};
+
+const applyTenantTheme = (shop, mode) => {
   const accent = normalizeHex(shop?.accent_color);
+  // Reaplica a paleta do modo atual preservando o accent do tenant
+  applyThemeMode(mode || localStorage.getItem("oz_theme") || "dark");
   T.accent = accent;
   T.accentGlow = `${accent}22`;
   if (shop?.name) document.title = `${shop.name} | Oz.Barber`;
 };
 
 const resetTenantTheme = () => {
-  Object.assign(T, DEFAULT_T);
+  applyThemeMode(localStorage.getItem("oz_theme") || "dark");
   document.title = "Oz.Barber";
 };
 
@@ -248,6 +265,62 @@ const ErrorBar = ({ msg }) => msg ? (
     <AlertCircle size={15} />{msg}
   </div>
 ) : null;
+
+// ── THEME TOGGLE SWITCH ───────────────────────────────────────
+function ThemeToggleSwitch({ isDark, onToggle }) {
+  return (
+    <button
+      onClick={onToggle}
+      title={isDark ? "Mudar para Modo Claro" : "Mudar para Modo Escuro"}
+      style={{
+        position: "relative",
+        width: 68,
+        height: 34,
+        borderRadius: 999,
+        background: isDark ? "#13131a" : "#dde1ea",
+        border: `1.5px solid ${isDark ? "#2a2a3a" : "#c4c8d4"}`,
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        padding: 3,
+        transition: "background 0.3s, border-color 0.3s",
+        flexShrink: 0,
+      }}
+    >
+      {/* Ícone de fundo (lado oposto ao thumb) */}
+      <div style={{
+        position: "absolute",
+        left: isDark ? "auto" : 9,
+        right: isDark ? 9 : "auto",
+        top: "50%",
+        transform: "translateY(-50%)",
+        opacity: 0.55,
+        display: "flex",
+      }}>
+        {isDark ? <Moon size={12} color="#706b63"/> : <Sun size={12} color="#6b7280"/>}
+      </div>
+      {/* Thumb */}
+      <div style={{
+        width: 26,
+        height: 26,
+        borderRadius: "50%",
+        background: "white",
+        boxShadow: "0 1px 6px rgba(0,0,0,0.28)",
+        transform: isDark ? "translateX(34px)" : "translateX(0)",
+        transition: "transform 0.28s cubic-bezier(.4,0,.2,1)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
+      }}>
+        {isDark
+          ? <Moon  size={13} color="#334155"/>
+          : <Sun   size={13} color="#f59e0b"/>
+        }
+      </div>
+    </button>
+  );
+}
 
 // ── DATE RANGE PICKER ─────────────────────────────────────────
 const DRP_MONTHS = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
@@ -2539,7 +2612,7 @@ const uploadBrandLogo = async (tok, file, shopId) => {
   return `${SUPABASE_URL}/storage/v1/object/public/logos/${path}?v=${Date.now()}`;
 };
 
-function SettingsView({ token, shop, onShopUpdated }) {
+function SettingsView({ token, shop, onShopUpdated, themeMode = "dark", onToggleTheme }) {
   const [name, setName] = useState(shop?.name || "");
   const [phone, setPhone] = useState(shop?.phone || "");
   const [address, setAddress] = useState(shop?.address || "");
@@ -2696,6 +2769,36 @@ function SettingsView({ token, shop, onShopUpdated }) {
               style={inputSt}
             />
           </FG>
+        </div>
+      </Card>
+
+      {/* ── Card Tema ── */}
+      <Card style={{ marginBottom:"1.25rem" }}>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:16 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+            <div style={{ background:T.accentGlow, borderRadius:12, padding:10, display:"flex" }}>
+              {themeMode === "dark" ? <Moon size={19} color={T.accent}/> : <Sun size={19} color={T.accent}/>}
+            </div>
+            <div>
+              <div style={{ color:T.text, fontWeight:800, fontSize:15 }}>
+                Tema da interface
+              </div>
+              <div style={{ color:T.muted, fontSize:12, marginTop:2 }}>
+                {themeMode === "dark"
+                  ? "Modo Escuro ativo — fundo preto, ideal para ambientes com pouca luz."
+                  : "Modo Claro ativo — fundo branco, ideal para ambientes iluminados."}
+              </div>
+            </div>
+          </div>
+          <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+            <span style={{ fontSize:12, fontWeight:700, color: themeMode === "light" ? T.accent : T.muted }}>
+              Claro
+            </span>
+            <ThemeToggleSwitch isDark={themeMode === "dark"} onToggle={onToggleTheme}/>
+            <span style={{ fontSize:12, fontWeight:700, color: themeMode === "dark" ? T.accent : T.muted }}>
+              Escuro
+            </span>
+          </div>
         </div>
       </Card>
 
@@ -3228,7 +3331,7 @@ function ProductsView({ products, setProducts, productSales, setProductSales, ba
 }
 
 // ── SIDEBAR ──────────────────────────────────────────────────
-function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin, userName, onLogout, shop, lowStockCount = 0 }) {
+function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin, userName, onLogout, shop, lowStockCount = 0, themeMode = "dark", onToggleTheme }) {
   const nav = isSuperAdmin
     ? [
         { id:"superadmin_dashboard",      label:"Dashboard",     Icon:LayoutDashboard, desc:"Visão geral" },
@@ -3633,6 +3736,37 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
           </div>
         )}
 
+        {/* Mini toggle de tema */}
+        {onToggleTheme && (
+          <button
+            onClick={onToggleTheme}
+            title={themeMode === "dark" ? "Mudar para Modo Claro" : "Mudar para Modo Escuro"}
+            style={{
+              width:"100%",
+              display:"flex",
+              alignItems:"center",
+              justifyContent: collapsed ? "center" : "space-between",
+              gap:8,
+              padding:"0.62rem 0.75rem",
+              borderRadius:12,
+              border:`1px solid ${T.border}`,
+              background:T.surface,
+              color:T.mutedLight,
+              cursor:"pointer",
+              fontSize:12,
+              fontWeight:700,
+              fontFamily:"'DM Sans', sans-serif",
+              marginBottom:8,
+            }}
+          >
+            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+              {themeMode === "dark" ? <Moon size={14}/> : <Sun size={14} color="#f59e0b"/>}
+              {!collapsed && (themeMode === "dark" ? "Modo Escuro" : "Modo Claro")}
+            </div>
+            {!collapsed && <ThemeToggleSwitch isDark={themeMode === "dark"} onToggle={() => {}}/>}
+          </button>
+        )}
+
         <button
           onClick={onLogout}
           title="Sair"
@@ -3727,6 +3861,7 @@ export default function App() {
   const [loading,      setLoading]      = useState(false);
   const [view,         setView]         = useState("dashboard");
   const [collapsed,    setCollapsed]    = useState(false);
+  const [themeMode,    setThemeMode]    = useState(() => localStorage.getItem("oz_theme") || "dark");
   const [showPlans,      setShowPlans]      = useState(false);
   const [expiredMsg,     setExpiredMsg]     = useState("");
   const [postPaymentPlan, setPostPaymentPlan] = useState(null);
@@ -3954,6 +4089,18 @@ export default function App() {
     }
   }, [auth, dataLoaded, showPlans, loadData]);
 
+  const toggleTheme = useCallback(() => {
+    const newMode = themeMode === "dark" ? "light" : "dark";
+    localStorage.setItem("oz_theme", newMode);
+    applyThemeMode(newMode);
+    // Re-aplica accent do tenant se houver
+    if (shop?.accent_color) {
+      T.accent     = normalizeHex(shop.accent_color);
+      T.accentGlow = `${T.accent}22`;
+    }
+    setThemeMode(newMode);
+  }, [themeMode, shop]);
+
   const onLogout = async () => {
     await supabase.auth.signOut();
     safeSaveAuth(null);
@@ -4067,7 +4214,7 @@ export default function App() {
         produtos:    <ProductsView products={products} setProducts={setProducts} productSales={productSales} setProductSales={setProductSales} barbers={barbers} token={tok} barbershopId={barbershopId} isMobile={isMobile}/>,
         financial:   <FinancialView attendances={attendances} expenses={expenses} setExpenses={setExpenses} token={tok} barbershopId={barbershopId} barbers={barbers} isMobile={isMobile} productSales={productSales}/>,
         reports:     <ReportsView attendances={attendances} clients={clients} services={services} barbers={barbers} expenses={expenses} shop={shop} isMobile={isMobile}/>,
-        settings:    <SettingsView token={tok} shop={shop} onShopUpdated={(updatedShop) => { setShop(updatedShop); applyTenantTheme(updatedShop); }} />,
+        settings:    <SettingsView token={tok} shop={shop} onShopUpdated={(updatedShop) => { setShop(updatedShop); applyTenantTheme(updatedShop, themeMode); }} themeMode={themeMode} onToggleTheme={toggleTheme}/>,
         meuPlano:    <MeuPlanoView token={tok} userEmail={auth.user?.email} profile={auth.profile} onRenew={() => setShowPlans(true)} />,
       };
 
@@ -4103,10 +4250,12 @@ export default function App() {
             onLogout={onLogout}
             shop={shop}
             lowStockCount={lowStockCount}
+            themeMode={themeMode}
+            onToggleTheme={toggleTheme}
           />
         </div>
       ) : (
-        <Sidebar view={activeView} setView={setView} collapsed={collapsed} setCollapsed={setCollapsed} isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} userName={userName} onLogout={onLogout} shop={shop} lowStockCount={lowStockCount}/>
+        <Sidebar view={activeView} setView={setView} collapsed={collapsed} setCollapsed={setCollapsed} isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} userName={userName} onLogout={onLogout} shop={shop} lowStockCount={lowStockCount} themeMode={themeMode} onToggleTheme={toggleTheme}/>
       )}
 
       {/* Área de conteúdo */}
