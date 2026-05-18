@@ -714,8 +714,8 @@ function Dashboard({ attendances, clients, services, barbers, isAdmin, myBarberI
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1.4fr 1fr", gap: "1.5rem", marginBottom: "1.5rem" }}>
         <Card>
           <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1.5, color: T.text, marginBottom: "1rem" }}>Ranking Barbeiros — Mês</div>
-          <div className="mob-scroll-x">
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+          <div style={{ overflowX:"auto" }}>
+          <table style={{ width: "100%", minWidth: 420, borderCollapse: "collapse", fontSize: 13 }}>
             <THead cols={["#", "Barbeiro", "Aten.", "Total", "Comissão", "Ticket Méd."]} />
             <tbody>
               {bStats.map(({ b, count, total, commission, ticket }, i) => (
@@ -991,10 +991,10 @@ function AttendancesView({ attendances, setAttendances, clients, services, barbe
         right={<Btn onClick={() => { setForm(emptyForm()); setShowModal(true); }}><Plus size={15}/>Novo Atendimento</Btn>}
       />
 
-      <div style={{ display: "flex", gap: "0.75rem", marginBottom: "1rem" }}>
-        <input type="date" value={filterDate} onChange={e => setFilterDate(e.target.value)} style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 8, padding: "0.5rem 0.875rem", color: T.text, fontSize: 13, outline: "none", fontFamily: "'DM Sans', sans-serif" }} />
+      <div style={{ display: "flex", gap: "0.75rem", marginBottom: "1rem", flexWrap: "wrap" }}>
+        <input type="date" value={filterDate} onChange={e => setFilterDate(e.target.value)} style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 8, padding: "0.5rem 0.875rem", color: T.text, fontSize: 13, outline: "none", fontFamily: "'DM Sans', sans-serif", flex: "1 1 140px" }} />
         {isAdmin && (
-          <select value={filterBarber} onChange={e => setFilterBarber(e.target.value)} style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 8, padding: "0.5rem 0.875rem", color: filterBarber ? T.text : T.muted, fontSize: 13, outline: "none", fontFamily: "'DM Sans', sans-serif" }}>
+          <select value={filterBarber} onChange={e => setFilterBarber(e.target.value)} style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 8, padding: "0.5rem 0.875rem", color: filterBarber ? T.text : T.muted, fontSize: 13, outline: "none", fontFamily: "'DM Sans', sans-serif", flex: "1 1 160px" }}>
             <option value="">Todos os barbeiros</option>
             {barbers.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select>
@@ -1002,8 +1002,8 @@ function AttendancesView({ attendances, setAttendances, clients, services, barbe
         {(filterDate || filterBarber) && <Btn variant="ghost" sm onClick={() => { setFilterDate(""); setFilterBarber(""); }}>Limpar</Btn>}
       </div>
 
-      <Card style={{ padding: 0 }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+      <Card style={{ padding: 0, overflowX: "auto" }}>
+        <table style={{ width: "100%", minWidth: 560, borderCollapse: "collapse", fontSize: 13 }}>
           <THead cols={["Horário", "Cliente", "Barbeiro", "Serviço(s)", "Valor", "Pagamento", "Data", ""]} />
           <tbody>
             {filtered.length === 0 ? (
@@ -1159,8 +1159,8 @@ function ClientsView({ clients, setClients, attendances, services, token, isAdmi
         <input placeholder="Buscar por nome ou telefone…" value={search} onChange={e=>setSearch(e.target.value)} style={{ ...inputSt, paddingLeft:"2.5rem" }}/>
       </div>
       <div style={{ display:"grid", gridTemplateColumns:selected?"1fr 360px":"1fr", gap:"1.5rem" }}>
-        <Card style={{ padding:0 }}>
-          <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
+        <Card style={{ padding:0, overflowX:"auto" }}>
+          <table style={{ width:"100%", minWidth:480, borderCollapse:"collapse", fontSize:13 }}>
             <THead cols={["Nome","Telefone","Pontos","Total Gasto","Visitas",""]}/>
             <tbody>
               {filtered.map(c=>{
@@ -1872,7 +1872,7 @@ function ServiceReportContent({ attendances, services, selMonth, shop }) {
   );
 }
 
-function ReportsView({ attendances, clients, services, barbers, expenses, shop }) {
+function ReportsView({ attendances, clients, services, barbers, expenses, shop, isMobile }) {
   const [selMonth, setSelMonth] = useState(month());
   const [preview, setPreview]   = useState(null);
   const [printing, setPrinting] = useState(false);
@@ -1949,7 +1949,7 @@ function ReportsView({ attendances, clients, services, barbers, expenses, shop }
       }/>
 
       {!preview ? (
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:"1rem" }}>
+        <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3,1fr)", gap:"1rem" }}>
           {REPORTS.map(({id,label,desc,Icon,color})=>(
             <Card key={id} onClick={()=>setPreview(id)} style={{ cursor:"pointer" }}>
               <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:"1rem" }}>
@@ -3219,7 +3219,7 @@ export default function App() {
         barbers:     <BarbersView  barbers={barbers} setBarbers={setBarbers} attendances={attendances} token={tok} barbershopId={barbershopId}/>,
         services:    <ServicesView services={services} setServices={setServices} token={tok} barbershopId={barbershopId}/>,
         financial:   <FinancialView attendances={attendances} expenses={expenses} setExpenses={setExpenses} token={tok} barbershopId={barbershopId} barbers={barbers} isMobile={isMobile}/>,
-        reports:     <ReportsView attendances={attendances} clients={clients} services={services} barbers={barbers} expenses={expenses} shop={shop}/>,
+        reports:     <ReportsView attendances={attendances} clients={clients} services={services} barbers={barbers} expenses={expenses} shop={shop} isMobile={isMobile}/>,
         settings:    <SettingsView token={tok} shop={shop} onShopUpdated={(updatedShop) => { setShop(updatedShop); applyTenantTheme(updatedShop); }} />,
         meuPlano:    <MeuPlanoView token={tok} userEmail={auth.user?.email} profile={auth.profile} onRenew={() => setShowPlans(true)} />,
       };
