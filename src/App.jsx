@@ -1123,7 +1123,7 @@ function MeuPlanoView({ token, userEmail, profile, onRenew }) {
 }
 
 // ── ATENDIMENTOS ──────────────────────────────────────────────
-function AttendancesView({ attendances, setAttendances, clients, services, barbers, token, isAdmin, myBarberId, barbershopId, products = [], setProducts, setProductSales }) {
+function AttendancesView({ attendances, setAttendances, clients, services, barbers, token, isAdmin, myBarberId, barbershopId, products = [], setProducts, setProductSales, onRefresh }) {
   const emptyForm = () => ({
     clientId: "", barberId: isAdmin ? "" : String(myBarberId||""),
     selectedServices: [], selectedProducts: [], payment: "PIX",
@@ -1179,8 +1179,13 @@ function AttendancesView({ attendances, setAttendances, clients, services, barbe
   const getServiceDisplay = (a) => {
     const primary = services.find(s => s.id === a.serviceId);
     const extras  = (a.extraServices || []).map(es => es.name || services.find(s => s.id === es.serviceId)?.name || "").filter(Boolean);
-    const prods   = (a.productsSold || []).map(sp => sp.name + (sp.quantity > 1 ? ` ×${sp.quantity}` : ""));
-    return [...[primary?.name, ...extras].filter(Boolean), ...prods].join(" + ") || "—";
+    return [primary?.name, ...extras].filter(Boolean).join(" + ") || "—";
+  };
+
+  const getProductDisplay = (a) => {
+    const prods = (a.productsSold || []);
+    if (!prods.length) return null;
+    return prods.map(p => p.name + (p.quantity > 1 ? ` ×${p.quantity}` : "")).join(" + ");
   };
 
   const hasProdsSold = (a) => (a.productsSold || []).length > 0;
@@ -1295,30 +1300,54 @@ function AttendancesView({ attendances, setAttendances, clients, services, barbe
         <Btn variant="ghost" sm onClick={() => { const t = today(); setFilterFrom(t.substring(0,7)+"-01"); setFilterTo(t); setFilterBarber(""); }}>
           Mês atual
         </Btn>
+
+        {onRefresh && (
+          <Btn variant="ghost" sm onClick={onRefresh} style={{ marginLeft: "auto" }}>
+            <RefreshCw size={13}/>Atualizar
+          </Btn>
+        )}
       </div>
 
       <Card style={{ padding: 0, overflowX: "auto" }}>
-        <table style={{ width: "100%", minWidth: 560, borderCollapse: "collapse", fontSize: 13 }}>
-          <THead cols={["Horário", "Cliente", "Barbeiro", "Serviço(s)", "Valor", "Pagamento", "Data", ""]} />
+        <table style={{ width: "100%", minWidth: 700, borderCollapse: "collapse", fontSize: 13 }}>
+          <THead cols={["Horário", "Cliente", "Barbeiro", "Serviços", "Produtos", "Valor", "Pagamento", "Data", ""]} />
           <tbody>
             {filtered.length === 0 ? (
-              <tr><td colSpan={8} style={{ textAlign: "center", padding: "3rem", color: T.muted }}>Nenhum atendimento encontrado</td></tr>
+              <tr><td colSpan={9} style={{ textAlign: "center", padding: "3rem", color: T.muted }}>Nenhum atendimento encontrado</td></tr>
             ) : filtered.map(a => {
               const cl = clients.find(c => c.id === a.clientId), br = barbers.find(b => b.id === a.barberId);
+              const prodDisplay = getProductDisplay(a);
               return (
                 <tr key={a.id} style={{ borderTop: `1px solid ${T.borderLight}` }}>
                   <td style={{ ...stCell, color: T.muted, fontVariantNumeric: "tabular-nums" }}>{a.time}</td>
                   <td style={{ ...stCell, color: T.text, fontWeight: 500 }}>{cl?.name || "—"}</td>
                   <td style={{ ...stCell, color: T.muted }}>{br?.name || "—"}</td>
+
+                  {/* Serviços */}
                   <td style={{ ...stCell, color: T.text }}>
                     {getServiceDisplay(a)}
-                    {hasProdsSold(a) && (
-                      <span style={{ marginLeft:6, background:`${T.accent}18`, color:T.accent, borderRadius:4, padding:"1px 6px", fontSize:10, fontWeight:700 }}>
-                        +{(a.productsSold||[]).reduce((s,p)=>s+p.quantity,0)} prod.
-                      </span>
+                    {(a.servicesPrice ?? a.price) > 0 && (
+                      <div style={{ color: T.success, fontSize: 11, fontWeight: 600, marginTop: 2 }}>
+                        {R$(a.servicesPrice ?? a.price)}
+                      </div>
                     )}
                   </td>
-                  <td style={{ ...stCell, color: T.success, fontWeight: 600 }}>{R$(a.price)}</td>
+
+                  {/* Produtos */}
+                  <td style={{ ...stCell }}>
+                    {prodDisplay ? (
+                      <div>
+                        <span style={{ color: T.accent, fontWeight: 500 }}>{prodDisplay}</span>
+                        <div style={{ color: T.accent, fontSize: 11, fontWeight: 600, marginTop: 2 }}>
+                          {R$(a.price - (a.servicesPrice ?? a.price))}
+                        </div>
+                      </div>
+                    ) : (
+                      <span style={{ color: T.muted, fontSize: 12 }}>—</span>
+                    )}
+                  </td>
+
+                  <td style={{ ...stCell, color: T.success, fontWeight: 700 }}>{R$(a.price)}</td>
                   <td style={stCell}>
                     <span style={{ background: (payColor[a.payment] || T.accent) + "18", color: payColor[a.payment] || T.accent, borderRadius: 5, padding: "2px 8px", fontSize: 11, fontWeight: 700 }}>{a.payment}</span>
                   </td>
@@ -4031,7 +4060,7 @@ export default function App() {
       }
     : {
         dashboard:   <Dashboard   attendances={attendances} clients={clients} services={services} barbers={barbers} products={products} isAdmin={isAdmin} myBarberId={myBarberId} onGoReports={isAdmin?()=>setView('reports'):undefined} isMobile={isMobile}/>,
-        attendances: <AttendancesView attendances={attendances} setAttendances={setAttendances} clients={clients} services={services} barbers={barbers} token={tok} isAdmin={isAdmin} myBarberId={myBarberId} barbershopId={barbershopId} products={products} setProducts={setProducts} setProductSales={setProductSales}/>,
+        attendances: <AttendancesView attendances={attendances} setAttendances={setAttendances} clients={clients} services={services} barbers={barbers} token={tok} isAdmin={isAdmin} myBarberId={myBarberId} barbershopId={barbershopId} products={products} setProducts={setProducts} setProductSales={setProductSales} onRefresh={() => loadData(tok, auth.profile)}/>,
         clients:     <ClientsView clients={clients} setClients={setClients} attendances={attendances} services={services} token={tok} isAdmin={isAdmin} barbershopId={barbershopId}/>,
         barbers:     <BarbersView  barbers={barbers} setBarbers={setBarbers} attendances={attendances} token={tok} barbershopId={barbershopId}/>,
         services:    <ServicesView services={services} setServices={setServices} token={tok} barbershopId={barbershopId}/>,
