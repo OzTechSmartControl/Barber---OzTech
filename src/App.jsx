@@ -2287,7 +2287,7 @@ function ServiceReportContent({ attendances, services, selMonth, shop }) {
             {val:R$(total), style:{color:"#166534", fontWeight:700}},
             {val:(svcGt>0?((total/svcGt)*100).toFixed(1):0)+"%", style:{color:"#555"}},
           ])}
-          totalRow={["TOTAL","", svcRows.reduce((s,r)=>s+r.count,0)+"×", {val:R$(svcGt), style:{fontWeight:700}},"",""]}
+          totalRow={["TOTAL","", svcRows.reduce((s,r)=>s+r.count,0)+"×", R$(svcGt),"",""]}
         />
       ) : (
         <div style={{ fontSize:13, color:"#888", marginBottom:16, paddingBottom:12, borderBottom:"1px solid #eee" }}>
@@ -2310,7 +2310,7 @@ function ServiceReportContent({ attendances, services, selMonth, shop }) {
             {val:R$(total), style:{color:"#1e40af", fontWeight:700}},
             {val:(prodGt>0?((total/prodGt)*100).toFixed(1):0)+"%", style:{color:"#555"}},
           ])}
-          totalRow={["TOTAL","", prodRows.reduce((s,r)=>s+r.count,0)+"×", {val:R$(prodGt), style:{fontWeight:700}},"",""]}
+          totalRow={["TOTAL","", prodRows.reduce((s,r)=>s+r.count,0)+"×", R$(prodGt),"",""]}
         />
       ) : (
         <div style={{ fontSize:13, color:"#888", marginBottom:16, paddingBottom:12, borderBottom:"1px solid #eee" }}>
