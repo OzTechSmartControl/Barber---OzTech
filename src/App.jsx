@@ -2098,25 +2098,27 @@ function FinancialView({ attendances, expenses, setExpenses, token, barbershopId
 // ── REPORTS VIEW ─────────────────────────────────────────────
 function ReportTable({ cols, rows, totalRow }) {
   return (
-    <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13, marginBottom:20 }}>
-      <thead>
-        <tr style={{ background:"#f5f5f5" }}>
-          {cols.map(c => <th key={c} style={{ padding:"8px 10px", textAlign:"left", fontWeight:600, borderBottom:"1px solid #ddd" }}>{c}</th>)}
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((r,i) => (
-          <tr key={i} style={{ background: i%2===1?"#fafafa":"white", borderBottom:"1px solid #eee" }}>
-            {r.map((cell,j) => <td key={j} style={{ padding:"8px 10px", ...( cell?.style||{} ) }}>{cell?.val !== undefined ? cell.val : cell}</td>)}
+    <div style={{ overflowX:"auto", WebkitOverflowScrolling:"touch", marginBottom:20 }}>
+      <table style={{ width:"100%", minWidth: cols.length > 4 ? 520 : 320, borderCollapse:"collapse", fontSize:12 }}>
+        <thead>
+          <tr style={{ background:"#f5f5f5" }}>
+            {cols.map(c => <th key={c} style={{ padding:"7px 8px", textAlign:"left", fontWeight:700, borderBottom:"1px solid #ddd", whiteSpace:"nowrap", fontSize:11 }}>{c}</th>)}
           </tr>
-        ))}
-        {totalRow && (
-          <tr style={{ background:"#f0f0f0", fontWeight:700, borderTop:"2px solid #ddd" }}>
-            {totalRow.map((cell,j) => <td key={j} style={{ padding:"8px 10px" }}>{cell}</td>)}
-          </tr>
-        )}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {rows.map((r,i) => (
+            <tr key={i} style={{ background: i%2===1?"#fafafa":"white", borderBottom:"1px solid #eee" }}>
+              {r.map((cell,j) => <td key={j} style={{ padding:"7px 8px", ...( cell?.style||{} ) }}>{cell?.val !== undefined ? cell.val : cell}</td>)}
+            </tr>
+          ))}
+          {totalRow && (
+            <tr style={{ background:"#f0f0f0", fontWeight:700, borderTop:"2px solid #ddd" }}>
+              {totalRow.map((cell,j) => <td key={j} style={{ padding:"7px 8px", whiteSpace:"nowrap" }}>{cell}</td>)}
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
@@ -2137,24 +2139,32 @@ function ReportHeader({ title, sub, selMonth, shop }) {
       : ozBarberLogo;
 
   return (
-    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", borderBottom:`2px solid ${reportAccent}`, paddingBottom:12, marginBottom:20 }}>
-      <div style={{ display:"flex", alignItems:"center", gap:14, minWidth:0 }}>
-        <div style={{ width:96, height:54, display:"flex", alignItems:"center", justifyContent:"center", overflow:"visible", flexShrink:0 }}>
-          <img
-            src={reportLogo}
-            alt={reportName}
-            style={{ maxWidth:96, maxHeight:54, width:"auto", height:"auto", objectFit:"contain", display:"block" }}
-            onError={(e) => { e.currentTarget.src = ozBarberLogo; }}
-          />
+    <div style={{ borderBottom:`2px solid ${reportAccent}`, paddingBottom:12, marginBottom:20 }}>
+      {/* Linha superior: logo + nome (esquerda) | data (direita) */}
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", flexWrap:"wrap", gap:8 }}>
+        {/* Logo + nome */}
+        <div style={{ display:"flex", alignItems:"center", gap:12, flexShrink:1, minWidth:0, maxWidth:"65%" }}>
+          <div style={{ width:52, height:52, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+            <img
+              src={reportLogo}
+              alt={reportName}
+              style={{ maxWidth:52, maxHeight:52, width:"auto", height:"auto", objectFit:"contain", display:"block" }}
+              onError={(e) => { e.currentTarget.src = ozBarberLogo; }}
+            />
+          </div>
+          <div style={{ minWidth:0 }}>
+            <div style={{ fontSize:18, fontWeight:700, fontFamily:"Arial, sans-serif", color:reportAccent, lineHeight:1.2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+              {reportName}
+            </div>
+            <div style={{ fontSize:12, color:"#555", marginTop:2, whiteSpace:"nowrap" }}>{title}</div>
+          </div>
         </div>
-        <div style={{ minWidth:0 }}>
-          <div style={{ fontSize:22, fontWeight:700, fontFamily:"Arial, sans-serif", color:reportAccent, lineHeight:1.1, wordBreak:"break-word" }}>{reportName}</div>
-          <div style={{ fontSize:13, color:"#555", marginTop:3 }}>{title}</div>
+
+        {/* Data — direita */}
+        <div style={{ textAlign:"right", fontSize:11, color:"#666", lineHeight:1.8, flexShrink:0 }}>
+          <div>Mês: {selMonth}</div>
+          <div>Gerado em: {new Date().toLocaleDateString("pt-BR")}</div>
         </div>
-      </div>
-      <div style={{ textAlign:"right", fontSize:12, color:"#555", lineHeight:1.7, whiteSpace:"nowrap", marginLeft:16 }}>
-        <div>Mês: {selMonth}</div>
-        <div>Gerado em: {new Date().toLocaleDateString("pt-BR")}</div>
       </div>
     </div>
   );
@@ -2563,7 +2573,7 @@ function ReportsView({ attendances, clients, services, barbers, expenses, shop, 
               Imprimir / Salvar PDF
             </Btn>
           </div>
-          <Card style={{ background:"white", color:"black" }}>
+          <Card style={{ background:"white", color:"black", overflowX:"auto", padding:"1rem" }}>
             {contentMap[preview]}
           </Card>
         </div>
