@@ -1949,12 +1949,6 @@ function FinancialView({ attendances, expenses, setExpenses, token, barbershopId
   const byPay = {};
   rangeAtts.forEach(a => { byPay[a.payment] = (byPay[a.payment] || 0) + a.price; });
 
-  const handleRefresh = () => {
-    const t = today();
-    setFilterFrom(t.substring(0, 7) + "-01");
-    setFilterTo(t);
-  };
-
   const periodLabel = filterFrom === filterTo
     ? fDate(filterFrom)
     : `${fDate(filterFrom)} → ${fDate(filterTo)}`;
@@ -1983,24 +1977,13 @@ function FinancialView({ attendances, expenses, setExpenses, token, barbershopId
         right={<Btn onClick={() => setShowModal(true)}><Plus size={15}/>Registrar Despesa</Btn>}
       />
 
-      {/* ── Filtro de período + Atualizar ── */}
+      {/* ── Filtro de período ── */}
       <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:"1.5rem", flexWrap:"wrap", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center" }}>
         <DateRangePicker
           from={filterFrom}
           to={filterTo}
           onChange={({ from, to }) => { setFilterFrom(from); setFilterTo(to); }}
         />
-        <button
-          onClick={handleRefresh}
-          style={{
-            display:"flex", alignItems:"center", gap:6,
-            background:T.accent, color:"#0a0808",
-            border:"none", borderRadius:10,
-            padding:"9px 16px", fontSize:13, fontWeight:700, cursor:"pointer",
-          }}
-        >
-          <RefreshCw size={13}/>Atualizar
-        </button>
       </div>
 
       {/* ── KPI Cards ── */}
