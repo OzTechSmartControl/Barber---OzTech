@@ -11,7 +11,7 @@ import {
   Phone, LogOut, Lock, Mail, CreditCard, Banknote, Smartphone,
   BadgePercent, AlertCircle, RefreshCw, FileText, Download, Calendar, Bell, Gift,
   Settings, Upload, Palette, Image, Shield, Clock, Layers,
-  ShoppingCart, Package, Sun, Moon, Zap,
+  ShoppingCart, Package, Sun, Moon, Zap, ChevronLeft,
 } from "lucide-react";
 
 (() => {
@@ -3583,7 +3583,7 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
               flexShrink: 0,
             }}
           >
-            <X size={14}/>
+            <ChevronLeft size={15}/>
           </button>
         )}
       </div>
@@ -3654,14 +3654,14 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
                 alignItems:"center",
                 justifyContent:collapsed?"center":"flex-start",
                 gap: isSuperAdmin ? 12 : 10,
-                padding:collapsed ? "0.82rem 0" : (isSuperAdmin ? "0.82rem 0.9rem" : "0.75rem 0.8rem"),
-                marginBottom: isSuperAdmin ? 8 : 4,
-                borderRadius: isSuperAdmin ? 14 : 9,
+                padding: collapsed ? "0.82rem 0" : (isSuperAdmin ? "0.88rem 0.9rem" : "0.75rem 0.8rem"),
+                marginBottom: isSuperAdmin ? 4 : 4,
+                borderRadius: isSuperAdmin ? 12 : 9,
                 border: isSuperAdmin
-                  ? `1px solid ${active ? `${T.accent}40` : "transparent"}`
+                  ? `1px solid ${active ? `${T.accent}35` : "rgba(255,255,255,.03)"}`
                   : "none",
                 background: active
-                  ? (isSuperAdmin ? `linear-gradient(90deg, ${T.accent}18, rgba(77,184,255,.06))` : T.accentGlow)
+                  ? (isSuperAdmin ? `linear-gradient(90deg, ${T.accent}20, ${T.accent}08)` : T.accentGlow)
                   : "transparent",
                 color: active ? T.accent : T.mutedLight,
                 cursor:"pointer",
@@ -3670,7 +3670,7 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
                 fontWeight: active ? 800 : 600,
                 textAlign:"left",
                 transition:"all .18s ease",
-                boxShadow: active && isSuperAdmin ? `0 10px 30px ${T.accent}08` : "none",
+                boxShadow: active && isSuperAdmin ? `0 4px 20px ${T.accent}10` : "none",
               }}
               onMouseEnter={(e) => {
                 if (!active) {
@@ -3778,9 +3778,9 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
           </div>
         )}
 
-        {/* Mini toggle de tema */}
+        {/* Mini toggle de tema — usa div para evitar <button> aninhado (HTML inválido) */}
         {onToggleTheme && (
-          <button
+          <div
             onClick={onToggleTheme}
             title={themeMode === "dark" ? "Mudar para Modo Claro" : "Mudar para Modo Escuro"}
             style={{
@@ -3791,22 +3791,25 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
               gap:8,
               padding:"0.6rem 0.4rem",
               borderRadius:12,
-              border:"none",
-              background:"transparent",
               color:T.mutedLight,
               cursor:"pointer",
               fontSize:12,
               fontWeight:600,
               fontFamily:"'DM Sans', sans-serif",
               marginBottom:6,
+              userSelect:"none",
             }}
           >
-            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:8, pointerEvents:"none" }}>
               {themeMode === "dark" ? <Moon size={14}/> : <Sun size={14} color="#f59e0b"/>}
               {!collapsed && (themeMode === "dark" ? "Modo Escuro" : "Modo Claro")}
             </div>
-            {!collapsed && <ThemeToggleSwitch isDark={themeMode === "dark"} onToggle={() => {}}/>}
-          </button>
+            {!collapsed && (
+              <div style={{ pointerEvents:"none" }}>
+                <ThemeToggleSwitch isDark={themeMode === "dark"} onToggle={() => {}}/>
+              </div>
+            )}
+          </div>
         )}
 
         <button
