@@ -198,7 +198,7 @@ function normalizeSubscription(item) {
   };
 }
 
-export default function SuperAdminView({ section = "dashboard", token }) {
+export default function SuperAdminView({ section = "dashboard", token, themeMode = "dark" }) {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
@@ -616,6 +616,7 @@ export default function SuperAdminView({ section = "dashboard", token }) {
 
     return null;
   }, [
+    themeMode,
     section,
     alerts,
     clients,
