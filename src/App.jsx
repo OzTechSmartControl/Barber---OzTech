@@ -11,7 +11,7 @@ import {
   Phone, LogOut, Lock, Mail, CreditCard, Banknote, Smartphone,
   BadgePercent, AlertCircle, RefreshCw, FileText, Download, Calendar, Bell, Gift,
   Settings, Upload, Palette, Image, Shield, Clock, Layers,
-  ShoppingCart, Package, Sun, Moon,
+  ShoppingCart, Package, Sun, Moon, Zap,
 } from "lucide-react";
 
 (() => {
@@ -3428,12 +3428,14 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
             <div
               style={{
                 display:"flex",
+                flexDirection:"column",
                 alignItems:"center",
                 justifyContent:"center",
                 minWidth:0,
                 flex:1,
                 width:"100%",
-                padding:"0.15rem 2.35rem 0.15rem 0.35rem",
+                padding:"0.5rem 2.35rem 0.5rem 0.35rem",
+                gap:6,
               }}
             >
               <img
@@ -3441,14 +3443,24 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
                 alt="Oz.Barber"
                 style={{
                   width:"100%",
-                  maxWidth:200,
+                  maxWidth:150,
                   height:"auto",
-                  maxHeight:120,
+                  maxHeight:90,
                   objectFit:"contain",
                   display:"block",
-                  filter:`drop-shadow(0 0 18px ${T.accent}22)`,
+                  filter:`drop-shadow(0 0 18px ${T.accent}33)`,
                 }}
               />
+              <div style={{
+                fontFamily:"'Bebas Neue', sans-serif",
+                fontSize:22,
+                letterSpacing:3,
+                color:T.accent,
+                lineHeight:1,
+                textShadow:`0 0 18px ${T.accent}55`,
+              }}>
+                Oz.Barber
+              </div>
             </div>
           ) : (
             <div
@@ -3599,20 +3611,21 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
       {!collapsed && isSuperAdmin && (
         <div
           style={{
-            margin: "1rem 1rem 0",
-            padding: "0.85rem",
-            borderRadius: 16,
-            background: "rgba(77,184,255,.08)",
-            border: `1px solid ${T.accent}22`,
+            margin: "0.75rem 1rem 0",
+            padding: "0.8rem 1rem",
+            borderRadius: 14,
+            background: `linear-gradient(135deg, ${T.accent}28, ${T.accent}10)`,
+            border: `1px solid ${T.accent}45`,
+            boxShadow: `0 4px 24px ${T.accent}18`,
           }}
         >
-          <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:5 }}>
-            <Lock size={13} color={T.accent} />
-            <span style={{ color:T.accent, fontSize:11, fontWeight:800, letterSpacing:.8, textTransform:"uppercase" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:4 }}>
+            <Zap size={14} color={T.accent} fill={T.accent}/>
+            <span style={{ color:T.accent, fontSize:12, fontWeight:900, letterSpacing:1.2, textTransform:"uppercase" }}>
               Super Admin
             </span>
           </div>
-          <div style={{ color:T.mutedLight, fontSize:11, lineHeight:1.45 }}>
+          <div style={{ color:T.mutedLight, fontSize:11, lineHeight:1.5 }}>
             Controle global da plataforma.
           </div>
         </div>
@@ -3677,14 +3690,14 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
                 <span
                   style={{
                     position:"absolute",
-                    left:-1,
+                    right:0,
                     top:"50%",
                     transform:"translateY(-50%)",
                     width:3,
-                    height:24,
+                    height:26,
                     borderRadius:999,
                     background:T.accent,
-                    boxShadow:`0 0 18px ${T.accent}`,
+                    boxShadow:`0 0 12px ${T.accent}`,
                   }}
                 />
               )}
@@ -3708,23 +3721,24 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
               </span>
 
               {!collapsed && (
-                <span style={{ minWidth:0, flex:1, display:"flex", alignItems:"center", gap:6 }}>
-                  <span style={{ display:"block", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", flex:1 }}>
-                    {label}
-                  </span>
-                  {badge > 0 && (
-                    <span style={{ background:WARN_COLOR, color:"#0a0808", borderRadius:999, fontSize:9, fontWeight:900, padding:"2px 6px", lineHeight:1.4, flexShrink:0 }}>
-                      {badge}
+                <span style={{ minWidth:0, flex:1, display:"flex", flexDirection: isSuperAdmin ? "column" : "row", alignItems: isSuperAdmin ? "flex-start" : "center", gap: isSuperAdmin ? 1 : 6 }}>
+                  <span style={{ display:"flex", alignItems:"center", gap:6, width:"100%" }}>
+                    <span style={{ display:"block", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", flex:1 }}>
+                      {label}
                     </span>
-                  )}
+                    {badge > 0 && (
+                      <span style={{ background:WARN_COLOR, color:"#0a0808", borderRadius:999, fontSize:9, fontWeight:900, padding:"2px 6px", lineHeight:1.4, flexShrink:0 }}>
+                        {badge}
+                      </span>
+                    )}
+                  </span>
                   {isSuperAdmin && desc && (
                     <span
                       style={{
                         display:"block",
-                        color: active ? `${T.accent}aa` : T.muted,
+                        color: active ? `${T.accent}99` : T.muted,
                         fontSize:10,
                         fontWeight:600,
-                        marginTop:2,
                         whiteSpace:"nowrap",
                         overflow:"hidden",
                         textOverflow:"ellipsis",
@@ -3759,7 +3773,7 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
             }}
           >
             <div style={{ fontSize:11, color:T.muted, marginBottom:3 }}>Logado como</div>
-            <div style={{ fontSize:12, color:T.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{userName}</div>
+            <div style={{ fontSize:12, color: isSuperAdmin ? T.accent : T.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", fontWeight: isSuperAdmin ? 600 : 400 }}>{userName}</div>
           </div>
         )}
 
