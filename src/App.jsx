@@ -3414,12 +3414,12 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
     >
       <div
         style={{
-          padding: collapsed ? "1.15rem 0.75rem" : (isSuperAdmin ? "1.25rem" : "1rem 0.85rem 1.2rem"),
+          padding: collapsed ? "1.15rem 0.75rem" : (isSuperAdmin ? "1.25rem 1rem" : "1rem 0.85rem 1.2rem"),
           borderBottom: `1px solid ${T.border}`,
           display: "flex",
           alignItems: "center",
-          justifyContent: collapsed ? "center" : (isSuperAdmin ? "space-between" : "center"),
-          minHeight: isSuperAdmin ? 140 : 150,
+          justifyContent: "center",
+          minHeight: isSuperAdmin ? 165 : 150,
           position: "relative",
         }}
       >
@@ -3434,8 +3434,8 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
                 minWidth:0,
                 flex:1,
                 width:"100%",
-                padding:"0.5rem 2.35rem 0.5rem 0.35rem",
-                gap:6,
+                padding:"0.5rem 0.5rem",
+                gap:8,
               }}
             >
               <img
@@ -3567,22 +3567,23 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
           <button
             onClick={()=>setCollapsed(true)}
             style={{
-              background:isSuperAdmin ? `${T.surface}` : "rgba(0,0,0,.18)",
-              border:isSuperAdmin ? `1px solid ${T.border}` : `1px solid ${T.border}`,
-              color:T.muted,
-              cursor:"pointer",
-              display:"flex",
-              width:isSuperAdmin ? 34 : 32,
-              height:isSuperAdmin ? 34 : 32,
-              alignItems:"center",
-              justifyContent:"center",
-              borderRadius:10,
-              position: isSuperAdmin ? "static" : "absolute",
-              top: isSuperAdmin ? "auto" : 18,
-              right: isSuperAdmin ? "auto" : 12,
+              background: isSuperAdmin ? "rgba(255,255,255,.05)" : "rgba(0,0,0,.18)",
+              border: `1px solid ${T.border}`,
+              color: T.muted,
+              cursor: "pointer",
+              display: "flex",
+              width: 28,
+              height: 28,
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: 8,
+              position: "absolute",
+              top: 12,
+              right: 12,
+              flexShrink: 0,
             }}
           >
-            <Menu size={18}/>
+            <X size={14}/>
           </button>
         )}
       </div>
@@ -3721,9 +3722,18 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
               </span>
 
               {!collapsed && (
-                <span style={{ minWidth:0, flex:1, display:"flex", flexDirection: isSuperAdmin ? "column" : "row", alignItems: isSuperAdmin ? "flex-start" : "center", gap: isSuperAdmin ? 1 : 6 }}>
+                <span style={{ minWidth:0, flex:1, display:"flex", flexDirection: isSuperAdmin ? "column" : "row", alignItems: isSuperAdmin ? "flex-start" : "center", gap: isSuperAdmin ? 2 : 6 }}>
                   <span style={{ display:"flex", alignItems:"center", gap:6, width:"100%" }}>
-                    <span style={{ display:"block", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", flex:1 }}>
+                    <span style={{
+                      display:"block",
+                      whiteSpace:"nowrap",
+                      overflow:"hidden",
+                      textOverflow:"ellipsis",
+                      flex:1,
+                      fontSize: isSuperAdmin ? 14 : 13,
+                      fontWeight: isSuperAdmin ? 700 : (active ? 800 : 600),
+                      color: isSuperAdmin ? (active ? T.accent : T.text) : undefined,
+                    }}>
                       {label}
                     </span>
                     {badge > 0 && (
@@ -3736,9 +3746,9 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
                     <span
                       style={{
                         display:"block",
-                        color: active ? `${T.accent}99` : T.muted,
-                        fontSize:10,
-                        fontWeight:600,
+                        color: active ? `${T.accent}88` : T.muted,
+                        fontSize:11,
+                        fontWeight:500,
                         whiteSpace:"nowrap",
                         overflow:"hidden",
                         textOverflow:"ellipsis",
@@ -3762,16 +3772,7 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
         }}
       >
         {!collapsed && (
-          <div
-            style={{
-              marginBottom:"0.85rem",
-              minWidth:0,
-              padding:isSuperAdmin ? "0.75rem" : 0,
-              borderRadius:isSuperAdmin ? 14 : 0,
-              background:isSuperAdmin ? "rgba(255,255,255,.025)" : "transparent",
-              border:isSuperAdmin ? `1px solid rgba(255,255,255,.04)` : "none",
-            }}
-          >
+          <div style={{ marginBottom:"0.85rem", minWidth:0, padding:"0.25rem 0.25rem" }}>
             <div style={{ fontSize:11, color:T.muted, marginBottom:3 }}>Logado como</div>
             <div style={{ fontSize:12, color: isSuperAdmin ? T.accent : T.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", fontWeight: isSuperAdmin ? 600 : 400 }}>{userName}</div>
           </div>
@@ -3788,16 +3789,16 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
               alignItems:"center",
               justifyContent: collapsed ? "center" : "space-between",
               gap:8,
-              padding:"0.62rem 0.75rem",
+              padding:"0.6rem 0.4rem",
               borderRadius:12,
-              border:`1px solid ${T.border}`,
-              background:T.surface,
+              border:"none",
+              background:"transparent",
               color:T.mutedLight,
               cursor:"pointer",
               fontSize:12,
-              fontWeight:700,
+              fontWeight:600,
               fontFamily:"'DM Sans', sans-serif",
-              marginBottom:8,
+              marginBottom:6,
             }}
           >
             <div style={{ display:"flex", alignItems:"center", gap:8 }}>
@@ -3817,25 +3818,19 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
             alignItems:"center",
             justifyContent:collapsed?"center":"flex-start",
             gap:8,
-            padding:"0.72rem 0.75rem",
+            padding:"0.6rem 0.4rem",
             borderRadius:12,
-            border:`1px solid ${T.border}`,
-            background:T.surface,
+            border:"none",
+            background:"transparent",
             color:T.mutedLight,
             cursor:"pointer",
             fontSize:12,
-            fontWeight:700,
+            fontWeight:600,
             fontFamily:"'DM Sans', sans-serif",
             transition:"all .18s ease",
           }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = `${T.danger}55`;
-            e.currentTarget.style.color = T.danger;
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = T.border;
-            e.currentTarget.style.color = T.mutedLight;
-          }}
+          onMouseEnter={(e) => { e.currentTarget.style.color = T.danger; }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = T.mutedLight; }}
         >
           <LogOut size={15}/>
           {!collapsed && "Sair"}
