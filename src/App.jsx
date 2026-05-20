@@ -5,6 +5,7 @@ import PlansView   from "./PlansView";
 import SuperAdminView from "./SuperAdminView";
 import ResetPassword from "./ResetPassword";
 import ozBarberLogo from "./assets/ozbarber-logo.png.png";
+import sharedT from "./config/theme"; // T compartilhado com SuperAdminView
 import {
   LayoutDashboard, Scissors, Users, Award, Tag, DollarSign,
   Menu, X, Plus, Search, Edit2, Trash2, Check, TrendingUp,
@@ -147,14 +148,16 @@ const T_DARK = {
   text: "#ece8e0", muted: "#706b63", mutedLight: "#9a9590",
   success: "#43d18a", successBg: "#43d18a18", danger: "#f07070", dangerBg: "#f0707018",
   info: "#60a5fa", infoBg: "#60a5fa18", sidebar: "#0e0e14",
+  warn: "#f0a500", warnBg: "#f0a50018",
 };
 
 const T_LIGHT = {
-  bg: "#f0f0f5", surface: "#ffffff", card: "#ffffff", border: "#dde1ea",
+  bg: "#f4f4f8", surface: "#ffffff", card: "#ffffff", border: "#dde1ea",
   borderLight: "#e8eaf0", accent: "#4db8ff", accentGlow: "#4db8ff22",
   text: "#1a1a2e", muted: "#6b7280", mutedLight: "#9ca3af",
   success: "#16a34a", successBg: "#16a34a18", danger: "#dc2626", dangerBg: "#dc262618",
   info: "#2563eb", infoBg: "#2563eb18", sidebar: "#e8e8f0",
+  warn: "#d97706", warnBg: "#d9770618",
 };
 
 // Mutável em runtime — inicializado com o modo salvo
@@ -168,16 +171,19 @@ const normalizeHex = (value, fallback = "#4db8ff") => {
 };
 
 const applyThemeMode = (mode) => {
-  Object.assign(T, mode === "light" ? T_LIGHT : T_DARK);
+  const palette = mode === "light" ? T_LIGHT : T_DARK;
+  Object.assign(T, palette);       // T local do App.jsx
+  Object.assign(sharedT, palette); // T compartilhado com SuperAdminView e páginas
   document.body.style.background = T.bg;
 };
 
 const applyTenantTheme = (shop, mode) => {
   const accent = normalizeHex(shop?.accent_color);
-  // Reaplica a paleta do modo atual preservando o accent do tenant
   applyThemeMode(mode || localStorage.getItem("oz_theme") || "dark");
   T.accent = accent;
   T.accentGlow = `${accent}22`;
+  sharedT.accent = accent;
+  sharedT.accentGlow = `${accent}22`;
   if (shop?.name) document.title = `${shop.name} | Oz.Barber`;
 };
 
@@ -3401,7 +3407,7 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
       style={{
         width: collapsed ? 76 : (isSuperAdmin ? 282 : 255),
         background: isSuperAdmin
-          ? "linear-gradient(180deg, #0f1018 0%, #0b0b11 100%)"
+          ? (themeMode === "dark" ? "linear-gradient(180deg, #0f1018 0%, #0b0b11 100%)" : T.sidebar)
           : T.sidebar,
         borderRight: `1px solid ${T.border}`,
         display: "flex",
@@ -3801,8 +3807,8 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
             }}
           >
             <div style={{ display:"flex", alignItems:"center", gap:8, pointerEvents:"none" }}>
-              {themeMode === "dark" ? <Moon size={14}/> : <Sun size={14} color="#f59e0b"/>}
-              {!collapsed && (themeMode === "dark" ? "Modo Escuro" : "Modo Claro")}
+              {themeMode === "dark" ? <Sun size={14} color="#f59e0b"/> : <Moon size={14}/>}
+              {!collapsed && (themeMode === "dark" ? "Modo Claro" : "Modo Escuro")}
             </div>
             {!collapsed && (
               <div style={{ pointerEvents:"none" }}>
@@ -4236,13 +4242,13 @@ export default function App() {
 
   const views = isSuperAdmin
     ? {
-        superadmin_dashboard:     <SuperAdminView token={tok} section="dashboard" />,
-        superadmin_clients:       <SuperAdminView token={tok} section="clients" />,
-        superadmin_finance:       <SuperAdminView token={tok} section="finance" />,
-        superadmin_subscriptions: <SuperAdminView token={tok} section="subscriptions" />,
-        superadmin_courtesy:      <SuperAdminView token={tok} section="courtesy" />,
-        superadmin_alerts:        <SuperAdminView token={tok} section="alerts" />,
-        superadmin_analytics:     <SuperAdminView token={tok} section="analytics" />,
+        superadmin_dashboard:     <SuperAdminView token={tok} section="dashboard"     themeMode={themeMode} />,
+        superadmin_clients:       <SuperAdminView token={tok} section="clients"       themeMode={themeMode} />,
+        superadmin_finance:       <SuperAdminView token={tok} section="finance"       themeMode={themeMode} />,
+        superadmin_subscriptions: <SuperAdminView token={tok} section="subscriptions" themeMode={themeMode} />,
+        superadmin_courtesy:      <SuperAdminView token={tok} section="courtesy"      themeMode={themeMode} />,
+        superadmin_alerts:        <SuperAdminView token={tok} section="alerts"        themeMode={themeMode} />,
+        superadmin_analytics:     <SuperAdminView token={tok} section="analytics"     themeMode={themeMode} />,
       }
     : {
         dashboard:   <Dashboard   attendances={attendances} clients={clients} services={services} barbers={barbers} products={products} isAdmin={isAdmin} myBarberId={myBarberId} onGoReports={isAdmin?()=>setView('reports'):undefined} isMobile={isMobile} onRefresh={() => loadData(tok, auth.profile)}/>,
