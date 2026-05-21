@@ -4,6 +4,7 @@ import Onboarding from "./Onboarding";
 import PlansView   from "./PlansView";
 import SuperAdminView from "./SuperAdminView";
 import ResetPassword from "./ResetPassword";
+import LandingPage from "./LandingPage";
 import ozBarberLogo from "./assets/ozbarber-logo.png.png";
 import sharedT from "./config/theme"; // T compartilhado com SuperAdminView
 import {
@@ -3908,6 +3909,7 @@ export default function App() {
   const [collapsed,    setCollapsed]    = useState(false);
   const [themeMode,    setThemeMode]    = useState(() => localStorage.getItem("oz_theme") || "dark");
   const [showPlans,      setShowPlans]      = useState(false);
+  const [showLanding,    setShowLanding]    = useState(true);
   const [expiredMsg,     setExpiredMsg]     = useState("");
   const [postPaymentPlan, setPostPaymentPlan] = useState(null);
   const [courtesyEmail,setCourtesyEmail]= useState(null);
@@ -4165,6 +4167,7 @@ export default function App() {
     setView("dashboard");
     setShowPlans(false);
     setExpiredMsg("");
+    setShowLanding(true);
   };
 
   const checkoutAuth = auth || safeLoadAuth() || (session?.access_token ? {
@@ -4205,7 +4208,15 @@ export default function App() {
     </>
   );
 
-  if (!auth) return <><style>{CSS}</style><LoginView onLogin={onLogin} onShowPlans={() => setShowPlans(true)} /></>;
+  if (!auth) {
+    if (showLanding) return (
+      <LandingPage
+        onLogin={() => setShowLanding(false)}
+        onSubscribe={() => { setShowLanding(false); setShowPlans(true); }}
+      />
+    );
+    return <><style>{CSS}</style><LoginView onLogin={onLogin} onShowPlans={() => setShowPlans(true)} /></>;
+  }
 
   const isSuperAdmin =
     auth.profile?.is_super_admin === true ||
