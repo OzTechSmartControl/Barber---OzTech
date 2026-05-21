@@ -3909,7 +3909,12 @@ export default function App() {
   const [collapsed,    setCollapsed]    = useState(false);
   const [themeMode,    setThemeMode]    = useState(() => localStorage.getItem("oz_theme") || "dark");
   const [showPlans,      setShowPlans]      = useState(false);
-  const [showLanding,    setShowLanding]    = useState(true);
+  const [showLanding,    setShowLanding]    = useState(() => {
+    const host = window.location.hostname;
+    // ozbarber.vercel.app e localhost vão direto pro app (sem landing)
+    if (host === "ozbarber.vercel.app" || host === "localhost") return false;
+    return true;
+  });
   const [expiredMsg,     setExpiredMsg]     = useState("");
   const [postPaymentPlan, setPostPaymentPlan] = useState(null);
   const [courtesyEmail,setCourtesyEmail]= useState(null);
