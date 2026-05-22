@@ -322,12 +322,57 @@
     .benefit-desc { font-size: 13px; color: #9a9590; line-height: 1.6; }
 
     /* CTA */
+    .cta-grid {
+      display: grid; grid-template-columns: 1fr 1.5fr; gap: 5%;
+      align-items: center; max-width: 1100px; margin: 0 auto;
+    }
     .cta-box {
-      max-width: 760px; margin: 0 auto; text-align: center;
+      text-align: center;
       background: linear-gradient(135deg, rgba(77,184,255,.08), rgba(167,139,250,.06));
       border: 1px solid #4db8ff25; border-radius: 28px; padding: 3.5rem 2.5rem;
       box-shadow: 0 40px 80px rgba(0,0,0,.4);
     }
+    /* MOBILE PHONE FRAME */
+    .mobile-showcase-wrap { display: flex; justify-content: center; align-items: center; }
+    .mobile-frame {
+      background: #0d0e14; border: 2px solid #1e2030;
+      border-radius: 44px; padding: 14px 12px 10px;
+      width: 230px; flex-shrink: 0;
+      box-shadow: 0 30px 70px rgba(0,0,0,.75), 0 0 0 1px rgba(77,184,255,.07);
+      animation: float 4s ease-in-out infinite;
+      position: relative;
+    }
+    .mobile-island {
+      width: 90px; height: 22px; background: #0d0e14;
+      border-radius: 12px; margin: 0 auto 8px;
+      border: 1.5px solid #1e2030;
+    }
+    .mobile-screen {
+      background: #06080d; border-radius: 28px;
+      overflow: hidden; aspect-ratio: 9 / 19.5; position: relative;
+    }
+    .mobile-slide {
+      position: absolute; inset: 0; opacity: 0; transition: opacity .65s ease;
+    }
+    .mobile-slide.active { opacity: 1; }
+    .mobile-slide img {
+      width: 100%; height: 100%;
+      object-fit: cover; object-position: top; display: block;
+    }
+    .mobile-home-bar {
+      width: 72px; height: 4px; background: #2a2a3a;
+      border-radius: 2px; margin: 9px auto 4px;
+    }
+    .mobile-nav-dots {
+      display: flex; justify-content: center; gap: 5px; padding-bottom: 2px;
+    }
+    .mobile-dot {
+      width: 5px; height: 5px; border-radius: 50%;
+      background: #2a2a3a; border: none; cursor: pointer;
+      transition: all .25s; padding: 0;
+    }
+    .mobile-dot.active { width: 14px; border-radius: 2.5px; background: #4db8ff; }
+    @media (max-width: 900px) { .cta-grid { grid-template-columns: 1fr; } }
     .cta-title { font-family: 'Bebas Neue', sans-serif; font-size: clamp(30px, 5vw, 54px); color: #ece8e0; letter-spacing: 1px; line-height: 1.1; margin-bottom: 1rem; }
     .cta-sub { font-size: 15px; color: #9a9590; line-height: 1.7; max-width: 440px; margin: 0 auto 2rem; }
     .cta-checks { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin-top: 1.5rem; }
@@ -684,18 +729,45 @@
 <!-- CTA -->
 <section>
   <div class="container">
-    <div class="cta-box">
-      <div class="cta-title">Transforme a gestão da sua<br><span class="accent">barbearia hoje</span></div>
-      <p class="cta-sub">Junte-se às barbearias que já usam o Oz.Barber e veja a diferença no controle e no lucro.</p>
-      <a href="https://ozbarber.vercel.app/?plans=true" class="btn-primary" style="padding:1rem 2.5rem;font-size:16px;border-radius:14px;box-shadow:0 10px 32px rgba(77,184,255,.35)">
-        Assinar agora
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-      </a>
-      <div class="cta-checks">
-        <div class="cta-check"><span class="check-icon">✓</span> Sem contrato de fidelidade</div>
-        <div class="cta-check"><span class="check-icon">✓</span> Suporte incluído</div>
-        <div class="cta-check"><span class="check-icon">✓</span> Cancelamento a qualquer hora</div>
+    <div class="cta-grid">
+
+      <!-- ESQUERDA: Celular com slides -->
+      <div class="mobile-showcase-wrap">
+        <div class="mobile-frame">
+          <div class="mobile-island"></div>
+          <div class="mobile-screen">
+            <div class="mobile-slide active"><img src="screenshots/mobile/m1.png" alt="Login" /></div>
+            <div class="mobile-slide"><img src="screenshots/mobile/m2.png" alt="Dashboard" /></div>
+            <div class="mobile-slide"><img src="screenshots/mobile/m3.png" alt="Atendimentos" /></div>
+            <div class="mobile-slide"><img src="screenshots/mobile/m4.png" alt="Financeiro" /></div>
+            <div class="mobile-slide"><img src="screenshots/mobile/m5.png" alt="Relatórios" /></div>
+          </div>
+          <div class="mobile-home-bar"></div>
+          <div class="mobile-nav-dots">
+            <button class="mobile-dot active" onclick="mGo(0)"></button>
+            <button class="mobile-dot" onclick="mGo(1)"></button>
+            <button class="mobile-dot" onclick="mGo(2)"></button>
+            <button class="mobile-dot" onclick="mGo(3)"></button>
+            <button class="mobile-dot" onclick="mGo(4)"></button>
+          </div>
+        </div>
       </div>
+
+      <!-- DIREITA: CTA -->
+      <div class="cta-box">
+        <div class="cta-title">Transforme a gestão da sua<br><span class="accent">barbearia hoje</span></div>
+        <p class="cta-sub">Junte-se às barbearias que já usam o Oz.Barber e veja a diferença no controle e no lucro.</p>
+        <a href="https://ozbarber.vercel.app/?plans=true" class="btn-primary" style="padding:1rem 2.5rem;font-size:16px;border-radius:14px;box-shadow:0 10px 32px rgba(77,184,255,.35)">
+          Assinar agora
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </a>
+        <div class="cta-checks">
+          <div class="cta-check"><span class="check-icon">✓</span> Sem contrato de fidelidade</div>
+          <div class="cta-check"><span class="check-icon">✓</span> Suporte incluído</div>
+          <div class="cta-check"><span class="check-icon">✓</span> Cancelamento a qualquer hora</div>
+        </div>
+      </div>
+
     </div>
   </div>
 </section>
@@ -716,6 +788,24 @@
 
 
 <script>
+  /* Mobile carousel */
+  (function () {
+    var mc = 0, mn = 5, mt;
+    function mGoTo(i) {
+      var slides = document.querySelectorAll('.mobile-slide');
+      var dots   = document.querySelectorAll('.mobile-dot');
+      slides[mc].classList.remove('active'); dots[mc].classList.remove('active');
+      mc = ((i % mn) + mn) % mn;
+      slides[mc].classList.add('active'); dots[mc].classList.add('active');
+    }
+    function mReset() { clearInterval(mt); mt = setInterval(function(){ mGoTo(mc+1); }, 3500); }
+    window.mGo   = function(i){ mGoTo(i); mReset(); };
+    window.mNext = function(){ mGoTo(mc+1); mReset(); };
+    window.mPrev = function(){ mGoTo(mc-1); mReset(); };
+    mt = setInterval(function(){ mGoTo(mc+1); }, 3500);
+  })();
+
+  /* Desktop carousel */
   (function () {
     var cur = 0, n = 5, timer;
     function goTo(i) {
