@@ -118,27 +118,72 @@
     }
     .hero-credit::after { --dir: left; }
 
-    /* DASHBOARD CARD */
-    .dashboard-card {
-      background: linear-gradient(145deg, #13141e, #0f1017);
-      border: 1px solid #1e2030; border-radius: 24px; padding: 2rem;
-      max-width: 400px; width: 100%;
-      box-shadow: 0 40px 80px rgba(0,0,0,.6), 0 0 0 1px rgba(77,184,255,.06);
-      animation: float 4s ease-in-out infinite, glow 3s ease-in-out infinite;
-      margin: 0 auto;
+    /* SCREENSHOT CAROUSEL */
+    .screenshot-showcase {
+      position: relative; width: 100%; max-width: 520px; margin: 0 auto;
     }
-    .dash-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.4rem; }
-    .dash-label { font-size: 11px; color: #706b63; margin-bottom: 2px; }
-    .dash-name { font-family: 'Bebas Neue', sans-serif; font-size: 19px; color: #ece8e0; letter-spacing: .8px; }
-    .dash-icon { background: #4db8ff18; border: 1px solid #4db8ff33; border-radius: 8px; padding: .35rem .7rem; color: #4db8ff; font-size: 16px; }
-    .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1.1rem; }
-    .kpi-cell { background: #0f1017; border-radius: 12px; padding: .85rem; }
-    .kpi-label { font-size: 10px; color: #706b63; margin-bottom: 4px; }
-    .kpi-value { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: .5px; line-height: 1; }
-    .chart-box { background: #0f1017; border-radius: 12px; padding: .85rem; }
-    .chart-label { font-size: 11px; color: #706b63; margin-bottom: 10px; }
-    .bars { display: flex; gap: 5px; align-items: flex-end; height: 48px; }
-    .bar { flex: 1; border-radius: 3px 3px 0 0; }
+    .ss-wrapper {
+      background: linear-gradient(145deg, #13141e, #0f1017);
+      border: 1px solid #1e2030; border-radius: 20px; overflow: hidden;
+      box-shadow: 0 40px 80px rgba(0,0,0,.6), 0 0 0 1px rgba(77,184,255,.08);
+      animation: float 4s ease-in-out infinite, glow 3s ease-in-out infinite;
+    }
+    .ss-topbar {
+      height: 30px; background: #0d0e14;
+      display: flex; align-items: center; padding: 0 12px; gap: 6px;
+      border-bottom: 1px solid #1a1b27; flex-shrink: 0;
+    }
+    .ss-tb-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+    .ss-tb-dot.r { background: #ff5f5688; }
+    .ss-tb-dot.y { background: #ffbd2e88; }
+    .ss-tb-dot.g { background: #27c93f88; }
+    .ss-tb-url {
+      flex: 1; height: 16px; background: #13141e; border-radius: 4px;
+      margin-left: 6px; display: flex; align-items: center; justify-content: center; gap: 4px;
+    }
+    .ss-tb-url-text { font-size: 9px; color: #3a3a4a; letter-spacing: .3px; }
+    .ss-slider {
+      position: relative; overflow: hidden;
+      aspect-ratio: 16 / 9; background: #0d0e14;
+    }
+    .ss-slide {
+      position: absolute; inset: 0; opacity: 0; transition: opacity .65s ease;
+    }
+    .ss-slide.active { opacity: 1; }
+    .ss-slide img {
+      width: 100%; height: 100%;
+      object-fit: cover; object-position: top center; display: block;
+    }
+    .ss-slide-label {
+      position: absolute; bottom: 8px; left: 8px;
+      background: rgba(8,9,12,.72); backdrop-filter: blur(6px);
+      border: 1px solid #2a2a3a; border-radius: 6px;
+      padding: 3px 9px; font-size: 10px; color: #9a9590;
+      font-weight: 500; letter-spacing: .3px;
+    }
+    .ss-controls {
+      display: flex; align-items: center; justify-content: center; gap: 7px;
+      padding: 9px 0 10px; background: #0d0e14; border-top: 1px solid #1a1b27;
+    }
+    .ss-nav-dot {
+      width: 6px; height: 6px; border-radius: 3px;
+      background: #2a2a3a; border: none; cursor: pointer;
+      transition: all .25s ease; padding: 0;
+    }
+    .ss-nav-dot.active { width: 18px; background: #4db8ff; }
+    .ss-prev-btn, .ss-next-btn {
+      position: absolute; top: 50%;
+      background: rgba(8,9,12,.82); border: 1px solid #2a2a3a;
+      border-radius: 50%; width: 28px; height: 28px; color: #9a9590;
+      cursor: pointer; opacity: 0; transition: opacity .2s, color .2s, border-color .2s;
+      display: flex; align-items: center; justify-content: center;
+      padding: 0; transform: translateY(-50%);
+    }
+    .ss-prev-btn { left: 10px; }
+    .ss-next-btn { right: 10px; }
+    .screenshot-showcase:hover .ss-prev-btn,
+    .screenshot-showcase:hover .ss-next-btn { opacity: 1; }
+    .ss-prev-btn:hover, .ss-next-btn:hover { color: #4db8ff; border-color: #4db8ff55; }
 
     /* SECTION COMMON */
     section { padding: 80px 0; }
@@ -380,36 +425,55 @@
         </div>
       </div>
 
-      <!-- COLUNA DIREITA — Dashboard -->
+      <!-- COLUNA DIREITA — Screenshot Carousel -->
       <div style="display:flex;justify-content:center;align-items:center">
-        <div class="dashboard-card">
-          <div class="dash-header">
-            <div>
-              <div class="dash-label">Dashboard · Maio 2026</div>
-              <div class="dash-name">BARBEARIA MODELO</div>
+        <div class="screenshot-showcase">
+          <div class="ss-wrapper">
+            <div class="ss-topbar">
+              <span class="ss-tb-dot r"></span>
+              <span class="ss-tb-dot y"></span>
+              <span class="ss-tb-dot g"></span>
+              <div class="ss-tb-url">
+                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#3a3a4a" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                <span class="ss-tb-url-text">ozbarber.vercel.app</span>
+              </div>
             </div>
-            <div class="dash-icon">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4db8ff" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+            <div class="ss-slider">
+              <div class="ss-slide active">
+                <img src="screenshots/s1.png" alt="Dashboard Oz.Barber" />
+                <div class="ss-slide-label">Dashboard</div>
+              </div>
+              <div class="ss-slide">
+                <img src="screenshots/s2.png" alt="Atendimentos" />
+                <div class="ss-slide-label">Atendimentos</div>
+              </div>
+              <div class="ss-slide">
+                <img src="screenshots/s3.png" alt="Financeiro" />
+                <div class="ss-slide-label">Financeiro</div>
+              </div>
+              <div class="ss-slide">
+                <img src="screenshots/s4.png" alt="Relatórios" />
+                <div class="ss-slide-label">Relatórios</div>
+              </div>
+              <div class="ss-slide">
+                <img src="screenshots/s5.png" alt="Configurações" />
+                <div class="ss-slide-label">Configurações</div>
+              </div>
+            </div>
+            <div class="ss-controls">
+              <button class="ss-nav-dot active" onclick="ssGo(0)"></button>
+              <button class="ss-nav-dot" onclick="ssGo(1)"></button>
+              <button class="ss-nav-dot" onclick="ssGo(2)"></button>
+              <button class="ss-nav-dot" onclick="ssGo(3)"></button>
+              <button class="ss-nav-dot" onclick="ssGo(4)"></button>
             </div>
           </div>
-          <div class="kpi-grid">
-            <div class="kpi-cell"><div class="kpi-label">Faturamento</div><div class="kpi-value" style="color:#4db8ff">R$ 8.240</div></div>
-            <div class="kpi-cell"><div class="kpi-label">Atendimentos</div><div class="kpi-value" style="color:#43d18a">312</div></div>
-            <div class="kpi-cell"><div class="kpi-label">Ticket médio</div><div class="kpi-value" style="color:#a78bfa">R$ 26,41</div></div>
-            <div class="kpi-cell"><div class="kpi-label">Clientes</div><div class="kpi-value" style="color:#f0a500">184</div></div>
-          </div>
-          <div class="chart-box">
-            <div class="chart-label">Faturamento por dia</div>
-            <div class="bars">
-              <div class="bar" style="height:40%;background:#4db8ff40"></div>
-              <div class="bar" style="height:65%;background:#4db8ff40"></div>
-              <div class="bar" style="height:45%;background:#4db8ff40"></div>
-              <div class="bar" style="height:80%;background:#4db8ff40"></div>
-              <div class="bar" style="height:55%;background:#4db8ff40"></div>
-              <div class="bar" style="height:90%;background:#4db8ff"></div>
-              <div class="bar" style="height:70%;background:#4db8ff40"></div>
-            </div>
-          </div>
+          <button class="ss-prev-btn" onclick="ssPrev()" aria-label="Anterior">
+            <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 1 1 6 6 11"/></svg>
+          </button>
+          <button class="ss-next-btn" onclick="ssNext()" aria-label="Próximo">
+            <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 1 6 6 1 11"/></svg>
+          </button>
         </div>
       </div>
 
@@ -632,5 +696,25 @@
   </div>
 </footer>
 
+
+<script>
+  (function () {
+    var cur = 0, n = 5, timer;
+    function goTo(i) {
+      var slides = document.querySelectorAll('.ss-slide');
+      var dots   = document.querySelectorAll('.ss-nav-dot');
+      slides[cur].classList.remove('active');
+      dots[cur].classList.remove('active');
+      cur = ((i % n) + n) % n;
+      slides[cur].classList.add('active');
+      dots[cur].classList.add('active');
+    }
+    function reset() { clearInterval(timer); timer = setInterval(function () { goTo(cur + 1); }, 4000); }
+    window.ssGo   = function (i) { goTo(i); reset(); };
+    window.ssNext = function ()  { goTo(cur + 1); reset(); };
+    window.ssPrev = function ()  { goTo(cur - 1); reset(); };
+    timer = setInterval(function () { goTo(cur + 1); }, 4000);
+  })();
+</script>
 </body>
 </html>
