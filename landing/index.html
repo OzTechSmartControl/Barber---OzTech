@@ -332,24 +332,16 @@
       border: 1px solid #4db8ff25; border-radius: 28px; padding: 3.5rem 2.5rem;
       box-shadow: 0 40px 80px rgba(0,0,0,.4);
     }
-    /* MOBILE PHONE FRAME */
-    .mobile-showcase-wrap { display: flex; justify-content: center; align-items: center; }
-    .mobile-frame {
-      background: #0d0e14; border: 2px solid #1e2030;
-      border-radius: 44px; padding: 14px 12px 10px;
-      width: 230px; flex-shrink: 0;
-      box-shadow: 0 30px 70px rgba(0,0,0,.75), 0 0 0 1px rgba(77,184,255,.07);
-      animation: float 4s ease-in-out infinite;
+    /* MOBILE SLIDES */
+    .mobile-showcase-wrap { display: flex; flex-direction: column; align-items: center; gap: 18px; }
+    .mobile-slider {
+      width: 340px;
+      border-radius: 28px;
+      overflow: hidden;
+      aspect-ratio: 9 / 19.5;
       position: relative;
-    }
-    .mobile-island {
-      width: 90px; height: 22px; background: #0d0e14;
-      border-radius: 12px; margin: 0 auto 8px;
-      border: 1.5px solid #1e2030;
-    }
-    .mobile-screen {
-      background: #06080d; border-radius: 28px;
-      overflow: hidden; aspect-ratio: 9 / 19.5; position: relative;
+      box-shadow: 0 30px 80px rgba(0,0,0,.8), 0 0 0 1px rgba(77,184,255,.18);
+      animation: float 4s ease-in-out infinite;
     }
     .mobile-slide {
       position: absolute; inset: 0; opacity: 0; transition: opacity .65s ease;
@@ -359,19 +351,15 @@
       width: 100%; height: 100%;
       object-fit: cover; object-position: top; display: block;
     }
-    .mobile-home-bar {
-      width: 72px; height: 4px; background: #2a2a3a;
-      border-radius: 2px; margin: 9px auto 4px;
-    }
     .mobile-nav-dots {
-      display: flex; justify-content: center; gap: 5px; padding-bottom: 2px;
+      display: flex; justify-content: center; gap: 6px;
     }
     .mobile-dot {
-      width: 5px; height: 5px; border-radius: 50%;
+      width: 6px; height: 6px; border-radius: 50%;
       background: #2a2a3a; border: none; cursor: pointer;
       transition: all .25s; padding: 0;
     }
-    .mobile-dot.active { width: 14px; border-radius: 2.5px; background: #4db8ff; }
+    .mobile-dot.active { width: 18px; border-radius: 3px; background: #4db8ff; }
     @media (max-width: 900px) { .cta-grid { grid-template-columns: 1fr; } }
     .cta-title { font-family: 'Bebas Neue', sans-serif; font-size: clamp(30px, 5vw, 54px); color: #ece8e0; letter-spacing: 1px; line-height: 1.1; margin-bottom: 1rem; }
     .cta-sub { font-size: 15px; color: #9a9590; line-height: 1.7; max-width: 440px; margin: 0 auto 2rem; }
@@ -731,25 +719,21 @@
   <div class="container">
     <div class="cta-grid">
 
-      <!-- ESQUERDA: Celular com slides -->
+      <!-- ESQUERDA: Slides mobile -->
       <div class="mobile-showcase-wrap">
-        <div class="mobile-frame">
-          <div class="mobile-island"></div>
-          <div class="mobile-screen">
-            <div class="mobile-slide active"><img src="screenshots/mobile/m1.png" alt="Login" /></div>
-            <div class="mobile-slide"><img src="screenshots/mobile/m2.png" alt="Dashboard" /></div>
-            <div class="mobile-slide"><img src="screenshots/mobile/m3.png" alt="Atendimentos" /></div>
-            <div class="mobile-slide"><img src="screenshots/mobile/m4.png" alt="Financeiro" /></div>
-            <div class="mobile-slide"><img src="screenshots/mobile/m5.png" alt="Relatórios" /></div>
-          </div>
-          <div class="mobile-home-bar"></div>
-          <div class="mobile-nav-dots">
-            <button class="mobile-dot active" onclick="mGo(0)"></button>
-            <button class="mobile-dot" onclick="mGo(1)"></button>
-            <button class="mobile-dot" onclick="mGo(2)"></button>
-            <button class="mobile-dot" onclick="mGo(3)"></button>
-            <button class="mobile-dot" onclick="mGo(4)"></button>
-          </div>
+        <div class="mobile-slider">
+          <div class="mobile-slide active"><img src="screenshots/mobile/m1.png" alt="Login" /></div>
+          <div class="mobile-slide"><img src="screenshots/mobile/m2.png" alt="Dashboard" /></div>
+          <div class="mobile-slide"><img src="screenshots/mobile/m3.png" alt="Atendimentos" /></div>
+          <div class="mobile-slide"><img src="screenshots/mobile/m4.png" alt="Financeiro" /></div>
+          <div class="mobile-slide"><img src="screenshots/mobile/m5.png" alt="Relatórios" /></div>
+        </div>
+        <div class="mobile-nav-dots">
+          <button class="mobile-dot active" onclick="mGo(0)"></button>
+          <button class="mobile-dot" onclick="mGo(1)"></button>
+          <button class="mobile-dot" onclick="mGo(2)"></button>
+          <button class="mobile-dot" onclick="mGo(3)"></button>
+          <button class="mobile-dot" onclick="mGo(4)"></button>
         </div>
       </div>
 
