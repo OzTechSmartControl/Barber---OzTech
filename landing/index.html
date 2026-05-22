@@ -253,12 +253,12 @@
 
     /* PLANS */
     #plans { background: #08090c; }
-    .plans-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; align-items: start; }
+    .plans-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; align-items: stretch; }
     .plan-card {
       background: linear-gradient(145deg, #13141e, #0f1017);
       border: 1px solid #1e2030; border-radius: 22px; padding: 2rem 1.6rem;
       position: relative; box-shadow: 0 12px 36px rgba(0,0,0,.3);
-      transition: transform .2s; cursor: pointer;
+      transition: transform .2s, border-color .2s;
     }
     .plan-card:hover { transform: translateY(-6px); }
     .plan-card.highlight {
@@ -266,6 +266,16 @@
       border-color: #4db8ff55;
       box-shadow: 0 24px 56px rgba(0,0,0,.5), 0 0 0 1px #4db8ff20;
     }
+    .plans-cta-wrap { text-align: center; margin-top: 2rem; }
+    .plans-cta-btn {
+      display: inline-flex; align-items: center; gap: 10px;
+      background: #4db8ff; border: none; border-radius: 14px;
+      padding: 1rem 2.4rem; color: #06090f; font-size: 15px; font-weight: 700;
+      cursor: pointer; font-family: 'DM Sans', sans-serif; text-decoration: none;
+      box-shadow: 0 8px 28px rgba(77,184,255,.32);
+      transition: filter .18s, transform .18s;
+    }
+    .plans-cta-btn:hover { filter: brightness(1.1); transform: translateY(-2px); }
     .plan-badge {
       position: absolute; top: -13px; left: 50%; transform: translateX(-50%);
       background: #4db8ff; color: #06090f;
@@ -601,7 +611,6 @@
           <span class="plan-price-val">R$ 79,90</span>
           <span class="plan-period">/mês</span>
         </div>
-        <a href="https://ozbarber.vercel.app/?plans=true" class="plan-btn">Assinar agora <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></a>
       </div>
 
       <div class="plan-card">
@@ -612,7 +621,6 @@
           <span class="plan-period">/6 meses</span>
         </div>
         <div class="economy-badge">✓ Economize R$ 79,50</div>
-        <a href="https://ozbarber.vercel.app/?plans=true" class="plan-btn">Assinar agora <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></a>
       </div>
 
       <div class="plan-card highlight">
@@ -624,9 +632,16 @@
           <span class="plan-period">/ano</span>
         </div>
         <div class="economy-badge">✓ Economize R$ 258,90</div>
-        <a href="https://ozbarber.vercel.app/?plans=true" class="plan-btn">Assinar agora <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></a>
       </div>
     </div>
+
+    <div class="plans-cta-wrap">
+      <a href="https://ozbarber.vercel.app/?plans=true" class="plans-cta-btn">
+        Já fiz minha escolha e quero finalizar a contratação
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </a>
+    </div>
+
     <div class="plans-note">Pagamento seguro via Mercado Pago · Pix, cartão de crédito e boleto</div>
   </div>
 </section>
