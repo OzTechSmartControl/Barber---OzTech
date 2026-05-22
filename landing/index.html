@@ -1,0 +1,636 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Oz.Barber — Sistema para Barbearias</title>
+  <link rel="icon" type="image/png" href="https://barber-oz-tech.vercel.app/ozbarber-logo.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { background: #08090c; color: #ece8e0; font-family: 'DM Sans', sans-serif; overflow-x: hidden; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #0f1017; }
+    ::-webkit-scrollbar-thumb { background: #2a2a3a; border-radius: 3px; }
+
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(28px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
+    @keyframes glow { 0%,100% { box-shadow: 0 0 20px #4db8ff22; } 50% { box-shadow: 0 0 48px #4db8ff44; } }
+    @keyframes pulse { 0%,100% { opacity: .5; } 50% { opacity: 1; } }
+
+    /* NAV */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      padding: 0 2rem; height: 68px;
+      display: flex; align-items: center; justify-content: space-between;
+      background: rgba(8,9,12,.92); backdrop-filter: blur(16px);
+      border-bottom: 1px solid #1e2030;
+    }
+    nav .logo { height: 42px; filter: drop-shadow(0 0 12px rgba(77,184,255,.35)); }
+    nav .links { display: flex; gap: 2rem; }
+    nav .links a { color: #9a9590; text-decoration: none; font-size: 14px; font-weight: 500; transition: color .18s; }
+    nav .links a:hover { color: #4db8ff; }
+    nav .actions { display: flex; gap: 10px; align-items: center; }
+    .btn-ghost {
+      background: transparent; border: 1px solid #1e2030; border-radius: 10px;
+      padding: .5rem 1.1rem; color: #ece8e0; font-size: 13px; font-weight: 600;
+      cursor: pointer; font-family: 'DM Sans', sans-serif; transition: border-color .18s, background .18s;
+    }
+    .btn-ghost:hover { background: rgba(77,184,255,.08); border-color: #4db8ff55; }
+    .btn-primary {
+      background: #4db8ff; border: none; border-radius: 10px;
+      padding: .5rem 1.2rem; color: #06090f; font-size: 13px; font-weight: 700;
+      cursor: pointer; font-family: 'DM Sans', sans-serif;
+      box-shadow: 0 4px 18px rgba(77,184,255,.28); transition: filter .18s, transform .18s;
+      display: inline-flex; align-items: center; gap: 7px;
+    }
+    .btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
+    .btn-primary.lg { padding: .9rem 2rem; font-size: 15px; border-radius: 13px; box-shadow: 0 8px 28px rgba(77,184,255,.32); }
+
+    /* CONTAINER */
+    .container { max-width: 1520px; margin: 0 auto; padding: 0 4%; }
+
+    /* HERO */
+    #hero {
+      padding: 80px 0 60px; position: relative; overflow: hidden;
+    }
+    #hero .blob1 {
+      position: absolute; top: 50%; left: 30%; transform: translate(-50%, -50%);
+      width: 900px; height: 900px;
+      background: radial-gradient(circle, rgba(77,184,255,.07), transparent 65%);
+      pointer-events: none;
+    }
+    #hero .blob2 {
+      position: absolute; top: 40%; right: 10%;
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, rgba(167,139,250,.06), transparent 65%);
+      pointer-events: none;
+    }
+    .hero-main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5%; align-items: center; }
+    .hero-logo-block { margin-bottom: 1.4rem; animation: fadeUp .5s ease both; }
+    .hero-logo-img { height: 140px; filter: drop-shadow(0 0 20px rgba(77,184,255,.45)); display: block; }
+    .hero-logo-tagline {
+      font-size: 11px; font-weight: 600; letter-spacing: 4px; color: #706b63;
+      text-transform: uppercase; margin-top: 12px;
+    }
+    h1.hero-title {
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 800;
+      font-size: clamp(28px, 3.4vw, 54px);
+      line-height: 1.1; letter-spacing: -.5px;
+      margin-bottom: 1.4rem;
+      animation: fadeUp .6s .1s ease both;
+    }
+    h1.hero-title .ht-white { display: block; color: #ece8e0; }
+    h1.hero-title .ht-accent {
+      display: block;
+      background: linear-gradient(90deg, #4db8ff 0%, #a78bfa 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .gradient-text {
+      background: linear-gradient(135deg, #4db8ff 0%, #a78bfa 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .accent { color: #4db8ff; }
+    .hero-sub {
+      font-size: 16px; color: #9a9590; line-height: 1.75; max-width: 460px;
+      margin: 0 0 2rem; animation: fadeUp .7s .2s ease both; opacity: 0; animation-fill-mode: forwards;
+    }
+    .hero-cta { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 1.8rem; animation: fadeUp .7s .3s ease both; opacity: 0; animation-fill-mode: forwards; }
+    .hero-feat-row { display: flex; gap: 12px; flex-wrap: wrap; animation: fadeUp .7s .4s ease both; opacity: 0; animation-fill-mode: forwards; }
+    .hero-feat {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 12px; font-weight: 500; color: #9a9590;
+      background: rgba(255,255,255,.03); border: 1px solid #1e2030;
+      border-radius: 10px; padding: .45rem .9rem;
+    }
+    .hero-feat svg { flex-shrink: 0; }
+    .hero-credit {
+      display: flex; align-items: center; justify-content: center; gap: 1.5rem;
+      margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #1a1b27;
+      font-size: 12px; color: #4a4555;
+    }
+    .hero-credit::before, .hero-credit::after {
+      content: ''; flex: 1; height: 1px;
+      background: linear-gradient(to var(--dir, right), transparent, #1e2030 80%);
+    }
+    .hero-credit::after { --dir: left; }
+
+    /* DASHBOARD CARD */
+    .dashboard-card {
+      background: linear-gradient(145deg, #13141e, #0f1017);
+      border: 1px solid #1e2030; border-radius: 24px; padding: 2rem;
+      max-width: 400px; width: 100%;
+      box-shadow: 0 40px 80px rgba(0,0,0,.6), 0 0 0 1px rgba(77,184,255,.06);
+      animation: float 4s ease-in-out infinite, glow 3s ease-in-out infinite;
+      margin: 0 auto;
+    }
+    .dash-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.4rem; }
+    .dash-label { font-size: 11px; color: #706b63; margin-bottom: 2px; }
+    .dash-name { font-family: 'Bebas Neue', sans-serif; font-size: 19px; color: #ece8e0; letter-spacing: .8px; }
+    .dash-icon { background: #4db8ff18; border: 1px solid #4db8ff33; border-radius: 8px; padding: .35rem .7rem; color: #4db8ff; font-size: 16px; }
+    .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1.1rem; }
+    .kpi-cell { background: #0f1017; border-radius: 12px; padding: .85rem; }
+    .kpi-label { font-size: 10px; color: #706b63; margin-bottom: 4px; }
+    .kpi-value { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: .5px; line-height: 1; }
+    .chart-box { background: #0f1017; border-radius: 12px; padding: .85rem; }
+    .chart-label { font-size: 11px; color: #706b63; margin-bottom: 10px; }
+    .bars { display: flex; gap: 5px; align-items: flex-end; height: 48px; }
+    .bar { flex: 1; border-radius: 3px 3px 0 0; }
+
+    /* SECTION COMMON */
+    section { padding: 80px 0; }
+    .section-tag {
+      display: inline-flex; align-items: center; gap: 7px;
+      background: #4db8ff18; border: 1px solid #4db8ff33;
+      border-radius: 999px; padding: .35rem .9rem; margin-bottom: 1rem;
+    }
+    .section-tag span { font-size: 11px; font-weight: 700; color: #4db8ff; letter-spacing: .6px; }
+    .section-center { text-align: center; margin-bottom: 3.5rem; }
+    h2.section-title {
+      font-family: 'Bebas Neue', sans-serif; font-size: clamp(30px, 4vw, 50px);
+      color: #ece8e0; letter-spacing: 1px; line-height: 1.1; margin-bottom: .75rem;
+    }
+    .section-sub { font-size: 15px; color: #9a9590; max-width: 520px; margin: 0 auto; line-height: 1.7; }
+
+    /* FEATURES */
+    .feat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .feat-card {
+      background: linear-gradient(145deg, #13141e, #0f1017);
+      border: 1px solid #1e2030; border-radius: 18px; padding: 1.5rem;
+      box-shadow: 0 8px 32px rgba(0,0,0,.3);
+      transition: transform .2s, border-color .2s, box-shadow .2s;
+    }
+    .feat-card:hover { transform: translateY(-5px); border-color: #4db8ff44; box-shadow: 0 20px 48px rgba(0,0,0,.5), 0 0 0 1px #4db8ff22; }
+    .feat-icon {
+      width: 46px; height: 46px; border-radius: 13px;
+      background: #4db8ff18; border: 1px solid #4db8ff30;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 1rem; font-size: 20px;
+    }
+    .feat-title { font-weight: 700; font-size: 16px; color: #ece8e0; margin-bottom: 8px; }
+    .feat-desc { font-size: 13.5px; color: #9a9590; line-height: 1.65; }
+
+    /* STATS */
+    .stats-band {
+      background: linear-gradient(135deg, rgba(77,184,255,.07), rgba(167,139,250,.05));
+      border: 1px solid #4db8ff22; border-radius: 24px; padding: 2.5rem 2rem; margin: 0 0 0 0;
+    }
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; }
+    .stat-item { text-align: center; }
+    .stat-value { font-family: 'Bebas Neue', sans-serif; font-size: 44px; color: #4db8ff; letter-spacing: 1px; line-height: 1; }
+    .stat-label { font-size: 13px; color: #9a9590; margin-top: 6px; }
+
+    /* HOW IT WORKS */
+    .steps-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+    .step-card {
+      background: linear-gradient(145deg, #13141e, #0f1017);
+      border: 1px solid #1e2030; border-radius: 20px; padding: 2rem; position: relative;
+    }
+    .step-num {
+      position: absolute; top: 1.5rem; right: 1.5rem;
+      font-family: 'Bebas Neue', sans-serif; font-size: 52px; color: #1e2030; letter-spacing: 1px; line-height: 1;
+    }
+    .step-icon {
+      width: 50px; height: 50px; border-radius: 14px;
+      background: #4db8ff18; border: 1px solid #4db8ff30;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 1.25rem; font-size: 22px;
+    }
+    .step-title { font-weight: 700; font-size: 17px; color: #ece8e0; margin-bottom: 10px; }
+    .step-desc { font-size: 13.5px; color: #9a9590; line-height: 1.65; }
+
+    /* PLANS */
+    #plans { background: #08090c; }
+    .plans-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; align-items: start; }
+    .plan-card {
+      background: linear-gradient(145deg, #13141e, #0f1017);
+      border: 1px solid #1e2030; border-radius: 22px; padding: 2rem 1.6rem;
+      position: relative; box-shadow: 0 12px 36px rgba(0,0,0,.3);
+      transition: transform .2s; cursor: pointer;
+    }
+    .plan-card:hover { transform: translateY(-6px); }
+    .plan-card.highlight {
+      background: linear-gradient(145deg, #131828, #0e1220);
+      border-color: #4db8ff55;
+      box-shadow: 0 24px 56px rgba(0,0,0,.5), 0 0 0 1px #4db8ff20;
+    }
+    .plan-badge {
+      position: absolute; top: -13px; left: 50%; transform: translateX(-50%);
+      background: #4db8ff; color: #06090f;
+      border-radius: 999px; padding: 4px 16px;
+      font-size: 10px; font-weight: 800; letter-spacing: .6px; white-space: nowrap;
+    }
+    .plan-name { font-weight: 700; font-size: 16px; color: #ece8e0; margin-bottom: 6px; }
+    .plan-sub { font-size: 13px; color: #9a9590; margin-bottom: 1.25rem; line-height: 1.5; }
+    .plan-price { margin-bottom: 1.25rem; }
+    .plan-price-val { font-family: 'Bebas Neue', sans-serif; font-size: 46px; letter-spacing: 1px; color: #ece8e0; line-height: 1; }
+    .plan-card.highlight .plan-price-val { color: #4db8ff; }
+    .plan-period { font-size: 13px; color: #9a9590; margin-left: 4px; }
+    .economy-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: #43d18a15; color: #43d18a;
+      border-radius: 999px; padding: 4px 10px; font-size: 11px; font-weight: 700; margin-bottom: 1.5rem;
+    }
+    .plan-btn {
+      background: rgba(255,255,255,.04); border: 1px solid #252638; border-radius: 12px;
+      padding: .85rem; text-align: center; font-weight: 700; font-size: 14px;
+      color: #ece8e0; display: flex; align-items: center; justify-content: center; gap: 8px;
+      cursor: pointer; margin-top: 1.5rem;
+    }
+    .plan-card.highlight .plan-btn {
+      background: #4db8ff; border-color: #4db8ff; color: #06090f;
+      box-shadow: 0 8px 24px rgba(77,184,255,.28); margin-top: 0;
+    }
+    .plans-note { text-align: center; margin-top: 1.5rem; font-size: 13px; color: #706b63; }
+
+    /* BENEFITS */
+    .benefit-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    .benefit-card {
+      background: linear-gradient(145deg, #13141e, #0f1017);
+      border: 1px solid #1e2030; border-radius: 18px; padding: 1.6rem 1.4rem;
+      text-align: center;
+    }
+    .benefit-icon {
+      width: 52px; height: 52px; border-radius: 16px;
+      background: #4db8ff18; border: 1px solid #4db8ff28;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 1rem; font-size: 22px;
+    }
+    .benefit-title { font-weight: 700; font-size: 15px; color: #ece8e0; margin-bottom: 8px; }
+    .benefit-desc { font-size: 13px; color: #9a9590; line-height: 1.6; }
+
+    /* CTA */
+    .cta-box {
+      max-width: 760px; margin: 0 auto; text-align: center;
+      background: linear-gradient(135deg, rgba(77,184,255,.08), rgba(167,139,250,.06));
+      border: 1px solid #4db8ff25; border-radius: 28px; padding: 3.5rem 2.5rem;
+      box-shadow: 0 40px 80px rgba(0,0,0,.4);
+    }
+    .cta-title { font-family: 'Bebas Neue', sans-serif; font-size: clamp(30px, 5vw, 54px); color: #ece8e0; letter-spacing: 1px; line-height: 1.1; margin-bottom: 1rem; }
+    .cta-sub { font-size: 15px; color: #9a9590; line-height: 1.7; max-width: 440px; margin: 0 auto 2rem; }
+    .cta-checks { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin-top: 1.5rem; }
+    .cta-check { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: #9a9590; }
+
+    /* FOOTER */
+    footer {
+      border-top: 1px solid #1e2030; padding: 2rem 4%;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 1rem; max-width: 1520px; margin: 0 auto;
+    }
+    .footer-left { display: flex; align-items: center; gap: 1.5rem; }
+    .footer-logo { height: 36px; opacity: .85; }
+    .footer-copy { font-size: 12px; color: #706b63; }
+    .footer-copy .hl { color: #4db8ff; font-weight: 700; }
+    .footer-right { display: flex; align-items: center; gap: 1.5rem; }
+    .footer-year { font-size: 12px; color: #706b63; }
+
+    /* RESPONSIVE */
+    @media (max-width: 900px) {
+      .hero-grid { grid-template-columns: 1fr; gap: 2.5rem; }
+      .feat-grid { grid-template-columns: 1fr 1fr; }
+      .benefit-grid { grid-template-columns: 1fr 1fr; }
+      .plans-grid { grid-template-columns: 1fr; max-width: 420px; margin: 0 auto; }
+      .steps-grid { grid-template-columns: 1fr; }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+      nav .links { display: none; }
+    }
+    @media (max-width: 540px) {
+      .feat-grid { grid-template-columns: 1fr; }
+      .benefit-grid { grid-template-columns: 1fr; }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+    }
+
+    /* SVG icons inline */
+    .icon { display: inline-block; vertical-align: middle; }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <img class="logo" src="https://barber-oz-tech.vercel.app/ozbarber-logo.png" alt="Oz.Barber" />
+  <div class="links">
+    <a href="#features">Funcionalidades</a>
+    <a href="#plans">Planos</a>
+    <a href="#benefits">Benefícios</a>
+  </div>
+  <div class="actions">
+    <button class="btn-primary">
+      Assinar Plano
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="blob1"></div>
+  <div class="blob2"></div>
+  <div class="container">
+    <div class="hero-main-grid">
+
+      <!-- COLUNA ESQUERDA -->
+      <div>
+        <!-- Logo + tagline -->
+        <div class="hero-logo-block">
+          <img class="hero-logo-img" src="https://barber-oz-tech.vercel.app/ozbarber-logo.png" alt="Oz.Barber" />
+          <p class="hero-logo-tagline">Sistema completo para barbearias</p>
+        </div>
+
+        <!-- Título 4 linhas alternadas -->
+        <h1 class="hero-title">
+          <span class="ht-white">Seu serviço gera a</span>
+          <span class="ht-accent">experiência do cliente</span>
+          <span class="ht-white">Sua gestão garante</span>
+          <span class="ht-accent">o seu resultado</span>
+        </h1>
+
+        <!-- Subtítulo -->
+        <p class="hero-sub">
+          O sistema completo para barbearias que querem mais organização, controle e lucro.<br>
+          <span style="color:#4db8ff;font-weight:500">Pronto para usar</span> e 100% personalizável.
+        </p>
+
+        <!-- CTAs -->
+        <div class="hero-cta">
+          <button class="btn-primary lg">
+            Começar agora
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </button>
+          <button class="btn-ghost" style="padding:.9rem 1.6rem;font-size:15px;border-radius:13px">Já tenho conta</button>
+        </div>
+
+        <!-- Badges com ícones -->
+        <div class="hero-feat-row">
+          <div class="hero-feat">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="#4db8ff" stroke="none"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            100% online
+          </div>
+          <div class="hero-feat">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4db8ff" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Cancelamento fácil
+          </div>
+          <div class="hero-feat">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4db8ff" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            Atualizações constantes
+          </div>
+        </div>
+      </div>
+
+      <!-- COLUNA DIREITA — Dashboard -->
+      <div style="display:flex;justify-content:center;align-items:center">
+        <div class="dashboard-card">
+          <div class="dash-header">
+            <div>
+              <div class="dash-label">Dashboard · Maio 2026</div>
+              <div class="dash-name">BARBEARIA MODELO</div>
+            </div>
+            <div class="dash-icon">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4db8ff" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+            </div>
+          </div>
+          <div class="kpi-grid">
+            <div class="kpi-cell"><div class="kpi-label">Faturamento</div><div class="kpi-value" style="color:#4db8ff">R$ 8.240</div></div>
+            <div class="kpi-cell"><div class="kpi-label">Atendimentos</div><div class="kpi-value" style="color:#43d18a">312</div></div>
+            <div class="kpi-cell"><div class="kpi-label">Ticket médio</div><div class="kpi-value" style="color:#a78bfa">R$ 26,41</div></div>
+            <div class="kpi-cell"><div class="kpi-label">Clientes</div><div class="kpi-value" style="color:#f0a500">184</div></div>
+          </div>
+          <div class="chart-box">
+            <div class="chart-label">Faturamento por dia</div>
+            <div class="bars">
+              <div class="bar" style="height:40%;background:#4db8ff40"></div>
+              <div class="bar" style="height:65%;background:#4db8ff40"></div>
+              <div class="bar" style="height:45%;background:#4db8ff40"></div>
+              <div class="bar" style="height:80%;background:#4db8ff40"></div>
+              <div class="bar" style="height:55%;background:#4db8ff40"></div>
+              <div class="bar" style="height:90%;background:#4db8ff"></div>
+              <div class="bar" style="height:70%;background:#4db8ff40"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Rodapé hero -->
+    <div class="hero-credit">
+      Desenvolvido por <strong style="color:#9a9590">OzTech</strong>&nbsp;SmartControl
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section id="features">
+  <div class="container">
+    <div class="section-center">
+      <div class="section-tag">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#4db8ff" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        <span>FUNCIONALIDADES</span>
+      </div>
+      <h2 class="section-title">Tudo que sua barbearia precisa, <span class="accent">em um só lugar</span></h2>
+      <p class="section-sub">Menos bagunça, mais resultado. Controle completo da sua operação sem complicação.</p>
+    </div>
+    <div class="feat-grid">
+      <div class="feat-card">
+        <div class="feat-icon">📅</div>
+        <div class="feat-title">Atendimentos</div>
+        <div class="feat-desc">Registre e acompanhe todos os atendimentos com controle total de serviços, valores e histórico.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">💰</div>
+        <div class="feat-title">Caixa</div>
+        <div class="feat-desc">Entradas e saídas organizadas. Controle financeiro completo da sua barbearia em tempo real.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">🏆</div>
+        <div class="feat-title">Comissões</div>
+        <div class="feat-desc">Cálculo automático e preciso das comissões de cada barbeiro ao final do período.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">📊</div>
+        <div class="feat-title">Relatórios</div>
+        <div class="feat-desc">Indicadores, metas e análises para tomar decisões com base em dados reais.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">👥</div>
+        <div class="feat-title">Clientes</div>
+        <div class="feat-desc">Histórico completo de cada cliente, pontos de fidelidade e dados de contato centralizados.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">📱</div>
+        <div class="feat-title">Mobile</div>
+        <div class="feat-desc">Gestão completa onde você estiver. Sistema 100% responsivo, funciona no celular como app.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- STATS -->
+<section style="padding:50px 0">
+  <div class="container">
+    <div class="stats-band">
+      <div class="stats-grid">
+        <div class="stat-item"><div class="stat-value">1.200+</div><div class="stat-label">Atendimentos gerenciados</div></div>
+        <div class="stat-item"><div class="stat-value">99,9%</div><div class="stat-label">Uptime garantido</div></div>
+        <div class="stat-item"><div class="stat-value">3 planos</div><div class="stat-label">Para todo tamanho de negócio</div></div>
+        <div class="stat-item"><div class="stat-value">R$ 0</div><div class="stat-label">Taxa de setup</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section style="background:rgba(255,255,255,.01)">
+  <div class="container">
+    <div class="section-center">
+      <div class="section-tag">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="#4db8ff"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        <span>COMO FUNCIONA</span>
+      </div>
+      <h2 class="section-title">Simples assim</h2>
+    </div>
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-num">01</div>
+        <div class="step-icon">⏱</div>
+        <div class="step-title">Escolha seu plano</div>
+        <div class="step-desc">Selecione o plano ideal para o tamanho da sua barbearia e finalize o pagamento em segundos.</div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">02</div>
+        <div class="step-icon">✂️</div>
+        <div class="step-title">Cadastre sua barbearia</div>
+        <div class="step-desc">Configure o nome, logo, barbeiros, serviços e personalize com a sua identidade visual.</div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">03</div>
+        <div class="step-icon">📈</div>
+        <div class="step-title">Gerencie e lucre</div>
+        <div class="step-desc">Registre atendimentos, acompanhe financeiro, comissões e tome decisões com relatórios precisos.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PLANS -->
+<section id="plans">
+  <div class="container">
+    <div class="section-center">
+      <div class="section-tag">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="#4db8ff"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        <span>PLANOS E PREÇOS</span>
+      </div>
+      <h2 class="section-title">Escolha o plano ideal para <span class="accent">sua barbearia</span></h2>
+      <p class="section-sub">Planos que cabem no seu negócio. Economize mais escolhendo um período maior.</p>
+    </div>
+    <div class="plans-grid">
+      <div class="plan-card">
+        <div class="plan-name">Plano Mensal</div>
+        <div class="plan-sub">Renovação automática a cada 30 dias</div>
+        <div class="plan-price">
+          <span class="plan-price-val">R$ 79,90</span>
+          <span class="plan-period">/mês</span>
+        </div>
+        <div class="plan-btn">Assinar agora <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div>
+      </div>
+
+      <div class="plan-card">
+        <div class="plan-name">Plano Semestral</div>
+        <div class="plan-sub">Equivale a apenas R$ 66,65/mês</div>
+        <div class="plan-price">
+          <span class="plan-price-val">R$ 399,90</span>
+          <span class="plan-period">/6 meses</span>
+        </div>
+        <div class="economy-badge">✓ Economize R$ 79,50</div>
+        <div class="plan-btn">Assinar agora <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div>
+      </div>
+
+      <div class="plan-card highlight">
+        <div class="plan-badge">MELHOR OFERTA</div>
+        <div class="plan-name">Plano Anual</div>
+        <div class="plan-sub">Equivale a apenas R$ 58,32/mês</div>
+        <div class="plan-price">
+          <span class="plan-price-val">R$ 699,90</span>
+          <span class="plan-period">/ano</span>
+        </div>
+        <div class="economy-badge">✓ Economize R$ 258,90</div>
+        <div class="plan-btn">Assinar agora <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div>
+      </div>
+    </div>
+    <div class="plans-note">Pagamento seguro via Mercado Pago · Pix, cartão de crédito e boleto</div>
+  </div>
+</section>
+
+<!-- BENEFITS -->
+<section id="benefits">
+  <div class="container">
+    <div class="section-center">
+      <div class="section-tag">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#4db8ff" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <span>POR QUE O OZ.BARBER</span>
+      </div>
+      <h2 class="section-title">Menos bagunça, <span class="accent">mais resultado</span></h2>
+    </div>
+    <div class="benefit-grid">
+      <div class="benefit-card">
+        <div class="benefit-icon">🔓</div>
+        <div class="benefit-title">Sem fidelidade</div>
+        <div class="benefit-desc">Liberdade para cancelar quando quiser, sem multas ou carências.</div>
+      </div>
+      <div class="benefit-card">
+        <div class="benefit-icon">🔒</div>
+        <div class="benefit-title">Dados sempre seguros</div>
+        <div class="benefit-desc">Seus dados protegidos com criptografia e backups automáticos.</div>
+      </div>
+      <div class="benefit-card">
+        <div class="benefit-icon">🎧</div>
+        <div class="benefit-title">Suporte humanizado</div>
+        <div class="benefit-desc">Atendimento real, de pessoas que entendem o seu negócio.</div>
+      </div>
+      <div class="benefit-card">
+        <div class="benefit-icon">🔄</div>
+        <div class="benefit-title">Renovação automática</div>
+        <div class="benefit-desc">Praticidade total. Sua assinatura renova sem você precisar se preocupar.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section>
+  <div class="container">
+    <div class="cta-box">
+      <div class="cta-title">Transforme a gestão da sua<br><span class="accent">barbearia hoje</span></div>
+      <p class="cta-sub">Junte-se às barbearias que já usam o Oz.Barber e veja a diferença no controle e no lucro.</p>
+      <button class="btn-primary" style="padding:1rem 2.5rem;font-size:16px;border-radius:14px;box-shadow:0 10px 32px rgba(77,184,255,.35)">
+        Assinar agora
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </button>
+      <div class="cta-checks">
+        <div class="cta-check"><span class="check-icon">✓</span> Sem contrato de fidelidade</div>
+        <div class="cta-check"><span class="check-icon">✓</span> Suporte incluído</div>
+        <div class="cta-check"><span class="check-icon">✓</span> Cancelamento a qualquer hora</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-left">
+    <svg viewBox="0 0 120 32" fill="none" style="height:32px;width:auto">
+      <text x="0" y="26" font-family="'Bebas Neue', sans-serif" font-size="26" fill="#4db8ff" letter-spacing="1">Oz.Barber</text>
+    </svg>
+    <span class="footer-copy">Desenvolvido por <span class="hl">OzTech SmartControl</span></span>
+  </div>
+  <div class="footer-right">
+    <span class="footer-year">© 2026 Oz.Barber. Todos os direitos reservados.</span>
+    <button class="btn-ghost" style="font-size:12px;padding:.4rem .9rem;border-radius:8px">Entrar</button>
+  </div>
+</footer>
+
+</body>
+</html>
