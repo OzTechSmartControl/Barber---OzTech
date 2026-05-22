@@ -3908,7 +3908,10 @@ export default function App() {
   const [view,         setView]         = useState("dashboard");
   const [collapsed,    setCollapsed]    = useState(false);
   const [themeMode,    setThemeMode]    = useState(() => localStorage.getItem("oz_theme") || "dark");
-  const [showPlans,      setShowPlans]      = useState(false);
+  const [showPlans,      setShowPlans]      = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('plans') === 'true';
+  });
   const [showLanding,    setShowLanding]    = useState(() => {
     const host = window.location.hostname;
     // ozbarber.vercel.app e localhost vão direto pro app (sem landing)
