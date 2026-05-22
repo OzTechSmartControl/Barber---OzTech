@@ -360,7 +360,6 @@
       transition: all .25s; padding: 0;
     }
     .mobile-dot.active { width: 18px; border-radius: 3px; background: #4db8ff; }
-    @media (max-width: 900px) { .cta-grid { grid-template-columns: 1fr; } }
     .cta-title { font-family: 'Bebas Neue', sans-serif; font-size: clamp(30px, 5vw, 54px); color: #ece8e0; letter-spacing: 1px; line-height: 1.1; margin-bottom: 1rem; }
     .cta-sub { font-size: 15px; color: #9a9590; line-height: 1.7; max-width: 440px; margin: 0 auto 2rem; }
     .cta-checks { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin-top: 1.5rem; }
@@ -381,18 +380,53 @@
 
     /* RESPONSIVE */
     @media (max-width: 900px) {
-      .hero-grid { grid-template-columns: 1fr; gap: 2.5rem; }
+      /* Seções */
+      section { padding: 50px 0; }
+      #hero { padding: 50px 0 36px; }
+
+      /* Hero grid: 1 coluna */
+      .hero-main-grid { grid-template-columns: 1fr; gap: 0; }
+
+      /* Esconde carousel desktop no mobile */
+      .screenshot-showcase { display: none; }
+
+      /* Hero texto */
+      .hero-logo-img { height: 100px; }
+      .hero-sub { max-width: 100%; font-size: 15px; }
+      .hero-feat-row { gap: 8px; }
+
+      /* Grids */
       .feat-grid { grid-template-columns: 1fr 1fr; }
       .benefit-grid { grid-template-columns: 1fr 1fr; }
       .plans-grid { grid-template-columns: 1fr; max-width: 420px; margin: 0 auto; }
       .steps-grid { grid-template-columns: 1fr; }
       .stats-grid { grid-template-columns: 1fr 1fr; }
+
+      /* Nav */
       nav .links { display: none; }
+
+      /* CTA section */
+      .cta-grid { grid-template-columns: 1fr; gap: 2.5rem; }
+      .mobile-slider { width: 100%; max-width: 290px; }
+      .cta-box { padding: 2.5rem 1.5rem; }
+
+      /* Footer */
+      footer { justify-content: center; text-align: center; }
+      .footer-left { flex-direction: column; gap: .6rem; }
+      .footer-right { justify-content: center; }
     }
+
     @media (max-width: 540px) {
+      section { padding: 40px 0; }
+      .container { padding: 0 5%; }
       .feat-grid { grid-template-columns: 1fr; }
       .benefit-grid { grid-template-columns: 1fr; }
       .stats-grid { grid-template-columns: 1fr 1fr; }
+      h1.hero-title { font-size: clamp(26px, 8.5vw, 38px); }
+      .hero-logo-img { height: 84px; }
+      .mobile-slider { max-width: 260px; }
+      .plans-grid { max-width: 100%; }
+      h2.section-title { font-size: clamp(26px, 8vw, 44px); }
     }
 
     /* SVG icons inline */
