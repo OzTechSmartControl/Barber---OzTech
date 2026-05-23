@@ -74,8 +74,16 @@ export default function BookingPage({ slug }) {
     });
   };
 
-  // Inject fonts
+  // Reset body defaults + inject fonts
   useEffect(() => {
+    // Remove margin/padding padrão do browser e força background escuro em toda a tela
+    document.documentElement.style.margin     = "0";
+    document.documentElement.style.padding    = "0";
+    document.documentElement.style.background = BT.bg;
+    document.body.style.margin                = "0";
+    document.body.style.padding               = "0";
+    document.body.style.background            = BT.bg;
+
     const l = document.createElement("link");
     l.rel  = "stylesheet";
     l.href = "https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap";
