@@ -132,9 +132,13 @@ async function getSlots(params: URLSearchParams) {
     }
   }
 
-  // 5. Gera grade de slots e remove os que colidem com ocupados
+  // 5. Gera grade de slots e remove os que colidem com ocupados.
+  // Passo fixo de 30 min: permite encaixar agendamentos logo após o término
+  // de um anterior (ex: 09:30 disponível depois de um 09:00-09:30), sem
+  // depender da duração do serviço atual como incremento.
+  const SLOT_STEP = 30;
   const slots: string[] = [];
-  for (let m = startMin; m + duration <= endMin; m += duration) {
+  for (let m = startMin; m + duration <= endMin; m += SLOT_STEP) {
     let free = true;
     for (let i = m; i < m + duration; i++) {
       if (occupied.has(minutesToTime(i))) { free = false; break; }
