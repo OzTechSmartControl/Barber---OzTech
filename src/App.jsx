@@ -1929,24 +1929,17 @@ function BarbersView({ barbers, setBarbers, attendances, token, barbershopId, on
         const newBarber = toBarber(rows[0]);
         setBarbers(bs=>[...bs, newBarber]);
 
-        // Vincular perfil via UPSERT — funciona mesmo se o trigger ainda não criou o perfil
+        // Vincular perfil via RPC SECURITY DEFINER — bypassa RLS, funciona sempre
         if (userId) {
-          // Aguarda o trigger criar o perfil
-          await new Promise(r => setTimeout(r, 800));
-          // Tenta PATCH primeiro (perfil já existe via trigger)
-          const patchRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${userId}`, {
-            method: "PATCH",
+          await fetch(`${SUPABASE_URL}/rest/v1/rpc/link_barber_profile`, {
+            method: "POST",
             headers: hdr(token),
-            body: JSON.stringify({ barber_id: newBarber.id, role: "barber", barbershop_id: barbershopId }),
+            body: JSON.stringify({
+              p_user_id:        userId,
+              p_barbershop_id:  barbershopId,
+              p_barber_id:      newBarber.id,
+            }),
           });
-          // Se PATCH falhar ou não atualizar nada, faz UPSERT
-          if (!patchRes.ok) {
-            await fetch(`${SUPABASE_URL}/rest/v1/profiles`, {
-              method: "POST",
-              headers: { ...hdr(token), Prefer: "resolution=merge-duplicates,return=representation" },
-              body: JSON.stringify({ id: userId, barber_id: newBarber.id, role: "barber", barbershop_id: barbershopId }),
-            });
-          }
         }
       }
       setShowModal(false);
