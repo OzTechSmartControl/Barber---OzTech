@@ -134,7 +134,7 @@ const accessDeniedMessage = (reason) => {
 
 
 // ── TRANSFORMS ────────────────────────────────────────────────
-const toAtt  = a => ({ id: a.id, clientId: a.client_id, barberId: a.barber_id, serviceId: a.service_id, price: +a.price, servicesPrice: +(a.services_price ?? a.price), payment: a.payment, date: a.date, time: a.time || "", notes: a.notes || "", extraServices: Array.isArray(a.extra_services) ? a.extra_services : [], productsSold: Array.isArray(a.products_sold) ? a.products_sold : [] });
+const toAtt  = a => ({ id: a.id, clientId: a.client_id, barberId: a.barber_id, serviceId: a.service_id, price: +a.price, servicesPrice: +(a.services_price ?? a.price), payment: a.payment, date: a.date, time: a.time || "", notes: a.notes || "", extraServices: Array.isArray(a.extra_services) ? a.extra_services : [], productsSold: Array.isArray(a.products_sold) ? a.products_sold : [], appointmentId: a.appointment_id || null, source: a.source || "manual" });
 const fromAtt = a => ({ client_id: +a.clientId||0, barber_id: +a.barberId||0, service_id: +a.serviceId||0, price: +a.price, payment: a.payment, date: a.date, time: a.time, notes: a.notes, extra_services: a.extraServices||[] });
 const toClient = c => ({ id: c.id, name: c.name, phone: c.phone || "", whatsapp: c.whatsapp || "", birthdate: c.birthdate || "", notes: c.notes || "", points: +c.points });
 const toBarber = b => ({ id: b.id, name: b.name, phone: b.phone || "", commission: +b.commission, status: b.status, userId: b.user_id });
@@ -1231,6 +1231,9 @@ function AttendancesView({ attendances, setAttendances, clients, services, barbe
   const [addSvcId,     setAddSvcId]     = useState("");
   const [addProdId,    setAddProdId]    = useState("");
   const [form,         setForm]         = useState(emptyForm);
+  const [finalModal,   setFinalModal]   = useState(null); // id do atendimento a finalizar
+  const [finPay,       setFinPay]       = useState("PIX");
+  const [finSaving,    setFinSaving]    = useState(false);
 
   const totalServices = form.selectedServices.reduce((s, sv) => s + sv.price, 0);
   const totalProducts = form.selectedProducts.reduce((s, sp) => s + sp.price * sp.quantity, 0);
@@ -1362,7 +1365,24 @@ function AttendancesView({ attendances, setAttendances, clients, services, barbe
     setAttendances(prev => prev.filter(a => a.id !== id));
   };
 
-  const payColor = { "PIX": T.info, "Dinheiro": T.success, "Cartão Débito": T.accent, "Cartão Crédito": T.accent };
+  // Finaliza atendimento Pendente: define pagamento e marca agendamento como concluído
+  const finalize = async (id) => {
+    setFinSaving(true);
+    try {
+      await api.update("attendances", id, { payment: finPay }, token);
+      setAttendances(prev => prev.map(a => a.id === id ? { ...a, payment: finPay } : a));
+      // Se veio de agendamento, marca o agendamento como concluído
+      const att = attendances.find(a => a.id === id);
+      if (att?.appointmentId) {
+        await api.update("appointments", att.appointmentId, { status: "completed", updated_at: new Date().toISOString() }, token);
+      }
+      setFinalModal(null);
+      setFinPay("PIX");
+    } catch(e) { console.error(e); }
+    setFinSaving(false);
+  };
+
+  const payColor = { "PIX": T.info, "Dinheiro": T.success, "Cartão Débito": T.accent, "Cartão Crédito": T.accent, "Pendente": "#f59e0b" };
   const stCell   = { padding: "9px 0.75rem" };
 
   return (
@@ -1408,7 +1428,12 @@ function AttendancesView({ attendances, setAttendances, clients, services, barbe
               return (
                 <tr key={a.id} style={{ borderTop: `1px solid ${T.borderLight}` }}>
                   <td style={{ ...stCell, color: T.muted, fontVariantNumeric: "tabular-nums" }}>{a.time}</td>
-                  <td style={{ ...stCell, color: T.text, fontWeight: 500 }}>{cl?.name || "—"}</td>
+                  <td style={{ ...stCell, color: T.text, fontWeight: 500 }}>
+                    {cl?.name || "—"}
+                    {a.source === "appointment" && (
+                      <span style={{ marginLeft:6, background:`${T.accent}22`, color:T.accent, borderRadius:4, padding:"1px 5px", fontSize:10, fontWeight:700, whiteSpace:"nowrap" }}>📅 Agendado</span>
+                    )}
+                  </td>
                   <td style={{ ...stCell, color: T.muted }}>{br?.name || "—"}</td>
 
                   {/* Serviços */}
@@ -1435,13 +1460,23 @@ function AttendancesView({ attendances, setAttendances, clients, services, barbe
                     )}
                   </td>
 
-                  <td style={{ ...stCell, color: T.success, fontWeight: 700 }}>{R$(a.price)}</td>
+                  <td style={{ ...stCell, color: a.payment === "Pendente" ? T.muted : T.success, fontWeight: 700 }}>
+                    {R$(a.price)}
+                    {a.payment === "Pendente" && <div style={{ fontSize:10, color:T.muted, fontWeight:400 }}>Aguardando</div>}
+                  </td>
                   <td style={stCell}>
                     <span style={{ background: (payColor[a.payment] || T.accent) + "18", color: payColor[a.payment] || T.accent, borderRadius: 5, padding: "2px 8px", fontSize: 11, fontWeight: 700 }}>{a.payment}</span>
                   </td>
                   <td style={{ ...stCell, color: T.muted, fontSize: 12 }}>{fDate(a.date)}</td>
                   <td style={{ ...stCell, textAlign: "right" }}>
-                    <button onClick={() => del(a.id)} style={{ background: "none", border: "none", color: T.muted, cursor: "pointer", display: "inline-flex" }}><Trash2 size={14}/></button>
+                    <div style={{ display:"flex", gap:6, justifyContent:"flex-end", alignItems:"center" }}>
+                      {a.payment === "Pendente" && (
+                        <Btn sm onClick={() => { setFinalModal(a.id); setFinPay("PIX"); }}>
+                          <Check size={12}/> Finalizar
+                        </Btn>
+                      )}
+                      <button onClick={() => del(a.id)} style={{ background: "none", border: "none", color: T.muted, cursor: "pointer", display: "inline-flex" }}><Trash2 size={14}/></button>
+                    </div>
                   </td>
                 </tr>
               );
@@ -1449,6 +1484,24 @@ function AttendancesView({ attendances, setAttendances, clients, services, barbe
           </tbody>
         </table>
       </Card>
+
+      {finalModal && (
+        <Modal title="Finalizar Atendimento" onClose={() => setFinalModal(null)}>
+          <p style={{ color:T.muted, fontSize:14, marginBottom:"1rem" }}>
+            Selecione a forma de pagamento para contabilizar este atendimento no financeiro.
+          </p>
+          <FSelect label="Forma de pagamento" value={finPay} onChange={e => setFinPay(e.target.value)}>
+            {PAYMENT_OPTS.map(p => <option key={p}>{p}</option>)}
+          </FSelect>
+          <Row g="0.5rem" style={{ justifyContent:"flex-end", marginTop:"1rem" }}>
+            <Btn variant="ghost" onClick={() => setFinalModal(null)}>Cancelar</Btn>
+            <Btn onClick={() => finalize(finalModal)} disabled={finSaving}>
+              {finSaving ? <RefreshCw size={13} style={{animation:"spin 1s linear infinite"}}/> : <Check size={13}/>}
+              Confirmar
+            </Btn>
+          </Row>
+        </Modal>
+      )}
 
       {showModal && (
         <Modal title="Novo Atendimento" onClose={() => setShowModal(false)}>
@@ -3411,6 +3464,38 @@ function AppointmentsView({ barbers, services, token, isAdmin, myBarberId, barbe
     try {
       await api.update("appointments", id, { status: newStatus, updated_at: new Date().toISOString() }, token);
       setAppts(prev => prev.map(a => a.id === id ? { ...a, status: newStatus } : a));
+
+      // Ao confirmar: cria atendimento rascunho (Pendente) automaticamente
+      if (newStatus === "confirmed") {
+        const appt = appts.find(a => a.id === id);
+        if (appt) {
+          const serviceIds = Array.isArray(appt.service_ids) && appt.service_ids.length > 0
+            ? appt.service_ids : appt.service_id ? [appt.service_id] : [];
+          const apptSvcs = serviceIds.map(sid => services.find(s => s.id == sid)).filter(Boolean);
+          if (apptSvcs.length > 0) {
+            const [primary, ...extras] = apptSvcs;
+            const totalPrice = apptSvcs.reduce((sum, s) => sum + Number(s.price), 0);
+            try {
+              await api.insert("attendances", {
+                barbershop_id:  barbershopId,
+                barber_id:      appt.barber_id,
+                client_id:      appt.client_id || null,
+                service_id:     primary.id,
+                price:          totalPrice,
+                services_price: totalPrice,
+                payment:        "Pendente",
+                date:           appt.scheduled_date,
+                time:           (appt.scheduled_time || "").slice(0, 5),
+                notes:          appt.notes || null,
+                extra_services: extras.map(s => ({ serviceId: s.id, name: s.name, price: s.price })),
+                appointment_id: appt.id,
+                source:         "appointment",
+              }, token);
+            } catch (_) { /* unique constraint: atendimento já criado */ }
+            onRefresh(); // atualiza lista de atendimentos no pai
+          }
+        }
+      }
     } catch(e) { console.error(e); }
     setSaving(false);
     setConfirmModal(null);
@@ -4577,6 +4662,9 @@ export default function App() {
 
   const lowStockCount = products.filter(p => p.active && p.stockCurrent <= p.stockMinimum).length;
 
+  // Exclui atendimentos "Pendente" dos cálculos financeiros (ainda não recebidos)
+  const finalizedAtts = attendances.filter(a => a.payment !== "Pendente");
+
   const views = isSuperAdmin
     ? {
         superadmin_dashboard:     <SuperAdminView token={tok} section="dashboard"     themeMode={themeMode} />,
@@ -4588,15 +4676,15 @@ export default function App() {
         superadmin_analytics:     <SuperAdminView token={tok} section="analytics"     themeMode={themeMode} />,
       }
     : {
-        dashboard:   <Dashboard   attendances={attendances} clients={clients} services={services} barbers={barbers} products={products} isAdmin={isAdmin} myBarberId={myBarberId} onGoReports={isAdmin?()=>setView('reports'):undefined} isMobile={isMobile} onRefresh={() => loadData(tok, auth.profile)}/>,
+        dashboard:   <Dashboard   attendances={finalizedAtts} clients={clients} services={services} barbers={barbers} products={products} isAdmin={isAdmin} myBarberId={myBarberId} onGoReports={isAdmin?()=>setView('reports'):undefined} isMobile={isMobile} onRefresh={() => loadData(tok, auth.profile)}/>,
         attendances: <AttendancesView attendances={attendances} setAttendances={setAttendances} clients={clients} services={services} barbers={barbers} token={tok} isAdmin={isAdmin} myBarberId={myBarberId} barbershopId={barbershopId} products={products} setProducts={setProducts} setProductSales={setProductSales} onRefresh={() => loadData(tok, auth.profile)}/>,
-        clients:      <ClientsView clients={clients} setClients={setClients} attendances={attendances} services={services} token={tok} isAdmin={isAdmin} barbershopId={barbershopId} onRefresh={() => loadData(tok, auth.profile)}/>,
+        clients:      <ClientsView clients={clients} setClients={setClients} attendances={finalizedAtts} services={services} token={tok} isAdmin={isAdmin} barbershopId={barbershopId} onRefresh={() => loadData(tok, auth.profile)}/>,
         appointments: <AppointmentsView barbers={barbers} services={services} token={tok} isAdmin={isAdmin} myBarberId={myBarberId} barbershopId={barbershopId} isMobile={isMobile} onRefresh={() => loadData(tok, auth.profile)} shop={shop}/>,
-        barbers:      <BarbersView  barbers={barbers} setBarbers={setBarbers} attendances={attendances} token={tok} barbershopId={barbershopId} onRefresh={() => loadData(tok, auth.profile)} isMobile={isMobile}/>,
+        barbers:      <BarbersView  barbers={barbers} setBarbers={setBarbers} attendances={finalizedAtts} token={tok} barbershopId={barbershopId} onRefresh={() => loadData(tok, auth.profile)} isMobile={isMobile}/>,
         services:    <ServicesView services={services} setServices={setServices} token={tok} barbershopId={barbershopId} onRefresh={() => loadData(tok, auth.profile)}/>,
         produtos:    <ProductsView products={products} setProducts={setProducts} productSales={productSales} setProductSales={setProductSales} barbers={barbers} token={tok} barbershopId={barbershopId} isMobile={isMobile} onRefresh={() => loadData(tok, auth.profile)}/>,
-        financial:   <FinancialView attendances={attendances} expenses={expenses} setExpenses={setExpenses} token={tok} barbershopId={barbershopId} barbers={barbers} isMobile={isMobile} productSales={productSales} onRefresh={() => loadData(tok, auth.profile)}/>,
-        reports:     <ReportsView attendances={attendances} clients={clients} services={services} barbers={barbers} expenses={expenses} shop={shop} isMobile={isMobile} onRefresh={() => loadData(tok, auth.profile)}/>,
+        financial:   <FinancialView attendances={finalizedAtts} expenses={expenses} setExpenses={setExpenses} token={tok} barbershopId={barbershopId} barbers={barbers} isMobile={isMobile} productSales={productSales} onRefresh={() => loadData(tok, auth.profile)}/>,
+        reports:     <ReportsView attendances={finalizedAtts} clients={clients} services={services} barbers={barbers} expenses={expenses} shop={shop} isMobile={isMobile} onRefresh={() => loadData(tok, auth.profile)}/>,
         settings:    <SettingsView token={tok} shop={shop} onShopUpdated={(updatedShop) => { setShop(updatedShop); applyTenantTheme(updatedShop, themeMode); }} themeMode={themeMode} onToggleTheme={toggleTheme}/>,
         meuPlano:    <MeuPlanoView token={tok} userEmail={auth.user?.email} profile={auth.profile} onRenew={() => setShowPlans(true)} />,
       };
