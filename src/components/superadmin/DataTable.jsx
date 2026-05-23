@@ -73,7 +73,7 @@ export default function DataTable({
                     }}
                   >
                     {column.render
-                      ? column.render(row)
+                      ? column.render(row[column.key], row)
                       : row[column.key] ?? "—"}
                   </td>
                 ))}
