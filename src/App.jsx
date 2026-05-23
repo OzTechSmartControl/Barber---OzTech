@@ -534,6 +534,12 @@ const LoginView = ({ onLogin, onShowPlans }) => {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
 
+  // ── Forgot password ──
+  const [showForgot, setShowForgot]     = useState(false);
+  const [forgotEmail, setForgotEmail]   = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotMsg, setForgotMsg]       = useState(null); // { type:"success"|"error", text }
+
   const submit = async () => {
     if (!email || !pass) return setErr("Preencha e-mail e senha.");
 
@@ -578,6 +584,36 @@ const LoginView = ({ onLogin, onShowPlans }) => {
   };
 
   const onKey = e => e.key === "Enter" && submit();
+
+  const sendReset = async () => {
+    const e = forgotEmail.trim().toLowerCase();
+    if (!e) { setForgotMsg({ type: "error", text: "Digite seu e-mail." }); return; }
+    setForgotLoading(true);
+    setForgotMsg(null);
+    try {
+      const res = await fetch(`${SUPABASE_URL}/auth/v1/recover`, {
+        method: "POST",
+        headers: {
+          apikey: SUPABASE_ANON,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: e,
+          redirectTo: `${window.location.origin}/`,
+        }),
+      });
+      // Supabase retorna 200 mesmo quando o e-mail não existe (por segurança)
+      if (res.ok) {
+        setForgotMsg({ type: "success", text: "E-mail enviado! Verifique sua caixa de entrada e a pasta de spam." });
+      } else {
+        const json = await res.json().catch(() => ({}));
+        setForgotMsg({ type: "error", text: json.msg || json.error_description || "Não foi possível enviar o e-mail. Tente novamente." });
+      }
+    } catch {
+      setForgotMsg({ type: "error", text: "Erro de conexão. Tente novamente." });
+    }
+    setForgotLoading(false);
+  };
 
   const loginInputWrap = {
     position: "relative",
@@ -789,7 +825,11 @@ const LoginView = ({ onLogin, onShowPlans }) => {
           <div style={{ textAlign: "right", margin: ".15rem 0 1.05rem" }}>
             <button
               type="button"
-              onClick={() => alert("Em breve: recuperação de senha pelo e-mail.")}
+              onClick={() => {
+                setShowForgot(v => !v);
+                setForgotMsg(null);
+                if (!showForgot) setForgotEmail(email);
+              }}
               style={{
                 background: "transparent",
                 border: "none",
@@ -801,9 +841,87 @@ const LoginView = ({ onLogin, onShowPlans }) => {
                 padding: 0,
               }}
             >
-              Esqueceu sua senha?
+              {showForgot ? "← Voltar ao login" : "Esqueceu sua senha?"}
             </button>
           </div>
+
+          {showForgot && (
+            <div
+              style={{
+                background: "rgba(77,184,255,.07)",
+                border: `1px solid ${T.accent}44`,
+                borderRadius: 12,
+                padding: "1rem 1.1rem",
+                marginBottom: "1rem",
+              }}
+            >
+              <div style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: ".5rem" }}>
+                Recuperar senha
+              </div>
+              <div style={{ fontSize: 12, color: T.mutedLight, marginBottom: ".85rem", lineHeight: 1.55 }}>
+                Informe o e-mail cadastrado. Você receberá um link para criar uma nova senha.
+              </div>
+
+              {forgotMsg && (
+                <div
+                  style={{
+                    background: forgotMsg.type === "success" ? "rgba(16,185,129,.15)" : "rgba(239,68,68,.13)",
+                    color: forgotMsg.type === "success" ? T.success : T.danger,
+                    border: `1px solid ${forgotMsg.type === "success" ? T.success : T.danger}44`,
+                    borderRadius: 8,
+                    padding: ".6rem .8rem",
+                    marginBottom: ".75rem",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    lineHeight: 1.5,
+                  }}
+                >
+                  {forgotMsg.text}
+                </div>
+              )}
+
+              <div style={loginInputWrap}>
+                <Mail size={18} style={iconSt} />
+                <input
+                  type="email"
+                  value={forgotEmail}
+                  onChange={e => setForgotEmail(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && sendReset()}
+                  placeholder="Seu e-mail de cadastro"
+                  autoComplete="email"
+                  style={loginInput}
+                />
+              </div>
+
+              <button
+                onClick={sendReset}
+                disabled={forgotLoading || forgotMsg?.type === "success"}
+                style={{
+                  marginTop: ".65rem",
+                  width: "100%",
+                  minHeight: 38,
+                  background: forgotMsg?.type === "success"
+                    ? "rgba(16,185,129,.15)"
+                    : "rgba(77,184,255,.15)",
+                  color: forgotMsg?.type === "success" ? T.success : T.accent,
+                  border: `1px solid ${forgotMsg?.type === "success" ? T.success : T.accent}55`,
+                  borderRadius: 8,
+                  fontSize: 13,
+                  fontWeight: 800,
+                  cursor: (forgotLoading || forgotMsg?.type === "success") ? "default" : "pointer",
+                  fontFamily: "'DM Sans', sans-serif",
+                  opacity: forgotLoading ? .75 : 1,
+                  transition: "all .2s",
+                }}
+              >
+                {forgotLoading
+                  ? "Enviando…"
+                  : forgotMsg?.type === "success"
+                  ? "✓ E-mail enviado"
+                  : "Enviar link de recuperação"}
+              </button>
+            </div>
+          )}
 
           <button
             onClick={submit}
