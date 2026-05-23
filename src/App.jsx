@@ -5,6 +5,7 @@ import PlansView   from "./PlansView";
 import SuperAdminView from "./SuperAdminView";
 import ResetPassword from "./ResetPassword";
 import LandingPage from "./LandingPage";
+import BookingPage from "./BookingPage";
 import ozBarberLogo from "./assets/ozbarber-logo.png.png";
 import sharedT from "./config/theme"; // T compartilhado com SuperAdminView
 import {
@@ -1714,11 +1715,12 @@ function ClientsView({ clients, setClients, attendances, services, token, isAdmi
 
 // ── BARBERS ───────────────────────────────────────────────────
 function BarbersView({ barbers, setBarbers, attendances, token, barbershopId, onRefresh, isMobile }) {
-  const [showModal, setShowModal] = useState(false);
-  const [editing, setEditing]   = useState(null);
-  const [saving, setSaving]     = useState(false);
-  const [err, setErr]           = useState("");
-  const [form, setForm]         = useState({ name:"", phone:"", commission:40, status:"active", email:"", password:"" });
+  const [showModal,  setShowModal]  = useState(false);
+  const [editing,    setEditing]    = useState(null);
+  const [saving,     setSaving]     = useState(false);
+  const [err,        setErr]        = useState("");
+  const [form,       setForm]       = useState({ name:"", phone:"", commission:40, status:"active", email:"", password:"" });
+  const [availBarber,setAvailBarber]= useState(null);
   const setF = k => e => setForm(f=>({...f,[k]:e.target.value}));
 
   const save = async () => {
@@ -1796,6 +1798,7 @@ function BarbersView({ barbers, setBarbers, attendances, token, barbershopId, on
                 <div style={{ width:52, height:52, borderRadius:"50%", background:T.accentGlow, border:`1px solid ${T.accent}44`, display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Bebas Neue', sans-serif", fontSize:24, color:T.accent }}>{b.name.charAt(0)}</div>
                 <div style={{ display:"flex", gap:6, alignItems:"center" }}>
                   <Badge color={b.status==="active"?T.success:T.muted}>{b.status==="active"?"Ativo":"Inativo"}</Badge>
+                  <button onClick={()=>setAvailBarber(b)} title="Configurar disponibilidade" style={{ background:"none", border:"none", color:T.muted, cursor:"pointer", display:"inline-flex" }}><Clock size={14}/></button>
                   <button onClick={()=>{setEditing(b.id);setForm({...b});setShowModal(true);}} style={{ background:"none", border:"none", color:T.muted, cursor:"pointer", display:"inline-flex" }}><Edit2 size={14}/></button>
                 </div>
               </div>
@@ -1840,6 +1843,15 @@ function BarbersView({ barbers, setBarbers, attendances, token, barbershopId, on
             <Btn onClick={save} disabled={saving}>{saving?<RefreshCw size={13} style={{animation:"spin 1s linear infinite"}}/>:<Check size={13}/>} {editing?"Atualizar":"Cadastrar"}</Btn>
           </Row>
         </Modal>
+      )}
+      {availBarber && (
+        <AvailabilityModal
+          barberId={availBarber.id}
+          barberName={availBarber.name}
+          barbershopId={barbershopId}
+          token={token}
+          onClose={() => setAvailBarber(null)}
+        />
       )}
     </div>
   );
@@ -3364,6 +3376,300 @@ function ProductsView({ products, setProducts, productSales, setProductSales, ba
   );
 }
 
+// ── AGENDAMENTOS ─────────────────────────────────────────────
+function AppointmentsView({ barbers, services, token, isAdmin, myBarberId, barbershopId, isMobile, onRefresh, shop }) {
+  const [appts,       setAppts]       = useState([]);
+  const [loading,     setLoading]     = useState(true);
+  const [filterDate,  setFilterDate]  = useState(today());
+  const [filterStatus,setFilterStatus]= useState("all");
+  const [filterBarber,setFilterBarber]= useState("all");
+  const [saving,      setSaving]      = useState(false);
+  const [confirmModal,setConfirmModal]= useState(null); // {id, action, label}
+
+  const loadAppts = useCallback(async () => {
+    setLoading(true);
+    try {
+      const parts = [
+        `barbershop_id=eq.${barbershopId}`,
+        "order=scheduled_date.asc,scheduled_time.asc",
+        "select=*",
+      ];
+      if (filterDate)                 parts.push(`scheduled_date=eq.${filterDate}`);
+      if (!isAdmin)                   parts.push(`barber_id=eq.${myBarberId}`);
+      else if (filterBarber !== "all") parts.push(`barber_id=eq.${filterBarber}`);
+      if (filterStatus !== "all")     parts.push(`status=eq.${filterStatus}`);
+      const rows = await api.list("appointments", parts.join("&"), token);
+      setAppts(Array.isArray(rows) ? rows : []);
+    } catch(e) { console.error(e); }
+    setLoading(false);
+  }, [filterDate, filterStatus, filterBarber, token, barbershopId, isAdmin, myBarberId]);
+
+  useEffect(() => { loadAppts(); }, [loadAppts]);
+
+  const updateStatus = async (id, newStatus) => {
+    setSaving(true);
+    try {
+      await api.update("appointments", id, { status: newStatus, updated_at: new Date().toISOString() }, token);
+      setAppts(prev => prev.map(a => a.id === id ? { ...a, status: newStatus } : a));
+    } catch(e) { console.error(e); }
+    setSaving(false);
+    setConfirmModal(null);
+  };
+
+  const STATUS_CFG = {
+    pending:   { label:"Pendente",   bg:"#f59e0b1a", color:"#f59e0b" },
+    confirmed: { label:"Confirmado", bg:`${T.success}1a`, color:T.success },
+    completed: { label:"Concluído",  bg:`${T.accent}1a`,  color:T.accent },
+    cancelled: { label:"Cancelado",  bg:`${T.danger}1a`,  color:T.danger },
+  };
+
+  const getBarberName  = id => barbers.find(b => b.id === id)?.name || "—";
+  const getServiceName = id => services.find(s => s.id === id)?.name || "—";
+
+  const copyLink = () => {
+    if (!shop?.slug) return;
+    const link = `${window.location.origin}/agendar/${shop.slug}`;
+    navigator.clipboard.writeText(link)
+      .then(() => alert(`Link copiado!\n${link}`))
+      .catch(() => alert(`Link: ${link}`));
+  };
+
+  return (
+    <div>
+      <PageHeader
+        title="Agendamentos"
+        sub={`${appts.length} agendamento${appts.length !== 1 ? "s" : ""}`}
+        onRefresh={loadAppts}
+        right={isAdmin && shop?.slug ? (
+          <Btn variant="ghost" onClick={copyLink}><Calendar size={14}/> Copiar Link</Btn>
+        ) : null}
+      />
+
+      {/* Filters */}
+      <div style={{ display:"flex", flexWrap:"wrap", gap:"0.75rem", marginBottom:"1.25rem" }}>
+        <input
+          type="date"
+          value={filterDate}
+          onChange={e => setFilterDate(e.target.value)}
+          style={{ ...inputSt, width:"auto", minWidth:150 }}
+        />
+        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={{ ...inputSt, width:"auto" }}>
+          <option value="all">Todos os status</option>
+          <option value="pending">Pendente</option>
+          <option value="confirmed">Confirmado</option>
+          <option value="completed">Concluído</option>
+          <option value="cancelled">Cancelado</option>
+        </select>
+        {isAdmin && (
+          <select value={filterBarber} onChange={e => setFilterBarber(e.target.value)} style={{ ...inputSt, width:"auto" }}>
+            <option value="all">Todos os barbeiros</option>
+            {barbers.filter(b => b.status === "active").map(b => (
+              <option key={b.id} value={b.id}>{b.name}</option>
+            ))}
+          </select>
+        )}
+      </div>
+
+      {/* List */}
+      {loading ? (
+        <div style={{ color:T.muted, textAlign:"center", padding:"3rem" }}>Carregando...</div>
+      ) : appts.length === 0 ? (
+        <Card style={{ textAlign:"center", padding:"3rem" }}>
+          <Calendar size={38} style={{ color:T.muted, marginBottom:12, opacity:0.35 }}/>
+          <div style={{ fontSize:15, color:T.muted, marginBottom: isAdmin && shop?.slug ? "1.25rem" : 0 }}>
+            Nenhum agendamento{filterDate ? ` para ${fDate(filterDate)}` : ""}
+          </div>
+          {isAdmin && shop?.slug && (
+            <Btn variant="ghost" onClick={copyLink}><Calendar size={13}/> Copiar link de agendamento</Btn>
+          )}
+        </Card>
+      ) : (
+        <div style={{ display:"flex", flexDirection:"column", gap:"0.75rem" }}>
+          {appts.map(a => {
+            const st = STATUS_CFG[a.status] || STATUS_CFG.pending;
+            return (
+              <Card key={a.id} style={{ padding:"1rem 1.25rem" }}>
+                <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", flexWrap:"wrap", gap:"0.5rem" }}>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4, flexWrap:"wrap" }}>
+                      <span style={{ fontWeight:700, fontSize:15 }}>{a.client_name || "—"}</span>
+                      <span style={{ background:st.bg, color:st.color, borderRadius:6, fontSize:11, fontWeight:700, padding:"2px 8px", flexShrink:0 }}>{st.label}</span>
+                      {a.booked_via === "public" && (
+                        <span style={{ background:T.accentGlow, color:T.accent, borderRadius:6, fontSize:10, fontWeight:600, padding:"2px 6px", flexShrink:0 }}>Online</span>
+                      )}
+                    </div>
+                    <div style={{ fontSize:13, color:T.muted, marginBottom:4 }}>
+                      {a.client_phone && <span>{a.client_phone} · </span>}
+                      <span>{getServiceName(a.service_id)}</span>
+                      {isAdmin && <span> · {getBarberName(a.barber_id)}</span>}
+                    </div>
+                    <div style={{ fontSize:13, fontWeight:600 }}>
+                      {fDate(a.scheduled_date)} às {(a.scheduled_time||"").slice(0,5)}
+                      <span style={{ color:T.muted, fontWeight:400 }}> · {a.duration_minutes} min</span>
+                    </div>
+                    {a.notes && <div style={{ fontSize:12, color:T.muted, marginTop:4, fontStyle:"italic" }}>"{a.notes}"</div>}
+                  </div>
+                  <div style={{ display:"flex", gap:6, flexShrink:0, flexWrap:"wrap" }}>
+                    {a.status === "pending" && (
+                      <Btn sm onClick={() => setConfirmModal({ id:a.id, action:"confirmed", label:"Confirmar agendamento" })}>
+                        <Check size={12}/> Confirmar
+                      </Btn>
+                    )}
+                    {(a.status === "pending" || a.status === "confirmed") && (
+                      <Btn sm variant="ghost" onClick={() => setConfirmModal({ id:a.id, action:"completed", label:"Marcar como Concluído" })}>
+                        Concluído
+                      </Btn>
+                    )}
+                    {(a.status === "pending" || a.status === "confirmed") && (
+                      <Btn sm variant="danger" onClick={() => setConfirmModal({ id:a.id, action:"cancelled", label:"Cancelar agendamento" })}>
+                        Cancelar
+                      </Btn>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {confirmModal && (
+        <Modal title={confirmModal.label} onClose={() => setConfirmModal(null)}>
+          <p style={{ color:T.muted, fontSize:14, marginBottom:"1.25rem" }}>
+            Deseja confirmar esta ação? Ela será registrada imediatamente.
+          </p>
+          <Row g="0.5rem" style={{ justifyContent:"flex-end" }}>
+            <Btn variant="ghost" onClick={() => setConfirmModal(null)}>Voltar</Btn>
+            <Btn
+              variant={confirmModal.action === "cancelled" ? "danger" : "primary"}
+              onClick={() => updateStatus(confirmModal.id, confirmModal.action)}
+              disabled={saving}
+            >
+              {saving ? <RefreshCw size={13} style={{ animation:"spin 1s linear infinite" }}/> : <Check size={13}/>}
+              Confirmar
+            </Btn>
+          </Row>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+// ── AVAILABILITY MODAL ────────────────────────────────────────
+function AvailabilityModal({ barberId, barberName, barbershopId, token, onClose }) {
+  const DAYS = ["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
+
+  const [rows,    setRows]    = useState(
+    DAYS.map((_, i) => ({ day_of_week:i, start_time:"09:00", end_time:"18:00", is_active: i >= 1 && i <= 6, id:null }))
+  );
+  const [loading, setLoading] = useState(true);
+  const [saving,  setSaving]  = useState(false);
+  const [saved,   setSaved]   = useState(false);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await api.list("barber_availability", `barber_id=eq.${barberId}&order=day_of_week.asc`, token);
+        const dbRows = Array.isArray(res) ? res : [];
+        setRows(prev => prev.map(r => {
+          const found = dbRows.find(d => d.day_of_week === r.day_of_week);
+          if (found) return {
+            ...r, ...found,
+            start_time: (found.start_time || "09:00").slice(0, 5),
+            end_time:   (found.end_time   || "18:00").slice(0, 5),
+          };
+          return r;
+        }));
+      } catch(e) { console.error(e); }
+      setLoading(false);
+    };
+    load();
+  }, [barberId, token]);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      for (const row of rows) {
+        const body = {
+          start_time:  row.start_time,
+          end_time:    row.end_time,
+          is_active:   row.is_active,
+          updated_at:  new Date().toISOString(),
+        };
+        if (row.id) {
+          await fetch(`${SUPABASE_URL}/rest/v1/barber_availability?id=eq.${row.id}`, {
+            method: "PATCH",
+            headers: hdr(token, { Prefer: "return=minimal" }),
+            body: JSON.stringify(body),
+          });
+        } else if (row.is_active) {
+          await api.insert("barber_availability", {
+            barber_id:    barberId,
+            barbershop_id: barbershopId,
+            day_of_week:  row.day_of_week,
+            start_time:   row.start_time,
+            end_time:     row.end_time,
+            is_active:    true,
+          }, token);
+        }
+      }
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch(e) { console.error(e); }
+    setSaving(false);
+  };
+
+  return (
+    <Modal title={`Disponibilidade — ${barberName}`} onClose={onClose}>
+      {loading ? (
+        <div style={{ color:T.muted, textAlign:"center", padding:"1.5rem" }}>Carregando...</div>
+      ) : (
+        <>
+          <div style={{ fontSize:12, color:T.muted, marginBottom:"1.25rem", background:T.accentGlow, border:`1px solid ${T.accent}33`, borderRadius:8, padding:"0.6rem 0.75rem" }}>
+            💡 Configure os dias e horários de trabalho. Apenas os dias ativos ficam disponíveis para agendamento online.
+          </div>
+          {rows.map((row, i) => (
+            <div key={i} style={{ display:"flex", alignItems:"center", gap:"0.75rem", marginBottom:"0.65rem", flexWrap:"wrap" }}>
+              {/* Toggle */}
+              <div
+                onClick={() => setRows(prev => prev.map((r, j) => j === i ? { ...r, is_active: !r.is_active } : r))}
+                style={{ width:38, height:22, borderRadius:99, cursor:"pointer", background: row.is_active ? T.success : T.border, position:"relative", transition:"background .2s", flexShrink:0 }}
+              >
+                <div style={{ position:"absolute", top:3, left: row.is_active ? 19 : 3, width:16, height:16, borderRadius:99, background:"#fff", transition:"left .15s" }}/>
+              </div>
+              <span style={{ fontSize:13, fontWeight: row.is_active ? 600 : 400, color: row.is_active ? T.text : T.muted, minWidth:62 }}>{DAYS[i]}</span>
+              {row.is_active && (
+                <>
+                  <input
+                    type="time"
+                    value={row.start_time}
+                    onChange={e => setRows(prev => prev.map((r, j) => j === i ? { ...r, start_time: e.target.value } : r))}
+                    style={{ ...inputSt, width:105, padding:"0.4rem 0.6rem", fontSize:13, colorScheme:"dark" }}
+                  />
+                  <span style={{ color:T.muted, fontSize:12 }}>até</span>
+                  <input
+                    type="time"
+                    value={row.end_time}
+                    onChange={e => setRows(prev => prev.map((r, j) => j === i ? { ...r, end_time: e.target.value } : r))}
+                    style={{ ...inputSt, width:105, padding:"0.4rem 0.6rem", fontSize:13, colorScheme:"dark" }}
+                  />
+                </>
+              )}
+            </div>
+          ))}
+          <Row g="0.5rem" style={{ justifyContent:"flex-end", marginTop:"1.25rem" }}>
+            <Btn variant="ghost" onClick={onClose}>Fechar</Btn>
+            <Btn onClick={save} disabled={saving}>
+              {saving ? <RefreshCw size={13} style={{ animation:"spin 1s linear infinite" }}/> : <Check size={13}/>}
+              {saved ? "Salvo! ✓" : "Salvar"}
+            </Btn>
+          </Row>
+        </>
+      )}
+    </Modal>
+  );
+}
+
 // ── SIDEBAR ──────────────────────────────────────────────────
 function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin, userName, onLogout, shop, lowStockCount = 0, themeMode = "dark", onToggleTheme }) {
   const nav = isSuperAdmin
@@ -3377,9 +3683,10 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
         { id:"superadmin_analytics",      label:"Analytics",     Icon:TrendingUp,     desc:"Inteligência" },
       ]
     : [
-        { id:"dashboard",   label:"Dashboard",    Icon:LayoutDashboard },
-        { id:"attendances", label:"Atendimentos",  Icon:Scissors },
-        { id:"clients",     label:"Clientes",      Icon:Users },
+        { id:"dashboard",    label:"Dashboard",    Icon:LayoutDashboard },
+        { id:"attendances",  label:"Atendimentos",  Icon:Scissors },
+        { id:"clients",      label:"Clientes",      Icon:Users },
+        { id:"appointments", label:"Agendamentos",  Icon:Calendar },
         ...(isAdmin ? [
           { id:"barbers",   label:"Barbeiros",     Icon:Award },
           { id:"services",  label:"Serviços",      Icon:Tag },
@@ -3934,6 +4241,13 @@ export default function App() {
     return <ResetPassword />;
   }
 
+  // Rota pública de agendamento: /agendar/<slug>
+  const isBookingRoute = window.location.pathname.startsWith("/agendar/");
+  if (isBookingRoute) {
+    const slug = window.location.pathname.replace("/agendar/", "").split("/")[0] || "";
+    return <BookingPage slug={slug} />;
+  }
+
   const [clients,      setClients]      = useState([]);
   const [services,     setServices]     = useState([]);
   const [barbers,      setBarbers]      = useState([]);
@@ -4272,8 +4586,9 @@ export default function App() {
     : {
         dashboard:   <Dashboard   attendances={attendances} clients={clients} services={services} barbers={barbers} products={products} isAdmin={isAdmin} myBarberId={myBarberId} onGoReports={isAdmin?()=>setView('reports'):undefined} isMobile={isMobile} onRefresh={() => loadData(tok, auth.profile)}/>,
         attendances: <AttendancesView attendances={attendances} setAttendances={setAttendances} clients={clients} services={services} barbers={barbers} token={tok} isAdmin={isAdmin} myBarberId={myBarberId} barbershopId={barbershopId} products={products} setProducts={setProducts} setProductSales={setProductSales} onRefresh={() => loadData(tok, auth.profile)}/>,
-        clients:     <ClientsView clients={clients} setClients={setClients} attendances={attendances} services={services} token={tok} isAdmin={isAdmin} barbershopId={barbershopId} onRefresh={() => loadData(tok, auth.profile)}/>,
-        barbers:     <BarbersView  barbers={barbers} setBarbers={setBarbers} attendances={attendances} token={tok} barbershopId={barbershopId} onRefresh={() => loadData(tok, auth.profile)} isMobile={isMobile}/>,
+        clients:      <ClientsView clients={clients} setClients={setClients} attendances={attendances} services={services} token={tok} isAdmin={isAdmin} barbershopId={barbershopId} onRefresh={() => loadData(tok, auth.profile)}/>,
+        appointments: <AppointmentsView barbers={barbers} services={services} token={tok} isAdmin={isAdmin} myBarberId={myBarberId} barbershopId={barbershopId} isMobile={isMobile} onRefresh={() => loadData(tok, auth.profile)} shop={shop}/>,
+        barbers:      <BarbersView  barbers={barbers} setBarbers={setBarbers} attendances={attendances} token={tok} barbershopId={barbershopId} onRefresh={() => loadData(tok, auth.profile)} isMobile={isMobile}/>,
         services:    <ServicesView services={services} setServices={setServices} token={tok} barbershopId={barbershopId} onRefresh={() => loadData(tok, auth.profile)}/>,
         produtos:    <ProductsView products={products} setProducts={setProducts} productSales={productSales} setProductSales={setProductSales} barbers={barbers} token={tok} barbershopId={barbershopId} isMobile={isMobile} onRefresh={() => loadData(tok, auth.profile)}/>,
         financial:   <FinancialView attendances={attendances} expenses={expenses} setExpenses={setExpenses} token={tok} barbershopId={barbershopId} barbers={barbers} isMobile={isMobile} productSales={productSales} onRefresh={() => loadData(tok, auth.profile)}/>,
