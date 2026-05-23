@@ -34,10 +34,11 @@ ALTER TABLE clients
   ADD COLUMN IF NOT EXISTS email TEXT;
 
 -- 3. Disponibilidade dos barbeiros por dia da semana
+-- Nota: barbers.id é BIGINT (BIGSERIAL), não UUID
 CREATE TABLE IF NOT EXISTS barber_availability (
   id            BIGSERIAL PRIMARY KEY,
   barbershop_id UUID      NOT NULL REFERENCES barbershops(id) ON DELETE CASCADE,
-  barber_id     UUID      NOT NULL REFERENCES barbers(id)     ON DELETE CASCADE,
+  barber_id     BIGINT    NOT NULL REFERENCES barbers(id)     ON DELETE CASCADE,
   day_of_week   SMALLINT  NOT NULL CHECK (day_of_week BETWEEN 0 AND 6),
   -- 0=Domingo 1=Segunda 2=Terça 3=Quarta 4=Quinta 5=Sexta 6=Sábado
   start_time    TIME      NOT NULL DEFAULT '09:00',
@@ -49,12 +50,13 @@ CREATE TABLE IF NOT EXISTS barber_availability (
 );
 
 -- 4. Agendamentos
+-- Nota: barbers.id, clients.id, services.id são BIGINT (BIGSERIAL)
 CREATE TABLE IF NOT EXISTS appointments (
   id               BIGSERIAL PRIMARY KEY,
   barbershop_id    UUID    NOT NULL REFERENCES barbershops(id) ON DELETE CASCADE,
-  barber_id        UUID    NOT NULL REFERENCES barbers(id),
-  client_id        UUID    REFERENCES clients(id),
-  service_id       UUID    NOT NULL REFERENCES services(id),
+  barber_id        BIGINT  NOT NULL REFERENCES barbers(id),
+  client_id        BIGINT  REFERENCES clients(id),
+  service_id       BIGINT  NOT NULL REFERENCES services(id),
   scheduled_date   DATE    NOT NULL,
   scheduled_time   TIME    NOT NULL,
   duration_minutes INT     NOT NULL DEFAULT 30,
