@@ -113,7 +113,19 @@ export default function BookingPage({ slug }) {
       `&barbershop_id=${shop.id}`
     )
       .then(r => r.json())
-      .then(d => setSlots(d.slots || []))
+      .then(d => {
+        let available = d.slots || [];
+        // Para hoje: remove horários que já passaram ou estão a menos de 30 min
+        if (selectedDate === todayISO()) {
+          const now    = new Date();
+          const nowMin = now.getHours() * 60 + now.getMinutes() + 30; // +30 min de antecedência mínima
+          available = available.filter(slot => {
+            const [h, m] = slot.split(":").map(Number);
+            return h * 60 + m >= nowMin;
+          });
+        }
+        setSlots(available);
+      })
       .catch(() => setSlots([]))
       .finally(() => setSlotsLoading(false));
   }, [selectedDate, selectedBarber, selectedServices, shop]);
