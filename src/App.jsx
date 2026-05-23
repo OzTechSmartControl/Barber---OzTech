@@ -1483,17 +1483,16 @@ function AttendancesView({ attendances, setAttendances, clients, services, barbe
     setAttendances(prev => prev.filter(a => a.id !== id));
   };
 
-  // Finaliza atendimento Pendente: define pagamento e marca agendamento como concluído
+  // Finaliza atendimento Pendente via RPC SECURITY DEFINER (bypassa RLS para admin e barbeiro)
   const finalize = async (id) => {
     setFinSaving(true);
     try {
-      await api.update("attendances", id, { payment: finPay }, token);
+      await fetch(`${SUPABASE_URL}/rest/v1/rpc/finalize_attendance`, {
+        method: "POST",
+        headers: hdr(token),
+        body: JSON.stringify({ p_attendance_id: id, p_payment: finPay }),
+      });
       setAttendances(prev => prev.map(a => a.id === id ? { ...a, payment: finPay } : a));
-      // Se veio de agendamento, marca o agendamento como concluído
-      const att = attendances.find(a => a.id === id);
-      if (att?.appointmentId) {
-        await api.update("appointments", att.appointmentId, { status: "completed", updated_at: new Date().toISOString() }, token);
-      }
       setFinalModal(null);
       setFinPay("PIX");
     } catch(e) { console.error(e); }
