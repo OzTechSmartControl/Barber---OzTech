@@ -1791,7 +1791,13 @@ function BarbersView({ barbers, setBarbers, attendances, token, barbershopId, on
           body: JSON.stringify({ email: form.email, password: form.password }),
         });
         const data = await res.json();
-        if (data.error || data.msg) throw new Error(data.error?.message || data.msg || "Erro ao criar login");
+        if (data.error || data.msg) {
+          const raw = (data.error?.message || data.msg || "").toLowerCase();
+          if (raw.includes("already registered") || raw.includes("already exists") || raw.includes("user already")) {
+            throw new Error("Este e-mail já possui uma conta no sistema. Use um e-mail diferente para o login deste barbeiro, ou deixe os campos de e-mail e senha em branco para cadastrá-lo sem acesso ao painel.");
+          }
+          throw new Error(data.error?.message || data.msg || "Erro ao criar login.");
+        }
         userId = data.user?.id;
       }
 
