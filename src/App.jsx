@@ -3500,7 +3500,11 @@ function AppointmentsView({ barbers, services, token, isAdmin, myBarberId, barbe
                     </div>
                     <div style={{ fontSize:13, color:T.muted, marginBottom:4 }}>
                       {a.client_phone && <span>{a.client_phone} · </span>}
-                      <span>{getServiceName(a.service_id)}</span>
+                      <span>
+                        {Array.isArray(a.service_ids) && a.service_ids.length > 0
+                          ? a.service_ids.map(id => getServiceName(id)).join(" + ")
+                          : getServiceName(a.service_id)}
+                      </span>
                       {isAdmin && <span> · {getBarberName(a.barber_id)}</span>}
                     </div>
                     <div style={{ fontSize:13, fontWeight:600 }}>

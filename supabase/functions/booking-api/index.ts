@@ -70,16 +70,18 @@ async function getShop(slug: string) {
 }
 
 // ── action: get_slots ────────────────────────────────────────────
-// Retorna horários disponíveis para um barbeiro + serviço + data
+// Retorna horários disponíveis para um barbeiro + serviço(s) + data
+// Aceita service_ids="1,2,3" (multi-serviço) ou service_id="1" (legado)
 
 async function getSlots(params: URLSearchParams) {
-  const barber_id    = params.get("barber_id");
-  const service_id   = params.get("service_id");
-  const date         = params.get("date"); // YYYY-MM-DD
+  const barber_id     = params.get("barber_id");
+  const service_ids   = params.get("service_ids");  // novo: "1,2,3"
+  const service_id    = params.get("service_id");   // legado: "1"
+  const date          = params.get("date");          // YYYY-MM-DD
   const barbershop_id = params.get("barbershop_id");
 
-  if (!barber_id || !service_id || !date || !barbershop_id)
-    return err("barber_id, service_id, date e barbershop_id são obrigatórios.");
+  if (!barber_id || (!service_ids && !service_id) || !date || !barbershop_id)
+    return err("barber_id, service_ids (ou service_id), date e barbershop_id são obrigatórios.");
 
   // Dia da semana (0=domingo ... 6=sábado)
   const dayOfWeek = new Date(`${date}T12:00:00`).getDay();
@@ -95,11 +97,25 @@ async function getSlots(params: URLSearchParams) {
   const startMin = timeToMinutes(start_time);
   const endMin   = timeToMinutes(end_time);
 
-  // 2. Duração do serviço
-  const svcRes = await db(`services?id=eq.${service_id}&select=duration&limit=1`);
-  const svcs   = await svcRes.json();
-  if (!Array.isArray(svcs) || !svcs[0]) return err("Serviço não encontrado.", 404);
-  const duration: number = svcs[0].duration ?? 30;
+  // 2. Duração total = soma das durações de todos os serviços selecionados
+  let duration = 30; // fallback
+
+  if (service_ids) {
+    // Multi-serviço: soma as durações
+    const ids = service_ids.split(",").map((s) => s.trim()).filter(Boolean);
+    if (ids.length > 0) {
+      const svcsRes = await db(`services?id=in.(${ids.join(",")})&select=id,duration`);
+      const svcs = await svcsRes.json() as { id: number; duration: number }[];
+      if (Array.isArray(svcs) && svcs.length > 0) {
+        duration = svcs.reduce((sum, s) => sum + (s.duration ?? 30), 0);
+      }
+    }
+  } else if (service_id) {
+    // Legado: serviço único
+    const svcRes = await db(`services?id=eq.${service_id}&select=duration&limit=1`);
+    const svcs   = await svcRes.json();
+    if (Array.isArray(svcs) && svcs[0]) duration = svcs[0].duration ?? 30;
+  }
 
   // 3. Agendamentos já existentes nesse dia/barbeiro
   const apptRes = await db(
@@ -107,7 +123,7 @@ async function getSlots(params: URLSearchParams) {
   );
   const existing = await apptRes.json() as { scheduled_time: string; duration_minutes: number }[];
 
-  // 4. Gera todos os slots possíveis e remove os ocupados
+  // 4. Marca minutos ocupados (minuto a minuto)
   const occupied = new Set<string>();
   for (const a of existing) {
     const s = timeToMinutes(a.scheduled_time);
@@ -116,9 +132,9 @@ async function getSlots(params: URLSearchParams) {
     }
   }
 
+  // 5. Gera grade de slots e remove os que colidem com ocupados
   const slots: string[] = [];
   for (let m = startMin; m + duration <= endMin; m += duration) {
-    // Verifica se algum minuto dentro do slot está ocupado
     let free = true;
     for (let i = m; i < m + duration; i++) {
       if (occupied.has(minutesToTime(i))) { free = false; break; }
@@ -131,6 +147,7 @@ async function getSlots(params: URLSearchParams) {
 
 // ── action: book ─────────────────────────────────────────────────
 // Cria (ou encontra) o cliente e registra o agendamento
+// Aceita service_ids (array) para multi-serviço
 
 async function book(body: Record<string, unknown>) {
   const {
@@ -138,6 +155,12 @@ async function book(body: Record<string, unknown>) {
     scheduled_date, scheduled_time, duration_minutes,
     client_name, client_phone, client_email, notes,
   } = body as Record<string, string>;
+
+  // Multi-serviço: service_ids é um array de números enviado pelo frontend
+  const service_ids_raw = body.service_ids;
+  const serviceIdsArr: number[] = Array.isArray(service_ids_raw)
+    ? (service_ids_raw as unknown[]).map(Number).filter(Boolean)
+    : service_id ? [Number(service_id)] : [];
 
   if (!barbershop_id || !barber_id || !service_id || !scheduled_date || !scheduled_time)
     return err("Campos obrigatórios: barbershop_id, barber_id, service_id, scheduled_date, scheduled_time.");
@@ -188,7 +211,8 @@ async function book(body: Record<string, unknown>) {
       barbershop_id,
       barber_id,
       client_id,
-      service_id,
+      service_id,                                    // serviço principal (legado)
+      service_ids: serviceIdsArr,                    // todos os serviços (multi)
       scheduled_date,
       scheduled_time,
       duration_minutes: Number(duration_minutes) || 30,

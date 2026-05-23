@@ -52,15 +52,27 @@ export default function BookingPage({ slug }) {
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState(null);
 
-  const [step,            setStep]            = useState(1);
-  const [selectedBarber,  setSelectedBarber]  = useState(null);
-  const [selectedService, setSelectedService] = useState(null);
-  const [selectedDate,    setSelectedDate]    = useState("");
-  const [selectedSlot,    setSelectedSlot]    = useState("");
-  const [slots,           setSlots]           = useState([]);
-  const [slotsLoading,    setSlotsLoading]    = useState(false);
-  const [form,            setForm]            = useState({ name: "", phone: "", notes: "" });
-  const [booking,         setBooking]         = useState(false);
+  const [step,             setStep]             = useState(1);
+  const [selectedBarber,   setSelectedBarber]   = useState(null);
+  const [selectedServices, setSelectedServices] = useState([]); // array — multi-select
+  const [selectedDate,     setSelectedDate]     = useState("");
+  const [selectedSlot,     setSelectedSlot]     = useState("");
+  const [slots,            setSlots]            = useState([]);
+  const [slotsLoading,     setSlotsLoading]     = useState(false);
+  const [form,             setForm]             = useState({ name: "", phone: "", notes: "" });
+  const [booking,          setBooking]          = useState(false);
+
+  // Totais computados a partir dos serviços selecionados
+  const totalDuration = selectedServices.reduce((sum, s) => sum + (s.duration || 0), 0);
+  const totalPrice    = selectedServices.reduce((sum, s) => sum + (Number(s.price) || 0), 0);
+
+  // Toggle: adiciona ou remove um serviço da seleção
+  const toggleService = (svc) => {
+    setSelectedServices(prev => {
+      const idx = prev.findIndex(s => s.id === svc.id);
+      return idx >= 0 ? prev.filter(s => s.id !== svc.id) : [...prev, svc];
+    });
+  };
 
   // Inject fonts
   useEffect(() => {
@@ -85,17 +97,18 @@ export default function BookingPage({ slug }) {
       .finally(() => setLoading(false));
   }, [slug]);
 
-  // Load available slots when barber/service/date change
+  // Recarrega slots quando barbeiro / serviços / data mudam
   useEffect(() => {
-    if (!selectedBarber || !selectedService || !selectedDate || !shop) {
+    if (!selectedBarber || selectedServices.length === 0 || !selectedDate || !shop) {
       setSlots([]);
       return;
     }
     setSlotsLoading(true);
+    const serviceIds = selectedServices.map(s => s.id).join(",");
     fetch(
       `${BOOKING_API}?action=get_slots` +
       `&barber_id=${selectedBarber.id}` +
-      `&service_id=${selectedService.id}` +
+      `&service_ids=${serviceIds}` +
       `&date=${selectedDate}` +
       `&barbershop_id=${shop.id}`
     )
@@ -103,7 +116,7 @@ export default function BookingPage({ slug }) {
       .then(d => setSlots(d.slots || []))
       .catch(() => setSlots([]))
       .finally(() => setSlotsLoading(false));
-  }, [selectedDate, selectedBarber, selectedService, shop]);
+  }, [selectedDate, selectedBarber, selectedServices, shop]);
 
   const doBook = async () => {
     if (!form.name.trim() || !form.phone.trim()) return;
@@ -115,10 +128,11 @@ export default function BookingPage({ slug }) {
         body: JSON.stringify({
           barbershop_id:    shop.id,
           barber_id:        selectedBarber.id,
-          service_id:       selectedService.id,
+          service_id:       selectedServices[0].id,          // serviço principal
+          service_ids:      selectedServices.map(s => s.id), // todos os serviços
           scheduled_date:   selectedDate,
           scheduled_time:   selectedSlot,
-          duration_minutes: selectedService.duration,
+          duration_minutes: totalDuration,
           client_name:      form.name.trim(),
           client_phone:     form.phone.trim(),
           notes:            form.notes.trim() || null,
@@ -136,7 +150,7 @@ export default function BookingPage({ slug }) {
   const resetFlow = () => {
     setStep(1);
     setSelectedBarber(null);
-    setSelectedService(null);
+    setSelectedServices([]);
     setSelectedDate("");
     setSelectedSlot("");
     setSlots([]);
@@ -235,49 +249,86 @@ export default function BookingPage({ slug }) {
             </div>
           )}
 
-          {/* ── Step 2: Serviço ──────────────────────────────── */}
+          {/* ── Step 2: Serviços (multi-select) ──────────────── */}
           {step === 2 && (
             <div>
               <button onClick={() => setStep(1)} style={{ background:"none", border:"none", color:BT.muted, cursor:"pointer", fontSize:13, marginBottom:"1rem", display:"flex", alignItems:"center", gap:6, padding:0, fontFamily:"'DM Sans',sans-serif" }}>
                 ← Voltar
               </button>
-              <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:26, letterSpacing:1, marginBottom:"1.25rem" }}>Escolha o Serviço</div>
+              <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:26, letterSpacing:1, marginBottom:4 }}>Escolha os Serviços</div>
+              <div style={{ fontSize:13, color:BT.muted, marginBottom:"1.25rem" }}>Você pode selecionar mais de um serviço</div>
+
               {services.length === 0 ? (
                 <div style={{ color:BT.muted, fontSize:14 }}>Nenhum serviço disponível no momento.</div>
-              ) : services.map(svc => (
-                <div
-                  key={svc.id}
-                  onClick={() => { setSelectedService(svc); setStep(3); }}
-                  style={{
-                    background: BT.card,
-                    border: `1px solid ${selectedService?.id === svc.id ? accent : BT.border}`,
-                    borderRadius: 12,
-                    padding: "1rem 1.25rem",
-                    marginBottom: 10,
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 12,
-                    transition: "border-color .15s",
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = accent; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = selectedService?.id === svc.id ? accent : BT.border; }}
-                >
-                  <div>
-                    <div style={{ fontSize:15, fontWeight:600 }}>{svc.name}</div>
-                    <div style={{ fontSize:12, color:BT.muted, marginTop:3 }}>{svc.duration} min</div>
+              ) : services.map(svc => {
+                const isSelected = selectedServices.some(s => s.id === svc.id);
+                return (
+                  <div
+                    key={svc.id}
+                    onClick={() => toggleService(svc)}
+                    style={{
+                      background: isSelected ? `${accent}18` : BT.card,
+                      border: `1px solid ${isSelected ? accent : BT.border}`,
+                      borderRadius: 12,
+                      padding: "1rem 1.25rem",
+                      marginBottom: 10,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                      transition: "border-color .15s, background .15s",
+                    }}
+                  >
+                    {/* Checkbox visual */}
+                    <div style={{
+                      width: 22, height: 22, borderRadius: 6, flexShrink: 0,
+                      background: isSelected ? accent : "transparent",
+                      border: `2px solid ${isSelected ? accent : BT.border}`,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      transition: "all .15s",
+                    }}>
+                      {isSelected && <span style={{ color:"#fff", fontSize:12, fontWeight:900, lineHeight:1 }}>✓</span>}
+                    </div>
+                    <div style={{ flex:1 }}>
+                      <div style={{ fontSize:15, fontWeight:600 }}>{svc.name}</div>
+                      <div style={{ fontSize:12, color:BT.muted, marginTop:3 }}>{svc.duration} min</div>
+                    </div>
+                    <div style={{ color:accent, fontWeight:700, fontSize:16, flexShrink:0 }}>{fMoney(svc.price)}</div>
                   </div>
-                  <div style={{ color:accent, fontWeight:700, fontSize:16, flexShrink:0 }}>{fMoney(svc.price)}</div>
+                );
+              })}
+
+              {/* Rodapé com total + botão Continuar — aparece quando ≥1 serviço selecionado */}
+              {selectedServices.length > 0 && (
+                <div style={{
+                  position: "sticky",
+                  bottom: 0,
+                  background: BT.bg,
+                  borderTop: `1px solid ${BT.border}`,
+                  padding: "0.875rem 0 0",
+                  marginTop: "0.5rem",
+                }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"0.75rem" }}>
+                    <span style={{ fontSize:13, color:BT.muted }}>
+                      {selectedServices.length} serviço{selectedServices.length !== 1 ? "s" : ""} · {totalDuration} min
+                    </span>
+                    <span style={{ fontSize:15, color:accent, fontWeight:700 }}>{fMoney(totalPrice)}</span>
+                  </div>
+                  <button
+                    onClick={() => { setSelectedSlot(""); setStep(3); }}
+                    style={{ width:"100%", background:accent, color:"#fff", border:"none", borderRadius:10, padding:"0.875rem", fontSize:15, fontWeight:700, cursor:"pointer", fontFamily:"'DM Sans',sans-serif" }}
+                  >
+                    Continuar →
+                  </button>
                 </div>
-              ))}
+              )}
             </div>
           )}
 
           {/* ── Step 3: Data & Horário ───────────────────────── */}
           {step === 3 && (
             <div>
-              <button onClick={() => setStep(2)} style={{ background:"none", border:"none", color:BT.muted, cursor:"pointer", fontSize:13, marginBottom:"1rem", display:"flex", alignItems:"center", gap:6, padding:0, fontFamily:"'DM Sans',sans-serif" }}>
+              <button onClick={() => { setSelectedSlot(""); setStep(2); }} style={{ background:"none", border:"none", color:BT.muted, cursor:"pointer", fontSize:13, marginBottom:"1rem", display:"flex", alignItems:"center", gap:6, padding:0, fontFamily:"'DM Sans',sans-serif" }}>
                 ← Voltar
               </button>
               <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:26, letterSpacing:1, marginBottom:"1.25rem" }}>Data e Horário</div>
@@ -349,23 +400,31 @@ export default function BookingPage({ slug }) {
               </button>
               <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:26, letterSpacing:1, marginBottom:"1.25rem" }}>Seus Dados</div>
 
-              {/* Resumo */}
+              {/* Resumo do agendamento */}
               <div style={{ background:BT.card, border:`1px solid ${BT.border}`, borderRadius:12, padding:"1rem 1.25rem", marginBottom:"1.5rem" }}>
                 <div style={{ fontSize:11, color:BT.muted, fontWeight:700, letterSpacing:0.8, textTransform:"uppercase", marginBottom:10 }}>Resumo do Agendamento</div>
                 <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0.5rem 1rem" }}>
                   {[
                     ["Barbeiro", selectedBarber?.name],
-                    ["Serviço",  selectedService?.name],
                     ["Data",     fDate(selectedDate)],
                     ["Horário",  fTime(selectedSlot)],
-                    ["Duração",  `${selectedService?.duration} min`],
-                    ["Valor",    fMoney(selectedService?.price)],
+                    ["Duração",  `${totalDuration} min`],
+                    ["Valor",    fMoney(totalPrice)],
                   ].map(([k, v]) => (
                     <div key={k}>
                       <div style={{ color:BT.muted, fontSize:11 }}>{k}</div>
                       <div style={{ fontWeight:600, fontSize:13, color:BT.text }}>{v}</div>
                     </div>
                   ))}
+                </div>
+                {/* Serviços listados em linha própria (nome pode ser longo) */}
+                <div style={{ marginTop:"0.75rem", paddingTop:"0.75rem", borderTop:`1px solid ${BT.border}` }}>
+                  <div style={{ color:BT.muted, fontSize:11, marginBottom:3 }}>
+                    Serviço{selectedServices.length !== 1 ? "s" : ""}
+                  </div>
+                  <div style={{ fontWeight:600, fontSize:13, color:BT.text }}>
+                    {selectedServices.map(s => s.name).join(" + ")}
+                  </div>
                 </div>
               </div>
 
@@ -454,16 +513,21 @@ export default function BookingPage({ slug }) {
             <div style={{ fontSize:11, color:BT.muted, fontWeight:700, letterSpacing:0.8, textTransform:"uppercase", marginBottom:10 }}>Detalhes</div>
             {[
               ["Barbeiro", selectedBarber?.name],
-              ["Serviço",  selectedService?.name],
               ["Data",     fDate(selectedDate)],
               ["Horário",  fTime(selectedSlot)],
-              ["Valor",    fMoney(selectedService?.price)],
+              ["Duração",  `${totalDuration} min`],
+              ["Valor",    fMoney(totalPrice)],
             ].map(([k, v]) => (
               <div key={k} style={{ display:"flex", justifyContent:"space-between", marginBottom:7, fontSize:14 }}>
                 <span style={{ color:BT.muted }}>{k}</span>
                 <span style={{ fontWeight:600 }}>{v}</span>
               </div>
             ))}
+            {/* Serviços */}
+            <div style={{ borderTop:`1px solid ${BT.border}`, paddingTop:"0.75rem", marginTop:"0.25rem", display:"flex", justifyContent:"space-between", fontSize:14, gap:12 }}>
+              <span style={{ color:BT.muted, flexShrink:0 }}>Serviço{selectedServices.length !== 1 ? "s" : ""}</span>
+              <span style={{ fontWeight:600, textAlign:"right" }}>{selectedServices.map(s => s.name).join(" + ")}</span>
+            </div>
           </div>
 
           <button
