@@ -249,10 +249,7 @@ export default function ClientsView({
 
       <DataTable
         columns={columns}
-        data={filteredRows}
-        title=""
-        searchable={false}
-        pageSize={15}
+        rows={filteredRows}
       />
     </div>
   );
