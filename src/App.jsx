@@ -3622,7 +3622,6 @@ function AppointmentsView({ barbers, services, token, isAdmin, myBarberId, barbe
               ? apptSvcs.map(s => s.name).join(" + ")
               : (services.find(s => s.id == appt.service_id)?.name || "Serviço");
             const barberName = barbers.find(b => b.id === appt.barber_id)?.name || "—";
-            console.log("[notify-debug] shop:", { logo_url: shop?.logo_url, accent_color: shop?.accent_color, name: shop?.name });
             fetch(`${SUPABASE_URL}/functions/v1/notify-appointment`, {
               method: "POST",
               headers: {
