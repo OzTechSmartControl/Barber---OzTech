@@ -4487,6 +4487,27 @@ export default function App() {
     return <BookingPage slug={slug} />;
   }
 
+  // Resultado de confirmação via link do e-mail (?booking=confirmed|already|cancelled|invalid)
+  const bookingStatus = new URLSearchParams(window.location.search).get("booking");
+  if (bookingStatus) {
+    const clientName = new URLSearchParams(window.location.search).get("name") || "o cliente";
+    const cfg = {
+      confirmed: { emoji:"✅", color:"#22c55e", title:"Agendamento Confirmado!", msg:`O agendamento de ${clientName} foi confirmado. O cliente será notificado por e-mail.` },
+      already:   { emoji:"✅", color:"#22c55e", title:"Já confirmado",           msg:`O agendamento de ${clientName} já havia sido confirmado anteriormente.` },
+      cancelled:  { emoji:"🚫", color:"#ef4444", title:"Agendamento cancelado",   msg:"Este agendamento foi cancelado e não pode ser confirmado." },
+      invalid:   { emoji:"❌", color:"#ef4444", title:"Link inválido",            msg:"Este link de confirmação é inválido ou expirou." },
+    }[bookingStatus] || { emoji:"❓", color:"#6b7280", title:"Status desconhecido", msg:"" };
+    return (
+      <div style={{ minHeight:"100vh", background:"#08090c", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'DM Sans',sans-serif", padding:"2rem" }}>
+        <div style={{ textAlign:"center", maxWidth:400 }}>
+          <div style={{ fontSize:72, marginBottom:"1.25rem" }}>{cfg.emoji}</div>
+          <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:30, letterSpacing:2, color:cfg.color, marginBottom:"0.75rem" }}>{cfg.title}</div>
+          <p style={{ color:"#9ca3af", fontSize:15, lineHeight:1.7, margin:0 }}>{cfg.msg}</p>
+        </div>
+      </div>
+    );
+  }
+
   const [clients,      setClients]      = useState([]);
   const [services,     setServices]     = useState([]);
   const [barbers,      setBarbers]      = useState([]);

@@ -126,7 +126,7 @@ async function notifyBarber(opts: {
         </div>
         ${opts.confirm_url ? `
         <div style="text-align:center;margin-top:8px;">
-          <a href="${opts.confirm_url}" style="display:inline-block;background:${color};color:#fff;text-decoration:none;border-radius:10px;padding:14px 32px;font-size:15px;font-weight:700;font-family:'Segoe UI',Arial,sans-serif;letter-spacing:0.3px;">
+          <a href="${opts.confirm_url}" style="display:inline-block;background:#22c55e;color:#fff;text-decoration:none;border-radius:10px;padding:14px 32px;font-size:15px;font-weight:700;font-family:'Segoe UI',Arial,sans-serif;letter-spacing:0.3px;">
             ✓ Confirmar Agendamento
           </a>
           <p style="color:#6b7280;font-size:11px;margin:10px 0 0;line-height:1.6;">
@@ -422,13 +422,14 @@ function htmlPage(title: string, emoji: string, color: string, msg: string) {
 </body></html>`;
 }
 
-async function confirmByToken(token: string) {
-  const htmlHeader = { "Content-Type": "text/html; charset=utf-8" };
+const APP_URL = "https://ozbarber.vercel.app";
 
-  if (!token) return new Response(
-    htmlPage("Link inválido", "❌", "#ef4444", "Este link de confirmação é inválido."),
-    { status: 400, headers: htmlHeader }
-  );
+function redirect(path: string) {
+  return Response.redirect(`${APP_URL}${path}`, 302);
+}
+
+async function confirmByToken(token: string) {
+  if (!token) return redirect("/?booking=invalid");
 
   // Busca o agendamento pelo token
   const apptRes = await db(
@@ -437,20 +438,9 @@ async function confirmByToken(token: string) {
   const appts = await apptRes.json();
   const appt  = Array.isArray(appts) ? appts[0] : null;
 
-  if (!appt) return new Response(
-    htmlPage("Link inválido", "❌", "#ef4444", "Agendamento não encontrado ou link expirado."),
-    { status: 404, headers: htmlHeader }
-  );
-
-  if (appt.status === "confirmed") return new Response(
-    htmlPage("Já confirmado", "✅", "#22c55e", "Este agendamento já foi confirmado anteriormente."),
-    { status: 200, headers: htmlHeader }
-  );
-
-  if (appt.status === "cancelled") return new Response(
-    htmlPage("Cancelado", "🚫", "#ef4444", "Este agendamento foi cancelado e não pode ser confirmado."),
-    { status: 200, headers: htmlHeader }
-  );
+  if (!appt)      return redirect("/?booking=invalid");
+  if (appt.status === "confirmed") return redirect(`/?booking=already&name=${encodeURIComponent(appt.client_name)}`);
+  if (appt.status === "cancelled") return redirect("/?booking=cancelled");
 
   // Confirma o agendamento
   await db(`appointments?id=eq.${appt.id}`, {
@@ -499,10 +489,7 @@ async function confirmByToken(token: string) {
     })();
   }
 
-  return new Response(
-    htmlPage("Confirmado!", "✅", "#22c55e", `O agendamento de <strong style="color:#e5e7eb;">${appt.client_name}</strong> foi confirmado com sucesso.<br>O cliente será notificado por e-mail.`),
-    { status: 200, headers: htmlHeader }
-  );
+  return redirect(`/?booking=confirmed&name=${encodeURIComponent(appt.client_name)}`);
 }
 
 // ── Handler principal ────────────────────────────────────────────
