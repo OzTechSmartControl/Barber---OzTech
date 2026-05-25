@@ -474,17 +474,6 @@ export default function BookingPage({ slug }) {
               </div>
 
               <div style={{ marginBottom:"1rem" }}>
-                <label style={{ display:"block", fontSize:13, color:BT.muted, fontWeight:600, marginBottom:6 }}>Nome completo *</label>
-                <input
-                  type="text"
-                  placeholder="Seu nome completo"
-                  value={form.name}
-                  onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                  style={inputSt}
-                />
-              </div>
-
-              <div style={{ marginBottom:"1rem" }}>
                 <label style={{ display:"block", fontSize:13, color:BT.muted, fontWeight:600, marginBottom:6 }}>WhatsApp *</label>
                 <input
                   type="tel"
@@ -501,6 +490,17 @@ export default function BookingPage({ slug }) {
                   ✓ Cliente encontrado — dados preenchidos automaticamente
                 </div>
               )}
+
+              <div style={{ marginBottom:"1rem" }}>
+                <label style={{ display:"block", fontSize:13, color:BT.muted, fontWeight:600, marginBottom:6 }}>Nome completo *</label>
+                <input
+                  type="text"
+                  placeholder="Seu nome completo"
+                  value={form.name}
+                  onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                  style={inputSt}
+                />
+              </div>
 
               <div style={{ marginBottom:"1rem" }}>
                 <label style={{ display:"block", fontSize:13, color:BT.muted, fontWeight:600, marginBottom:6 }}>E-mail *</label>
