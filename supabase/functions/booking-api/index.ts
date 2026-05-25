@@ -63,6 +63,7 @@ async function notifyBarber(opts: {
   services:     string;
   scheduled_date: string;
   scheduled_time: string;
+  confirm_url?:   string;
 }) {
   if (!GMAIL_USER || !GMAIL_PASS || !opts.barber_email) return;
 
@@ -123,9 +124,18 @@ async function notifyBarber(opts: {
             </div>
           </div>
         </div>
+        ${opts.confirm_url ? `
+        <div style="text-align:center;margin-top:8px;">
+          <a href="${opts.confirm_url}" style="display:inline-block;background:${color};color:#fff;text-decoration:none;border-radius:10px;padding:14px 32px;font-size:15px;font-weight:700;font-family:'Segoe UI',Arial,sans-serif;letter-spacing:0.3px;">
+            ✓ Confirmar Agendamento
+          </a>
+          <p style="color:#6b7280;font-size:11px;margin:10px 0 0;line-height:1.6;">
+            Ou acesse o painel para gerenciar o agendamento.
+          </p>
+        </div>` : `
         <p style="color:#6b7280;font-size:12px;margin:0;line-height:1.7;text-align:center;">
           Acesse o painel para confirmar ou cancelar o agendamento.
-        </p>
+        </p>`}
       </div>
       <div style="padding:14px 26px;border-top:1px solid #1e2030;text-align:center;">
         <p style="color:#374151;font-size:11px;margin:0;">
@@ -330,7 +340,10 @@ async function book(body: Record<string, unknown>) {
   if (Array.isArray(conflicts) && conflicts.length > 0)
     return err("Esse horário já foi reservado. Por favor, escolha outro.");
 
-  // 3. Cria o agendamento
+  // 3. Gera token de confirmação único
+  const confirmToken = crypto.randomUUID();
+
+  // 4. Cria o agendamento
   const apptRes = await db("appointments", {
     method: "POST",
     body: JSON.stringify({
@@ -348,13 +361,14 @@ async function book(body: Record<string, unknown>) {
       client_email:     client_email?.trim() || null,
       notes:            notes?.trim() || null,
       booked_via:       "public",
+      confirm_token:    confirmToken,
     }),
   });
   const appts = await apptRes.json();
   if (!Array.isArray(appts) || !appts[0])
     return err("Erro ao criar agendamento. Tente novamente.");
 
-  // 4. Notifica o barbeiro por e-mail (fire-and-forget)
+  // 5. Notifica o barbeiro por e-mail (fire-and-forget)
   (async () => {
     try {
       const [barberRes, shopRes, svcsRes] = await Promise.all([
@@ -372,6 +386,7 @@ async function book(body: Record<string, unknown>) {
         const serviceNames = Array.isArray(svcs) && svcs.length > 0
           ? svcs.map((s: { name: string }) => s.name).join(" + ")
           : "Serviço";
+        const confirmUrl = `${SUPABASE_URL}/functions/v1/booking-api?action=confirm&token=${confirmToken}`;
         await notifyBarber({
           barber_email:    barber.notification_email,
           barber_name:     barber.name,
@@ -383,6 +398,7 @@ async function book(body: Record<string, unknown>) {
           services:        serviceNames,
           scheduled_date,
           scheduled_time,
+          confirm_url:     confirmUrl,
         });
       }
     } catch (e) {
@@ -391,6 +407,102 @@ async function book(body: Record<string, unknown>) {
   })();
 
   return ok({ appointment: appts[0], client_id }, 201);
+}
+
+// ── action: confirm (via link no e-mail) ─────────────────────────
+
+function htmlPage(title: string, emoji: string, color: string, msg: string) {
+  return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>${title}</title></head>
+<body style="margin:0;padding:0;background:#08090c;font-family:'Segoe UI',Arial,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;">
+  <div style="text-align:center;padding:2.5rem 1.5rem;max-width:400px;">
+    <div style="font-size:72px;margin-bottom:1rem;">${emoji}</div>
+    <h1 style="color:${color};font-size:24px;margin:0 0 0.75rem;">${title}</h1>
+    <p style="color:#9ca3af;font-size:15px;line-height:1.6;margin:0;">${msg}</p>
+  </div>
+</body></html>`;
+}
+
+async function confirmByToken(token: string) {
+  const htmlHeader = { "Content-Type": "text/html; charset=utf-8" };
+
+  if (!token) return new Response(
+    htmlPage("Link inválido", "❌", "#ef4444", "Este link de confirmação é inválido."),
+    { status: 400, headers: htmlHeader }
+  );
+
+  // Busca o agendamento pelo token
+  const apptRes = await db(
+    `appointments?confirm_token=eq.${token}&select=id,status,client_name,client_email,client_phone,scheduled_date,scheduled_time,service_id,service_ids,barber_id,barbershop_id&limit=1`
+  );
+  const appts = await apptRes.json();
+  const appt  = Array.isArray(appts) ? appts[0] : null;
+
+  if (!appt) return new Response(
+    htmlPage("Link inválido", "❌", "#ef4444", "Agendamento não encontrado ou link expirado."),
+    { status: 404, headers: htmlHeader }
+  );
+
+  if (appt.status === "confirmed") return new Response(
+    htmlPage("Já confirmado", "✅", "#22c55e", "Este agendamento já foi confirmado anteriormente."),
+    { status: 200, headers: htmlHeader }
+  );
+
+  if (appt.status === "cancelled") return new Response(
+    htmlPage("Cancelado", "🚫", "#ef4444", "Este agendamento foi cancelado e não pode ser confirmado."),
+    { status: 200, headers: htmlHeader }
+  );
+
+  // Confirma o agendamento
+  await db(`appointments?id=eq.${appt.id}`, {
+    method:  "PATCH",
+    body:    JSON.stringify({ status: "confirmed", updated_at: new Date().toISOString() }),
+    headers: { Prefer: "return=minimal" },
+  });
+
+  // Envia e-mail de confirmação ao cliente (fire-and-forget)
+  if (appt.client_email) {
+    (async () => {
+      try {
+        const serviceIds: number[] = Array.isArray(appt.service_ids) && appt.service_ids.length > 0
+          ? appt.service_ids : appt.service_id ? [appt.service_id] : [];
+
+        const [barberRes, shopRes, svcsRes] = await Promise.all([
+          db(`barbers?id=eq.${appt.barber_id}&select=name&limit=1`),
+          db(`barbershops?id=eq.${appt.barbershop_id}&select=name,logo_url,accent_color&limit=1`),
+          serviceIds.length > 0 ? db(`services?id=in.(${serviceIds.join(",")})&select=name`) : Promise.resolve(null),
+        ]);
+        const barber = (await barberRes.json())[0];
+        const shop   = (await shopRes.json())[0];
+        const svcs   = svcsRes ? await svcsRes.json() : [];
+        const serviceNames = Array.isArray(svcs) && svcs.length > 0
+          ? svcs.map((s: { name: string }) => s.name).join(" + ")
+          : "Serviço";
+
+        await fetch(`${SUPABASE_URL}/functions/v1/notify-appointment`, {
+          method:  "POST",
+          headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            client_name:     appt.client_name  || "",
+            client_email:    appt.client_email,
+            barbershop_name: shop?.name         || "Barbearia",
+            barbershop_logo: shop?.logo_url     || null,
+            accent_color:    shop?.accent_color || "#4db8ff",
+            barber_name:     barber?.name       || "—",
+            services:        serviceNames,
+            scheduled_date:  appt.scheduled_date,
+            scheduled_time:  (appt.scheduled_time || "").slice(0, 5),
+          }),
+        });
+      } catch (e) {
+        console.error("[confirm-notify-client]", e);
+      }
+    })();
+  }
+
+  return new Response(
+    htmlPage("Confirmado!", "✅", "#22c55e", `O agendamento de <strong style="color:#e5e7eb;">${appt.client_name}</strong> foi confirmado com sucesso.<br>O cliente será notificado por e-mail.`),
+    { status: 200, headers: htmlHeader }
+  );
 }
 
 // ── Handler principal ────────────────────────────────────────────
@@ -412,6 +524,10 @@ serve(async (req) => {
       }
       if (action === "get_client") {
         return await getClient(url.searchParams);
+      }
+      if (action === "confirm") {
+        const token = url.searchParams.get("token") ?? "";
+        return await confirmByToken(token);
       }
       return err("action inválida.", 400);
     }
