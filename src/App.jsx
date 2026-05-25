@@ -3614,7 +3614,9 @@ function AppointmentsView({ barbers, services, token, isAdmin, myBarberId, barbe
 
           // Envia e-mail de confirmação ao cliente (fire-and-forget)
           // Desacoplado do bloco de serviços para garantir o envio mesmo quando
-          // os serviços não são encontrados no estado local
+          // os serviços não são encontrados no estado local.
+          // IMPORTANTE: não usar hdr(token) aqui — o header "Prefer" que ele
+          // injeta não está na lista CORS da Edge Function e bloqueia o POST.
           if (appt.client_email) {
             const serviceNames = apptSvcs.length > 0
               ? apptSvcs.map(s => s.name).join(" + ")
@@ -3622,7 +3624,11 @@ function AppointmentsView({ barbers, services, token, isAdmin, myBarberId, barbe
             const barberName = barbers.find(b => b.id === appt.barber_id)?.name || "—";
             fetch(`${SUPABASE_URL}/functions/v1/notify-appointment`, {
               method: "POST",
-              headers: { ...hdr(token), "Content-Type": "application/json" },
+              headers: {
+                apikey:          SUPABASE_ANON,
+                Authorization:   `Bearer ${token}`,
+                "Content-Type":  "application/json",
+              },
               body: JSON.stringify({
                 client_name:     appt.client_name  || "",
                 client_email:    appt.client_email,
