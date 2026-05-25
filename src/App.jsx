@@ -3609,26 +3609,30 @@ function AppointmentsView({ barbers, services, token, isAdmin, myBarberId, barbe
               }, token);
             } catch (_) { /* unique constraint: atendimento já criado */ }
 
-            // Envia e-mail de confirmação ao cliente (fire-and-forget)
-            if (appt.client_email) {
-              const serviceNames = apptSvcs.map(s => s.name).join(" + ");
-              const barberName   = barbers.find(b => b.id === appt.barber_id)?.name || "—";
-              fetch(`${SUPABASE_URL}/functions/v1/notify-appointment`, {
-                method: "POST",
-                headers: { ...hdr(token), "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  client_name:     appt.client_name  || "",
-                  client_email:    appt.client_email,
-                  barbershop_name: shop?.name         || "Barbearia",
-                  barber_name:     barberName,
-                  services:        serviceNames,
-                  scheduled_date:  appt.scheduled_date,
-                  scheduled_time:  (appt.scheduled_time || "").slice(0, 5),
-                }),
-              }).catch(e => console.warn("[notify-appointment]", e));
-            }
-
             onRefresh(); // atualiza lista de atendimentos no pai
+          }
+
+          // Envia e-mail de confirmação ao cliente (fire-and-forget)
+          // Desacoplado do bloco de serviços para garantir o envio mesmo quando
+          // os serviços não são encontrados no estado local
+          if (appt.client_email) {
+            const serviceNames = apptSvcs.length > 0
+              ? apptSvcs.map(s => s.name).join(" + ")
+              : (services.find(s => s.id == appt.service_id)?.name || "Serviço");
+            const barberName = barbers.find(b => b.id === appt.barber_id)?.name || "—";
+            fetch(`${SUPABASE_URL}/functions/v1/notify-appointment`, {
+              method: "POST",
+              headers: { ...hdr(token), "Content-Type": "application/json" },
+              body: JSON.stringify({
+                client_name:     appt.client_name  || "",
+                client_email:    appt.client_email,
+                barbershop_name: shop?.name         || "Barbearia",
+                barber_name:     barberName,
+                services:        serviceNames,
+                scheduled_date:  appt.scheduled_date,
+                scheduled_time:  (appt.scheduled_time || "").slice(0, 5),
+              }),
+            }).catch(e => console.warn("[notify-appointment]", e));
           }
         }
       }
