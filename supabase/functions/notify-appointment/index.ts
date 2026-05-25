@@ -18,10 +18,12 @@ serve(async (req) => {
       client_name,
       client_email,
       barbershop_name,
+      barbershop_logo,  // URL da logo (pode ser null)
+      accent_color,     // cor da barbearia ex: "#f5c518"
       barber_name,
-      services,        // ex: "Corte + Barba"
-      scheduled_date,  // YYYY-MM-DD
-      scheduled_time,  // HH:MM
+      services,
+      scheduled_date,
+      scheduled_time,
     } = await req.json();
 
     if (!client_email) {
@@ -31,6 +33,9 @@ serve(async (req) => {
       });
     }
 
+    const color  = accent_color || "#4db8ff";
+    const colorDim = `${color}22`;
+
     // Formata data no padrão brasileiro
     const dateFormatted = new Date(`${scheduled_date}T12:00:00`)
       .toLocaleDateString("pt-BR", {
@@ -39,6 +44,11 @@ serve(async (req) => {
         month: "long",
         year: "numeric",
       });
+
+    // Cabeçalho: logo da barbearia se disponível, senão nome em texto
+    const logoHtml = (barbershop_logo && barbershop_logo !== "null")
+      ? `<img src="${barbershop_logo}" alt="${barbershop_name}" style="height:56px;width:56px;object-fit:cover;border-radius:14px;border:2px solid ${color}44;display:block;margin:0 auto 10px;" />`
+      : `<div style="width:56px;height:56px;border-radius:14px;background:${colorDim};border:2px solid ${color}44;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;font-size:26px;font-weight:900;color:${color};font-family:'Segoe UI',Arial,sans-serif;">${(barbershop_name||"B")[0].toUpperCase()}</div>`;
 
     const html = `
 <!DOCTYPE html>
@@ -50,17 +60,18 @@ serve(async (req) => {
 <body style="margin:0;padding:0;background:#08090c;font-family:'Segoe UI',Arial,sans-serif;">
   <div style="max-width:520px;margin:0 auto;padding:32px 16px;">
 
-    <!-- Logo -->
-    <div style="text-align:center;margin-bottom:28px;">
-      <span style="font-size:30px;font-weight:900;color:#4db8ff;letter-spacing:3px;">OZ.BARBER</span>
-      <p style="color:#4b5563;font-size:12px;margin:5px 0 0;">OzTech SmartControl</p>
+    <!-- Header barbearia -->
+    <div style="text-align:center;margin-bottom:24px;">
+      ${logoHtml}
+      <div style="font-size:22px;font-weight:900;color:#ffffff;letter-spacing:2px;text-transform:uppercase;">${barbershop_name}</div>
+      <div style="font-size:11px;color:#4b5563;margin-top:3px;letter-spacing:0.5px;">Agendamento Online · Oz.Barber</div>
     </div>
 
     <!-- Card principal -->
     <div style="background:#13141a;border:1px solid #1e2030;border-radius:18px;overflow:hidden;">
 
-      <!-- Barra de cor no topo -->
-      <div style="background:linear-gradient(135deg,#4db8ff,#7dd3fc);height:5px;"></div>
+      <!-- Barra de cor personalizada -->
+      <div style="background:linear-gradient(135deg,${color},${color}aa);height:5px;"></div>
 
       <div style="padding:32px 28px;">
         <div style="font-size:24px;font-weight:900;color:#ffffff;margin-bottom:6px;">
@@ -68,10 +79,10 @@ serve(async (req) => {
         </div>
         <p style="color:#9ca3af;font-size:14px;margin:0 0 28px;line-height:1.6;">
           Olá, <strong style="color:#e5e7eb;">${client_name || "cliente"}</strong>!
-          Sua visita à <strong style="color:#4db8ff;">${barbershop_name}</strong> foi confirmada com sucesso.
+          Sua visita à <strong style="color:${color};">${barbershop_name}</strong> foi confirmada com sucesso.
         </p>
 
-        <!-- Detalhes do agendamento -->
+        <!-- Detalhes -->
         <div style="background:#0d0e14;border:1px solid #1e2030;border-radius:12px;padding:20px 22px;margin-bottom:24px;">
 
           <div style="margin-bottom:16px;display:flex;align-items:flex-start;gap:14px;">
@@ -116,7 +127,7 @@ serve(async (req) => {
       <!-- Rodapé -->
       <div style="padding:14px 28px;border-top:1px solid #1e2030;text-align:center;">
         <p style="color:#374151;font-size:11px;margin:0;">
-          Enviado automaticamente por <strong style="color:#4db8ff;">Oz.Barber</strong>
+          Enviado automaticamente por <strong style="color:${color};">Oz.Barber</strong>
         </p>
       </div>
     </div>
@@ -125,23 +136,19 @@ serve(async (req) => {
 </body>
 </html>`;
 
-    // Envia via Gmail SMTP
     const transporter = nodemailer.createTransport({
       service: "gmail",
-      auth: {
-        user: GMAIL_USER,
-        pass: GMAIL_PASS,
-      },
+      auth: { user: GMAIL_USER, pass: GMAIL_PASS },
     });
 
     const info = await transporter.sendMail({
-      from: `"Oz.Barber" <${GMAIL_USER}>`,
+      from: `"${barbershop_name}" <${GMAIL_USER}>`,
       to: client_email,
       subject: `✂️ Agendamento confirmado — ${barbershop_name}`,
       html,
     });
 
-    console.log("[notify-appointment] Enviado para:", client_email, "messageId:", info.messageId);
+    console.log("[notify-appointment] Enviado para:", client_email, "id:", info.messageId);
     return new Response(JSON.stringify({ sent: true, messageId: info.messageId }), {
       status: 200,
       headers: { ...CORS, "Content-Type": "application/json" },

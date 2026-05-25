@@ -3633,6 +3633,8 @@ function AppointmentsView({ barbers, services, token, isAdmin, myBarberId, barbe
                 client_name:     appt.client_name  || "",
                 client_email:    appt.client_email,
                 barbershop_name: shop?.name         || "Barbearia",
+                barbershop_logo: shop?.logo_url     || null,
+                accent_color:    shop?.accent_color || "#4db8ff",
                 barber_name:     barberName,
                 services:        serviceNames,
                 scheduled_date:  appt.scheduled_date,
