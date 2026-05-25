@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import nodemailer from "npm:nodemailer";
 
-const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
+const GMAIL_USER = Deno.env.get("GMAIL_USER") ?? "";
+const GMAIL_PASS = Deno.env.get("GMAIL_APP_PASSWORD") ?? "";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -123,32 +125,24 @@ serve(async (req) => {
 </body>
 </html>`;
 
-    const resendRes = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${RESEND_API_KEY}`,
-        "Content-Type": "application/json",
+    // Envia via Gmail SMTP
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: GMAIL_USER,
+        pass: GMAIL_PASS,
       },
-      body: JSON.stringify({
-        from: "Oz.Barber <onboarding@resend.dev>",
-        to: [client_email],
-        subject: `✂️ Agendamento confirmado — ${barbershop_name}`,
-        html,
-      }),
     });
 
-    const result = await resendRes.json();
+    const info = await transporter.sendMail({
+      from: `"Oz.Barber" <${GMAIL_USER}>`,
+      to: client_email,
+      subject: `✂️ Agendamento confirmado — ${barbershop_name}`,
+      html,
+    });
 
-    if (!resendRes.ok) {
-      console.error("[notify-appointment] Resend error:", result);
-      return new Response(JSON.stringify({ error: result.message || "Erro ao enviar e-mail." }), {
-        status: 500,
-        headers: { ...CORS, "Content-Type": "application/json" },
-      });
-    }
-
-    console.log("[notify-appointment] Enviado para:", client_email, "id:", result.id);
-    return new Response(JSON.stringify({ sent: true, id: result.id }), {
+    console.log("[notify-appointment] Enviado para:", client_email, "messageId:", info.messageId);
+    return new Response(JSON.stringify({ sent: true, messageId: info.messageId }), {
       status: 200,
       headers: { ...CORS, "Content-Type": "application/json" },
     });
