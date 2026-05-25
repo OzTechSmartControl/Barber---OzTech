@@ -69,6 +69,21 @@ async function getShop(slug: string) {
   return ok({ shop, barbers, services });
 }
 
+// ── action: get_client ───────────────────────────────────────────
+// Busca cliente pelo WhatsApp para pré-preencher o formulário público
+
+async function getClient(params: URLSearchParams) {
+  const phone         = params.get("phone") ?? "";
+  const barbershop_id = params.get("barbershop_id") ?? "";
+  if (!phone || !barbershop_id) return ok({ client: null });
+
+  const res = await db(
+    `clients?barbershop_id=eq.${barbershop_id}&whatsapp=eq.${encodeURIComponent(phone.trim())}&select=id,name,email&limit=1`
+  );
+  const rows = await res.json();
+  return ok({ client: (Array.isArray(rows) && rows[0]) ? rows[0] : null });
+}
+
 // ── action: get_slots ────────────────────────────────────────────
 // Retorna horários disponíveis para um barbeiro + serviço(s) + data
 // Aceita service_ids="1,2,3" (multi-serviço) ou service_id="1" (legado)
@@ -251,6 +266,9 @@ serve(async (req) => {
       }
       if (action === "get_slots") {
         return await getSlots(url.searchParams);
+      }
+      if (action === "get_client") {
+        return await getClient(url.searchParams);
       }
       return err("action inválida.", 400);
     }

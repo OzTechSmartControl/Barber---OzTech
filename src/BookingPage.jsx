@@ -60,6 +60,7 @@ export default function BookingPage({ slug }) {
   const [slots,            setSlots]            = useState([]);
   const [slotsLoading,     setSlotsLoading]     = useState(false);
   const [form,             setForm]             = useState({ name: "", phone: "", email: "", notes: "" });
+  const [clientFound,      setClientFound]      = useState(false); // cliente já cadastrado
   const [booking,          setBooking]          = useState(false);
 
   // Totais computados a partir dos serviços selecionados
@@ -138,8 +139,30 @@ export default function BookingPage({ slug }) {
       .finally(() => setSlotsLoading(false));
   }, [selectedDate, selectedBarber, selectedServices, shop]);
 
+  // Lookup de cliente pelo WhatsApp ao sair do campo
+  const lookupClient = async (phone) => {
+    const p = phone.trim().replace(/\D/g, "");
+    if (p.length < 10 || !shop) return;
+    try {
+      const res = await fetch(
+        `${BOOKING_API}?action=get_client&phone=${encodeURIComponent(form.phone.trim())}&barbershop_id=${shop.id}`
+      );
+      const d = await res.json();
+      if (d.client) {
+        setForm(f => ({
+          ...f,
+          name:  f.name  || d.client.name  || "",
+          email: f.email || d.client.email || "",
+        }));
+        setClientFound(true);
+      } else {
+        setClientFound(false);
+      }
+    } catch { /* silencioso */ }
+  };
+
   const doBook = async () => {
-    if (!form.name.trim() || !form.phone.trim()) return;
+    if (!form.name.trim() || !form.phone.trim() || !form.email.trim()) return;
     setBooking(true);
     try {
       const res = await fetch(`${BOOKING_API}?action=book`, {
@@ -176,6 +199,7 @@ export default function BookingPage({ slug }) {
     setSelectedSlot("");
     setSlots([]);
     setForm({ name: "", phone: "", email: "", notes: "" });
+    setClientFound(false);
   };
 
   const accent = shop?.accent_color || BT.accent;
@@ -466,13 +490,20 @@ export default function BookingPage({ slug }) {
                   type="tel"
                   placeholder="(00) 90000-0000"
                   value={form.phone}
-                  onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+                  onChange={e => { setForm(f => ({ ...f, phone: e.target.value })); setClientFound(false); }}
+                  onBlur={e => lookupClient(e.target.value)}
                   style={inputSt}
                 />
               </div>
 
+              {clientFound && (
+                <div style={{ background:`${accent}18`, border:`1px solid ${accent}44`, borderRadius:10, padding:"0.6rem 1rem", marginBottom:"1rem", fontSize:13, color:accent, fontWeight:600 }}>
+                  ✓ Cliente encontrado — dados preenchidos automaticamente
+                </div>
+              )}
+
               <div style={{ marginBottom:"1rem" }}>
-                <label style={{ display:"block", fontSize:13, color:BT.muted, fontWeight:600, marginBottom:6 }}>E-mail (opcional)</label>
+                <label style={{ display:"block", fontSize:13, color:BT.muted, fontWeight:600, marginBottom:6 }}>E-mail *</label>
                 <input
                   type="email"
                   placeholder="seu@email.com"
@@ -495,7 +526,7 @@ export default function BookingPage({ slug }) {
 
               <button
                 onClick={doBook}
-                disabled={booking || !form.name.trim() || !form.phone.trim()}
+                disabled={booking || !form.name.trim() || !form.phone.trim() || !form.email.trim()}
                 style={{
                   width:    "100%",
                   background: accent,
@@ -505,8 +536,8 @@ export default function BookingPage({ slug }) {
                   padding:  "0.9rem",
                   fontSize: 15,
                   fontWeight: 700,
-                  cursor:   booking || !form.name.trim() || !form.phone.trim() ? "not-allowed" : "pointer",
-                  opacity:  booking || !form.name.trim() || !form.phone.trim() ? 0.65 : 1,
+                  cursor:   booking || !form.name.trim() || !form.phone.trim() || !form.email.trim() ? "not-allowed" : "pointer",
+                  opacity:  booking || !form.name.trim() || !form.phone.trim() || !form.email.trim() ? 0.65 : 1,
                   fontFamily: "'DM Sans',sans-serif",
                   transition: "opacity .15s",
                 }}
