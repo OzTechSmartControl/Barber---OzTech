@@ -4492,17 +4492,49 @@ export default function App() {
   if (bookingStatus) {
     const clientName = new URLSearchParams(window.location.search).get("name") || "o cliente";
     const cfg = {
-      confirmed: { emoji:"✅", color:"#22c55e", title:"Agendamento Confirmado!", msg:`O agendamento de ${clientName} foi confirmado. O cliente será notificado por e-mail.` },
-      already:   { emoji:"✅", color:"#22c55e", title:"Já confirmado",           msg:`O agendamento de ${clientName} já havia sido confirmado anteriormente.` },
-      cancelled:  { emoji:"🚫", color:"#ef4444", title:"Agendamento cancelado",   msg:"Este agendamento foi cancelado e não pode ser confirmado." },
-      invalid:   { emoji:"❌", color:"#ef4444", title:"Link inválido",            msg:"Este link de confirmação é inválido ou expirou." },
-    }[bookingStatus] || { emoji:"❓", color:"#6b7280", title:"Status desconhecido", msg:"" };
+      confirmed: { icon:"✓", color:"#22c55e", title:"Agendamento Confirmado!", msg:`O agendamento de ${clientName} foi confirmado com sucesso. O cliente será notificado por e-mail.` },
+      already:   { icon:"✓", color:"#22c55e", title:"Já Confirmado",           msg:`O agendamento de ${clientName} já havia sido confirmado anteriormente.` },
+      cancelled: { icon:"✕", color:"#ef4444", title:"Agendamento Cancelado",   msg:"Este agendamento foi cancelado e não pode ser confirmado." },
+      invalid:   { icon:"✕", color:"#ef4444", title:"Link Inválido",           msg:"Este link de confirmação é inválido ou já foi utilizado." },
+    }[bookingStatus] || { icon:"?", color:"#6b7280", title:"Status Desconhecido", msg:"" };
     return (
-      <div style={{ minHeight:"100vh", background:"#08090c", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'DM Sans',sans-serif", padding:"2rem" }}>
-        <div style={{ textAlign:"center", maxWidth:400 }}>
-          <div style={{ fontSize:72, marginBottom:"1.25rem" }}>{cfg.emoji}</div>
-          <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:30, letterSpacing:2, color:cfg.color, marginBottom:"0.75rem" }}>{cfg.title}</div>
-          <p style={{ color:"#9ca3af", fontSize:15, lineHeight:1.7, margin:0 }}>{cfg.msg}</p>
+      <div style={{ minHeight:"100vh", background:"#08090c", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", fontFamily:"'DM Sans',sans-serif", padding:"2rem" }}>
+        {/* Logo Oz.Barber */}
+        <div style={{ marginBottom:"2.5rem", textAlign:"center" }}>
+          <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:28, letterSpacing:4, color:"#ffffff", opacity:0.9 }}>OZ.BARBER</div>
+          <div style={{ fontSize:11, color:"#4b5563", letterSpacing:1, marginTop:2 }}>Sistema de Agendamento</div>
+        </div>
+
+        {/* Card */}
+        <div style={{ background:"#13141a", border:`1px solid ${cfg.color}33`, borderRadius:20, padding:"2.5rem 2rem", maxWidth:400, width:"100%", textAlign:"center", boxShadow:`0 0 40px ${cfg.color}11` }}>
+          {/* Ícone */}
+          <div style={{
+            width:80, height:80, borderRadius:"50%",
+            background:`${cfg.color}18`, border:`2px solid ${cfg.color}`,
+            display:"flex", alignItems:"center", justifyContent:"center",
+            margin:"0 auto 1.5rem",
+            fontSize:36, fontWeight:900, color:cfg.color,
+            fontFamily:"'Bebas Neue',sans-serif",
+          }}>
+            {cfg.icon}
+          </div>
+
+          {/* Título */}
+          <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:28, letterSpacing:2, color:cfg.color, marginBottom:"0.75rem", lineHeight:1.1 }}>
+            {cfg.title}
+          </div>
+
+          {/* Mensagem */}
+          <p style={{ color:"#9ca3af", fontSize:15, lineHeight:1.7, margin:"0 0 1.75rem" }}>
+            {cfg.msg}
+          </p>
+
+          {/* Divider */}
+          <div style={{ borderTop:"1px solid #1e2030", paddingTop:"1.25rem" }}>
+            <div style={{ fontSize:12, color:"#374151" }}>
+              Powered by <strong style={{ color:cfg.color }}>Oz.Barber</strong>
+            </div>
+          </div>
         </div>
       </div>
     );

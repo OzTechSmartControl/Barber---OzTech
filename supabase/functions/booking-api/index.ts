@@ -449,44 +449,42 @@ async function confirmByToken(token: string) {
     headers: { Prefer: "return=minimal" },
   });
 
-  // Envia e-mail de confirmação ao cliente (fire-and-forget)
+  // Envia e-mail de confirmação ao cliente (aguarda antes de redirecionar)
   if (appt.client_email) {
-    (async () => {
-      try {
-        const serviceIds: number[] = Array.isArray(appt.service_ids) && appt.service_ids.length > 0
-          ? appt.service_ids : appt.service_id ? [appt.service_id] : [];
+    try {
+      const serviceIds: number[] = Array.isArray(appt.service_ids) && appt.service_ids.length > 0
+        ? appt.service_ids : appt.service_id ? [appt.service_id] : [];
 
-        const [barberRes, shopRes, svcsRes] = await Promise.all([
-          db(`barbers?id=eq.${appt.barber_id}&select=name&limit=1`),
-          db(`barbershops?id=eq.${appt.barbershop_id}&select=name,logo_url,accent_color&limit=1`),
-          serviceIds.length > 0 ? db(`services?id=in.(${serviceIds.join(",")})&select=name`) : Promise.resolve(null),
-        ]);
-        const barber = (await barberRes.json())[0];
-        const shop   = (await shopRes.json())[0];
-        const svcs   = svcsRes ? await svcsRes.json() : [];
-        const serviceNames = Array.isArray(svcs) && svcs.length > 0
-          ? svcs.map((s: { name: string }) => s.name).join(" + ")
-          : "Serviço";
+      const [barberRes, shopRes, svcsRes] = await Promise.all([
+        db(`barbers?id=eq.${appt.barber_id}&select=name&limit=1`),
+        db(`barbershops?id=eq.${appt.barbershop_id}&select=name,logo_url,accent_color&limit=1`),
+        serviceIds.length > 0 ? db(`services?id=in.(${serviceIds.join(",")})&select=name`) : Promise.resolve(null),
+      ]);
+      const barber = (await barberRes.json())[0];
+      const shop   = (await shopRes.json())[0];
+      const svcs   = svcsRes ? await svcsRes.json() : [];
+      const serviceNames = Array.isArray(svcs) && svcs.length > 0
+        ? svcs.map((s: { name: string }) => s.name).join(" + ")
+        : "Serviço";
 
-        await fetch(`${SUPABASE_URL}/functions/v1/notify-appointment`, {
-          method:  "POST",
-          headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json" },
-          body: JSON.stringify({
-            client_name:     appt.client_name  || "",
-            client_email:    appt.client_email,
-            barbershop_name: shop?.name         || "Barbearia",
-            barbershop_logo: shop?.logo_url     || null,
-            accent_color:    shop?.accent_color || "#4db8ff",
-            barber_name:     barber?.name       || "—",
-            services:        serviceNames,
-            scheduled_date:  appt.scheduled_date,
-            scheduled_time:  (appt.scheduled_time || "").slice(0, 5),
-          }),
-        });
-      } catch (e) {
-        console.error("[confirm-notify-client]", e);
-      }
-    })();
+      await fetch(`${SUPABASE_URL}/functions/v1/notify-appointment`, {
+        method:  "POST",
+        headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          client_name:     appt.client_name  || "",
+          client_email:    appt.client_email,
+          barbershop_name: shop?.name         || "Barbearia",
+          barbershop_logo: shop?.logo_url     || null,
+          accent_color:    shop?.accent_color || "#4db8ff",
+          barber_name:     barber?.name       || "—",
+          services:        serviceNames,
+          scheduled_date:  appt.scheduled_date,
+          scheduled_time:  (appt.scheduled_time || "").slice(0, 5),
+        }),
+      });
+    } catch (e) {
+      console.error("[confirm-notify-client]", e);
+    }
   }
 
   return redirect(`/?booking=confirmed&name=${encodeURIComponent(appt.client_name)}`);
