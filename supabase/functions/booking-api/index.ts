@@ -1,7 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import nodemailer from "npm:nodemailer";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+const GMAIL_USER   = Deno.env.get("GMAIL_USER") ?? "";
+const GMAIL_PASS   = Deno.env.get("GMAIL_APP_PASSWORD") ?? "";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -45,6 +48,110 @@ function minutesToTime(m: number): string {
   const h = Math.floor(m / 60).toString().padStart(2, "0");
   const min = (m % 60).toString().padStart(2, "0");
   return `${h}:${min}`;
+}
+
+// ── Notificação e-mail para o barbeiro ───────────────────────────
+
+async function notifyBarber(opts: {
+  barber_email: string;
+  barber_name:  string;
+  barbershop_name: string;
+  barbershop_logo: string | null;
+  accent_color:    string;
+  client_name:  string;
+  client_phone: string;
+  services:     string;
+  scheduled_date: string;
+  scheduled_time: string;
+}) {
+  if (!GMAIL_USER || !GMAIL_PASS || !opts.barber_email) return;
+
+  const color = opts.accent_color || "#4db8ff";
+  const dateFormatted = new Date(`${opts.scheduled_date}T12:00:00`)
+    .toLocaleDateString("pt-BR", { weekday:"long", day:"2-digit", month:"long", year:"numeric" });
+
+  const logoHtml = (opts.barbershop_logo && opts.barbershop_logo !== "null")
+    ? `<img src="${opts.barbershop_logo}" alt="${opts.barbershop_name}" style="max-height:56px;max-width:140px;width:auto;height:auto;border-radius:10px;display:block;margin:0 auto 10px;" />`
+    : `<div style="width:52px;height:52px;border-radius:14px;background:${color}22;border:2px solid ${color}44;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;font-size:24px;font-weight:900;color:${color};font-family:'Segoe UI',Arial,sans-serif;">${(opts.barbershop_name||"B")[0].toUpperCase()}</div>`;
+
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#08090c;font-family:'Segoe UI',Arial,sans-serif;">
+  <div style="max-width:520px;margin:0 auto;padding:32px 16px;">
+    <div style="text-align:center;margin-bottom:24px;">
+      ${logoHtml}
+      <div style="font-size:20px;font-weight:900;color:#fff;letter-spacing:2px;text-transform:uppercase;">${opts.barbershop_name}</div>
+      <div style="font-size:11px;color:#4b5563;margin-top:3px;">Agendamento Online · Oz.Barber</div>
+    </div>
+    <div style="background:#13141a;border:1px solid #1e2030;border-radius:18px;overflow:hidden;">
+      <div style="background:linear-gradient(135deg,${color},${color}aa);height:5px;"></div>
+      <div style="padding:28px 26px;">
+        <div style="font-size:22px;font-weight:900;color:#fff;margin-bottom:6px;">📅 Nova Solicitação!</div>
+        <p style="color:#9ca3af;font-size:14px;margin:0 0 24px;line-height:1.6;">
+          Olá, <strong style="color:#e5e7eb;">${opts.barber_name}</strong>!
+          Você recebeu uma nova solicitação de agendamento.
+        </p>
+        <div style="background:#0d0e14;border:1px solid #1e2030;border-radius:12px;padding:18px 20px;margin-bottom:20px;">
+          <div style="margin-bottom:14px;display:flex;align-items:flex-start;gap:12px;">
+            <span style="font-size:20px;line-height:1;">👤</span>
+            <div>
+              <div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:2px;">Cliente</div>
+              <div style="font-size:15px;color:#e5e7eb;font-weight:700;">${opts.client_name}</div>
+              <div style="font-size:13px;color:#9ca3af;margin-top:2px;">${opts.client_phone}</div>
+            </div>
+          </div>
+          <div style="margin-bottom:14px;display:flex;align-items:flex-start;gap:12px;">
+            <span style="font-size:20px;line-height:1;">📅</span>
+            <div>
+              <div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:2px;">Data</div>
+              <div style="font-size:15px;color:#e5e7eb;font-weight:700;text-transform:capitalize;">${dateFormatted}</div>
+            </div>
+          </div>
+          <div style="margin-bottom:14px;display:flex;align-items:flex-start;gap:12px;">
+            <span style="font-size:20px;line-height:1;">🕐</span>
+            <div>
+              <div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:2px;">Horário</div>
+              <div style="font-size:15px;color:#e5e7eb;font-weight:700;">${opts.scheduled_time}</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:12px;">
+            <span style="font-size:20px;line-height:1;">✂️</span>
+            <div>
+              <div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:2px;">Serviço</div>
+              <div style="font-size:15px;color:#e5e7eb;font-weight:700;">${opts.services}</div>
+            </div>
+          </div>
+        </div>
+        <p style="color:#6b7280;font-size:12px;margin:0;line-height:1.7;text-align:center;">
+          Acesse o painel para confirmar ou cancelar o agendamento.
+        </p>
+      </div>
+      <div style="padding:14px 26px;border-top:1px solid #1e2030;text-align:center;">
+        <p style="color:#374151;font-size:11px;margin:0;">
+          Enviado automaticamente por <strong style="color:${color};">Oz.Barber</strong>
+        </p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  try {
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: { user: GMAIL_USER, pass: GMAIL_PASS },
+    });
+    await transporter.sendMail({
+      from:    `"${opts.barbershop_name}" <${GMAIL_USER}>`,
+      to:      opts.barber_email,
+      subject: `📅 Nova solicitação — ${opts.client_name} (${opts.scheduled_time})`,
+      html,
+    });
+    console.log("[notify-barber] Enviado para:", opts.barber_email);
+  } catch (e) {
+    console.error("[notify-barber]", e);
+  }
 }
 
 // ── action: get_shop ─────────────────────────────────────────────
@@ -246,6 +353,42 @@ async function book(body: Record<string, unknown>) {
   const appts = await apptRes.json();
   if (!Array.isArray(appts) || !appts[0])
     return err("Erro ao criar agendamento. Tente novamente.");
+
+  // 4. Notifica o barbeiro por e-mail (fire-and-forget)
+  (async () => {
+    try {
+      const [barberRes, shopRes, svcsRes] = await Promise.all([
+        db(`barbers?id=eq.${barber_id}&select=name,notification_email&limit=1`),
+        db(`barbershops?id=eq.${barbershop_id}&select=name,logo_url,accent_color&limit=1`),
+        serviceIdsArr.length > 0
+          ? db(`services?id=in.(${serviceIdsArr.join(",")})&select=name`)
+          : Promise.resolve(null),
+      ]);
+      const barber = (await barberRes.json())[0];
+      const shop   = (await shopRes.json())[0];
+      const svcs   = svcsRes ? await svcsRes.json() : [];
+
+      if (barber?.notification_email) {
+        const serviceNames = Array.isArray(svcs) && svcs.length > 0
+          ? svcs.map((s: { name: string }) => s.name).join(" + ")
+          : "Serviço";
+        await notifyBarber({
+          barber_email:    barber.notification_email,
+          barber_name:     barber.name,
+          barbershop_name: shop?.name        || "Barbearia",
+          barbershop_logo: shop?.logo_url    || null,
+          accent_color:    shop?.accent_color || "#4db8ff",
+          client_name:     client_name.trim(),
+          client_phone:    client_phone.trim(),
+          services:        serviceNames,
+          scheduled_date,
+          scheduled_time,
+        });
+      }
+    } catch (e) {
+      console.error("[notify-barber background]", e);
+    }
+  })();
 
   return ok({ appointment: appts[0], client_id }, 201);
 }

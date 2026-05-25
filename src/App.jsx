@@ -137,7 +137,7 @@ const accessDeniedMessage = (reason) => {
 const toAtt  = a => ({ id: a.id, clientId: a.client_id, barberId: a.barber_id, serviceId: a.service_id, price: +a.price, servicesPrice: +(a.services_price ?? a.price), payment: a.payment, date: a.date, time: a.time || "", notes: a.notes || "", extraServices: Array.isArray(a.extra_services) ? a.extra_services : [], productsSold: Array.isArray(a.products_sold) ? a.products_sold : [], appointmentId: a.appointment_id || null, source: a.source || "manual" });
 const fromAtt = a => ({ client_id: +a.clientId||0, barber_id: +a.barberId||0, service_id: +a.serviceId||0, price: +a.price, payment: a.payment, date: a.date, time: a.time, notes: a.notes, extra_services: a.extraServices||[] });
 const toClient = c => ({ id: c.id, name: c.name, phone: c.phone || "", whatsapp: c.whatsapp || "", birthdate: c.birthdate || "", notes: c.notes || "", points: +c.points });
-const toBarber = b => ({ id: b.id, name: b.name, phone: b.phone || "", commission: +b.commission, status: b.status, userId: b.user_id });
+const toBarber = b => ({ id: b.id, name: b.name, phone: b.phone || "", commission: +b.commission, status: b.status, userId: b.user_id, notificationEmail: b.notification_email || "" });
 const toService = s => ({ id: s.id, name: s.name, price: +s.price, duration: +s.duration, active: s.active });
 const toExpense     = e => ({ id: e.id, desc: e.description, amount: +e.amount, date: e.date, category: e.category || "" });
 const toProduct     = p => ({ id: p.id, name: p.name, description: p.description || "", price: +(p.price||0), cost: +(p.cost||0), stockCurrent: +(p.stock_current||0), stockMinimum: +(p.stock_minimum||0), unit: p.unit || "un", active: p.active !== false });
@@ -1889,7 +1889,7 @@ function BarbersView({ barbers, setBarbers, attendances, token, barbershopId, on
   const [editing,    setEditing]    = useState(null);
   const [saving,     setSaving]     = useState(false);
   const [err,        setErr]        = useState("");
-  const [form,       setForm]       = useState({ name:"", phone:"", commission:40, status:"active", email:"", password:"" });
+  const [form,       setForm]       = useState({ name:"", phone:"", commission:40, status:"active", email:"", password:"", notificationEmail:"" });
   const [availBarber,setAvailBarber]= useState(null);
   const setF = k => e => setForm(f=>({...f,[k]:e.target.value}));
 
@@ -1918,7 +1918,7 @@ function BarbersView({ barbers, setBarbers, attendances, token, barbershopId, on
         userId = data.user?.id;
       }
 
-      const body = { name:form.name, phone:form.phone, commission:+form.commission, status:form.status, user_id: userId, barbershop_id: barbershopId };
+      const body = { name:form.name, phone:form.phone, commission:+form.commission, status:form.status, user_id: userId, barbershop_id: barbershopId, notification_email: form.notificationEmail.trim() || null };
 
       if (editing) {
         await api.update("barbers", editing, body, token);
@@ -1953,7 +1953,7 @@ function BarbersView({ barbers, setBarbers, attendances, token, barbershopId, on
     <div>
       <PageHeader title="Barbeiros" sub={`${barbers.filter(b=>b.status==="active").length} ativos`}
         onRefresh={onRefresh}
-        right={<Btn onClick={()=>{setEditing(null);setForm({name:"",phone:"",commission:40,status:"active",email:"",password:""});setShowModal(true);}}><Plus size={15}/>Novo Barbeiro</Btn>}
+        right={<Btn onClick={()=>{setEditing(null);setForm({name:"",phone:"",commission:40,status:"active",email:"",password:"",notificationEmail:""});setShowModal(true);}}><Plus size={15}/>Novo Barbeiro</Btn>}
       />
       <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap:"1rem" }}>
         {barbers.map(b=>{
@@ -1968,11 +1968,12 @@ function BarbersView({ barbers, setBarbers, attendances, token, barbershopId, on
                 <div style={{ display:"flex", gap:6, alignItems:"center" }}>
                   <Badge color={b.status==="active"?T.success:T.muted}>{b.status==="active"?"Ativo":"Inativo"}</Badge>
                   <button onClick={()=>setAvailBarber(b)} title="Configurar disponibilidade" style={{ background:"none", border:"none", color:T.muted, cursor:"pointer", display:"inline-flex" }}><Clock size={14}/></button>
-                  <button onClick={()=>{setEditing(b.id);setForm({...b});setShowModal(true);}} style={{ background:"none", border:"none", color:T.muted, cursor:"pointer", display:"inline-flex" }}><Edit2 size={14}/></button>
+                  <button onClick={()=>{setEditing(b.id);setForm({...b, notificationEmail: b.notificationEmail||""});setShowModal(true);}} style={{ background:"none", border:"none", color:T.muted, cursor:"pointer", display:"inline-flex" }}><Edit2 size={14}/></button>
                 </div>
               </div>
               <div style={{ fontWeight:600, color:T.text, marginBottom:3 }}>{b.name}</div>
-              {b.phone&&<div style={{ fontSize:12, color:T.muted, marginBottom:"1rem", display:"flex", alignItems:"center", gap:5 }}><Phone size={11}/>{b.phone}</div>}
+              {b.phone&&<div style={{ fontSize:12, color:T.muted, marginBottom:4, display:"flex", alignItems:"center", gap:5 }}><Phone size={11}/>{b.phone}</div>}
+              {b.notificationEmail&&<div style={{ fontSize:12, color:T.muted, marginBottom:4, display:"flex", alignItems:"center", gap:5 }}>✉ {b.notificationEmail}</div>}
               {b.userId&&<div style={{ fontSize:11, color:T.success+"aa", marginBottom:"0.75rem", display:"flex", alignItems:"center", gap:4 }}><Check size={11}/>Login configurado</div>}
               {!b.userId&&<div style={{ fontSize:11, color:T.muted, marginBottom:"0.75rem" }}>⚠ Sem login configurado</div>}
               <div style={{ borderTop:`1px solid ${T.borderLight}`, paddingTop:"1rem", display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0.75rem" }}>
@@ -1993,6 +1994,7 @@ function BarbersView({ barbers, setBarbers, attendances, token, barbershopId, on
           <ErrorBar msg={err}/>
           <FInput label="Nome" value={form.name} onChange={setF("name")}/>
           <FInput label="Telefone" value={form.phone} onChange={setF("phone")}/>
+          <FInput label="E-mail para notificações" type="email" value={form.notificationEmail} onChange={setF("notificationEmail")} placeholder="barbeiro@email.com"/>
           <Row>
             <FG label="Comissão (%)" half><input style={inputSt} type="number" min="0" max="100" value={form.commission} onChange={setF("commission")}/></FG>
             <FSelect label="Status" value={form.status} onChange={setF("status")}><option value="active">Ativo</option><option value="inactive">Inativo</option></FSelect>
