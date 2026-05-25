@@ -4490,37 +4490,54 @@ export default function App() {
   // Resultado de confirmação via link do e-mail (?booking=confirmed|already|cancelled|invalid)
   const bookingStatus = new URLSearchParams(window.location.search).get("booking");
   if (bookingStatus) {
-    const clientName = new URLSearchParams(window.location.search).get("name") || "o cliente";
+    const params     = new URLSearchParams(window.location.search);
+    const clientName = params.get("name")  || "o cliente";
+    const shopName   = params.get("shop")  || "";
+    const shopLogo   = params.get("logo")  || "";
+    const shopColor  = params.get("color") || "";
+
     const cfg = {
-      confirmed: { icon:"✓", color:"#22c55e", title:"Agendamento Confirmado!", msg:`O agendamento de ${clientName} foi confirmado com sucesso. O cliente será notificado por e-mail.` },
-      already:   { icon:"✓", color:"#22c55e", title:"Já Confirmado",           msg:`O agendamento de ${clientName} já havia sido confirmado anteriormente.` },
-      cancelled: { icon:"✕", color:"#ef4444", title:"Agendamento Cancelado",   msg:"Este agendamento foi cancelado e não pode ser confirmado." },
-      invalid:   { icon:"✕", color:"#ef4444", title:"Link Inválido",           msg:"Este link de confirmação é inválido ou já foi utilizado." },
-    }[bookingStatus] || { icon:"?", color:"#6b7280", title:"Status Desconhecido", msg:"" };
+      confirmed: { icon:"✓", baseColor:"#22c55e", title:"Agendamento Confirmado!", msg:`O agendamento de ${clientName} foi confirmado com sucesso. O cliente será notificado por e-mail.` },
+      already:   { icon:"✓", baseColor:"#22c55e", title:"Já Confirmado",           msg:`O agendamento de ${clientName} já havia sido confirmado anteriormente.` },
+      cancelled: { icon:"✕", baseColor:"#ef4444", title:"Agendamento Cancelado",   msg:"Este agendamento foi cancelado e não pode ser confirmado." },
+      invalid:   { icon:"✕", baseColor:"#ef4444", title:"Link Inválido",           msg:"Este link de confirmação é inválido ou já foi utilizado." },
+    }[bookingStatus] || { icon:"?", baseColor:"#6b7280", title:"Status Desconhecido", msg:"" };
+
+    // Usa cor da barbearia em status positivos; vermelho/cinza para erros
+    const accent = (shopColor && (bookingStatus === "confirmed" || bookingStatus === "already"))
+      ? shopColor : cfg.baseColor;
+
     return (
       <div style={{ minHeight:"100vh", background:"#08090c", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", fontFamily:"'DM Sans',sans-serif", padding:"2rem" }}>
-        {/* Logo Oz.Barber */}
-        <div style={{ marginBottom:"2.5rem", textAlign:"center" }}>
-          <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:28, letterSpacing:4, color:"#ffffff", opacity:0.9 }}>OZ.BARBER</div>
+        {/* Branding da barbearia */}
+        <div style={{ marginBottom:"2rem", textAlign:"center" }}>
+          {shopLogo ? (
+            <img src={shopLogo} alt={shopName} style={{ maxHeight:72, maxWidth:180, width:"auto", height:"auto", borderRadius:12, display:"block", margin:"0 auto 12px" }} />
+          ) : shopName ? (
+            <div style={{ width:64, height:64, borderRadius:16, background:`${accent}22`, border:`2px solid ${accent}44`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 12px", fontSize:28, fontWeight:900, color:accent, fontFamily:"'Bebas Neue',sans-serif" }}>
+              {shopName[0].toUpperCase()}
+            </div>
+          ) : null}
+          {shopName && <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:22, letterSpacing:3, color:"#ffffff", opacity:0.9 }}>{shopName.toUpperCase()}</div>}
           <div style={{ fontSize:11, color:"#4b5563", letterSpacing:1, marginTop:2 }}>Sistema de Agendamento</div>
         </div>
 
         {/* Card */}
-        <div style={{ background:"#13141a", border:`1px solid ${cfg.color}33`, borderRadius:20, padding:"2.5rem 2rem", maxWidth:400, width:"100%", textAlign:"center", boxShadow:`0 0 40px ${cfg.color}11` }}>
+        <div style={{ background:"#13141a", border:`1px solid ${accent}33`, borderRadius:20, padding:"2.5rem 2rem", maxWidth:400, width:"100%", textAlign:"center", boxShadow:`0 0 40px ${accent}11` }}>
           {/* Ícone */}
           <div style={{
             width:80, height:80, borderRadius:"50%",
-            background:`${cfg.color}18`, border:`2px solid ${cfg.color}`,
+            background:`${accent}18`, border:`2px solid ${accent}`,
             display:"flex", alignItems:"center", justifyContent:"center",
             margin:"0 auto 1.5rem",
-            fontSize:36, fontWeight:900, color:cfg.color,
+            fontSize:36, fontWeight:900, color:accent,
             fontFamily:"'Bebas Neue',sans-serif",
           }}>
             {cfg.icon}
           </div>
 
           {/* Título */}
-          <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:28, letterSpacing:2, color:cfg.color, marginBottom:"0.75rem", lineHeight:1.1 }}>
+          <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:28, letterSpacing:2, color:accent, marginBottom:"0.75rem", lineHeight:1.1 }}>
             {cfg.title}
           </div>
 
@@ -4532,7 +4549,7 @@ export default function App() {
           {/* Divider */}
           <div style={{ borderTop:"1px solid #1e2030", paddingTop:"1.25rem" }}>
             <div style={{ fontSize:12, color:"#374151" }}>
-              Powered by <strong style={{ color:cfg.color }}>Oz.Barber</strong>
+              Powered by <strong style={{ color:accent }}>OzTech SmartControl</strong>
             </div>
           </div>
         </div>
