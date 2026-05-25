@@ -59,7 +59,7 @@ export default function BookingPage({ slug }) {
   const [selectedSlot,     setSelectedSlot]     = useState("");
   const [slots,            setSlots]            = useState([]);
   const [slotsLoading,     setSlotsLoading]     = useState(false);
-  const [form,             setForm]             = useState({ name: "", phone: "", notes: "" });
+  const [form,             setForm]             = useState({ name: "", phone: "", email: "", notes: "" });
   const [booking,          setBooking]          = useState(false);
 
   // Totais computados a partir dos serviços selecionados
@@ -155,6 +155,7 @@ export default function BookingPage({ slug }) {
           duration_minutes: totalDuration,
           client_name:      form.name.trim(),
           client_phone:     form.phone.trim(),
+          client_email:     form.email.trim() || null,
           notes:            form.notes.trim() || null,
         }),
       });
@@ -174,7 +175,7 @@ export default function BookingPage({ slug }) {
     setSelectedDate("");
     setSelectedSlot("");
     setSlots([]);
-    setForm({ name: "", phone: "", notes: "" });
+    setForm({ name: "", phone: "", email: "", notes: "" });
   };
 
   const accent = shop?.accent_color || BT.accent;
@@ -466,6 +467,17 @@ export default function BookingPage({ slug }) {
                   placeholder="(00) 90000-0000"
                   value={form.phone}
                   onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+                  style={inputSt}
+                />
+              </div>
+
+              <div style={{ marginBottom:"1rem" }}>
+                <label style={{ display:"block", fontSize:13, color:BT.muted, fontWeight:600, marginBottom:6 }}>E-mail (opcional)</label>
+                <input
+                  type="email"
+                  placeholder="seu@email.com"
+                  value={form.email}
+                  onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
                   style={inputSt}
                 />
               </div>
