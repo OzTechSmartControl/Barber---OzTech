@@ -164,6 +164,110 @@ async function notifyBarber(opts: {
   }
 }
 
+// ── Notificação e-mail para o cliente (confirmação) ─────────────
+
+async function notifyClient(opts: {
+  client_name:     string;
+  client_email:    string;
+  barbershop_name: string;
+  barbershop_logo: string | null;
+  accent_color:    string;
+  barber_name:     string;
+  services:        string;
+  scheduled_date:  string;
+  scheduled_time:  string;
+}) {
+  if (!GMAIL_USER || !GMAIL_PASS || !opts.client_email) return;
+
+  const color    = opts.accent_color || "#4db8ff";
+  const colorDim = `${color}22`;
+
+  const dateFormatted = new Date(`${opts.scheduled_date}T12:00:00`)
+    .toLocaleDateString("pt-BR", { weekday:"long", day:"2-digit", month:"long", year:"numeric" });
+
+  const logoHtml = (opts.barbershop_logo && opts.barbershop_logo !== "null" && opts.barbershop_logo !== "")
+    ? `<img src="${opts.barbershop_logo}" alt="${opts.barbershop_name}" style="max-height:64px;max-width:160px;width:auto;height:auto;border-radius:10px;display:block;margin:0 auto 10px;" />`
+    : `<div style="width:56px;height:56px;border-radius:14px;background:${colorDim};border:2px solid ${color}44;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;font-size:26px;font-weight:900;color:${color};font-family:'Segoe UI',Arial,sans-serif;">${(opts.barbershop_name||"B")[0].toUpperCase()}</div>`;
+
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#08090c;font-family:'Segoe UI',Arial,sans-serif;">
+  <div style="max-width:520px;margin:0 auto;padding:32px 16px;">
+    <div style="text-align:center;margin-bottom:24px;">
+      ${logoHtml}
+      <div style="font-size:22px;font-weight:900;color:#ffffff;letter-spacing:2px;text-transform:uppercase;">${opts.barbershop_name}</div>
+      <div style="font-size:11px;color:#4b5563;margin-top:3px;letter-spacing:0.5px;">Agendamento Online · OzTech SmartControl</div>
+    </div>
+    <div style="background:#13141a;border:1px solid #1e2030;border-radius:18px;overflow:hidden;">
+      <div style="background:linear-gradient(135deg,${color},${color}aa);height:5px;"></div>
+      <div style="padding:32px 28px;">
+        <div style="font-size:24px;font-weight:900;color:#ffffff;margin-bottom:6px;">✂️ Agendamento Confirmado!</div>
+        <p style="color:#9ca3af;font-size:14px;margin:0 0 28px;line-height:1.6;">
+          Olá, <strong style="color:#e5e7eb;">${opts.client_name || "cliente"}</strong>!
+          Sua visita à <strong style="color:${color};">${opts.barbershop_name}</strong> foi confirmada com sucesso.
+        </p>
+        <div style="background:#0d0e14;border:1px solid #1e2030;border-radius:12px;padding:20px 22px;margin-bottom:24px;">
+          <div style="margin-bottom:16px;display:flex;align-items:flex-start;gap:14px;">
+            <span style="font-size:22px;line-height:1;">📅</span>
+            <div>
+              <div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:3px;">Data</div>
+              <div style="font-size:15px;color:#e5e7eb;font-weight:700;text-transform:capitalize;">${dateFormatted}</div>
+            </div>
+          </div>
+          <div style="margin-bottom:16px;display:flex;align-items:flex-start;gap:14px;">
+            <span style="font-size:22px;line-height:1;">🕐</span>
+            <div>
+              <div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:3px;">Horário</div>
+              <div style="font-size:15px;color:#e5e7eb;font-weight:700;">${opts.scheduled_time}</div>
+            </div>
+          </div>
+          <div style="margin-bottom:16px;display:flex;align-items:flex-start;gap:14px;">
+            <span style="font-size:22px;line-height:1;">✂️</span>
+            <div>
+              <div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:3px;">Serviço</div>
+              <div style="font-size:15px;color:#e5e7eb;font-weight:700;">${opts.services}</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:14px;">
+            <span style="font-size:22px;line-height:1;">👤</span>
+            <div>
+              <div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:3px;">Barbeiro</div>
+              <div style="font-size:15px;color:#e5e7eb;font-weight:700;">${opts.barber_name}</div>
+            </div>
+          </div>
+        </div>
+        <p style="color:#6b7280;font-size:12px;margin:0;line-height:1.7;text-align:center;">
+          Em caso de imprevisto, entre em contato diretamente com a barbearia<br>para cancelar ou reagendar com antecedência.
+        </p>
+      </div>
+      <div style="padding:14px 28px;border-top:1px solid #1e2030;text-align:center;">
+        <p style="color:#374151;font-size:11px;margin:0;">
+          Enviado automaticamente por <strong style="color:${color};">OzTech SmartControl</strong>
+        </p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  try {
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: { user: GMAIL_USER, pass: GMAIL_PASS },
+    });
+    await transporter.sendMail({
+      from:    `"${opts.barbershop_name}" <${GMAIL_USER}>`,
+      to:      opts.client_email,
+      subject: `✂️ Agendamento confirmado — ${opts.barbershop_name}`,
+      html,
+    });
+    console.log("[notify-client] Enviado para:", opts.client_email);
+  } catch (e) {
+    console.error("[notify-client]", e);
+  }
+}
+
 // ── action: get_shop ─────────────────────────────────────────────
 // Retorna dados públicos da barbearia + barbeiros ativos + serviços ativos
 
@@ -429,18 +533,34 @@ function redirect(path: string) {
 }
 
 async function confirmByToken(token: string) {
-  if (!token) return redirect("/?booking=invalid");
+  if (!token) return Response.redirect(`${APP_URL}/?booking=invalid`, 302);
 
-  // Busca o agendamento pelo token
+  // Busca o agendamento pelo token (inclui client_id e notes para criar atendimento)
   const apptRes = await db(
-    `appointments?confirm_token=eq.${token}&select=id,status,client_name,client_email,client_phone,scheduled_date,scheduled_time,service_id,service_ids,barber_id,barbershop_id&limit=1`
+    `appointments?confirm_token=eq.${token}&select=id,status,client_name,client_email,client_phone,client_id,scheduled_date,scheduled_time,service_id,service_ids,barber_id,barbershop_id,notes,duration_minutes&limit=1`
   );
   const appts = await apptRes.json();
   const appt  = Array.isArray(appts) ? appts[0] : null;
 
-  if (!appt)      return redirect("/?booking=invalid");
-  if (appt.status === "confirmed") return redirect(`/?booking=already&name=${encodeURIComponent(appt.client_name)}`);
-  if (appt.status === "cancelled") return redirect("/?booking=cancelled");
+  if (!appt) return Response.redirect(`${APP_URL}/?booking=invalid`, 302);
+
+  // Busca dados da barbearia para branding na página de resultado
+  const shopRes = await db(`barbershops?id=eq.${appt.barbershop_id}&select=name,logo_url,accent_color&limit=1`);
+  const shopArr = await shopRes.json();
+  const shop    = Array.isArray(shopArr) ? shopArr[0] : null;
+
+  // Monta URL de redirect com parâmetros de branding
+  const buildRedirect = (status: string) => {
+    const p = new URLSearchParams({ booking: status });
+    if (appt.client_name)  p.set("name", appt.client_name);
+    if (shop?.name)        p.set("shop", shop.name);
+    if (shop?.logo_url && shop.logo_url !== "null" && shop.logo_url !== "") p.set("logo", shop.logo_url);
+    if (shop?.accent_color) p.set("color", shop.accent_color);
+    return Response.redirect(`${APP_URL}/?${p.toString()}`, 302);
+  };
+
+  if (appt.status === "confirmed") return buildRedirect("already");
+  if (appt.status === "cancelled") return buildRedirect("cancelled");
 
   // Confirma o agendamento
   await db(`appointments?id=eq.${appt.id}`, {
@@ -449,45 +569,106 @@ async function confirmByToken(token: string) {
     headers: { Prefer: "return=minimal" },
   });
 
-  // Envia e-mail de confirmação ao cliente (aguarda antes de redirecionar)
+  // Busca barbeiro e serviços (usado tanto no atendimento quanto no e-mail)
+  const rawIds = appt.service_ids;
+  const serviceIds: number[] =
+    Array.isArray(rawIds) && rawIds.length > 0
+      ? rawIds.map(Number).filter(Boolean)
+      : appt.service_id
+        ? [Number(appt.service_id)]
+        : [];
+
+  const [barberRes, svcsRes] = await Promise.all([
+    db(`barbers?id=eq.${appt.barber_id}&select=name&limit=1`),
+    serviceIds.length > 0
+      ? db(`services?id=in.(${serviceIds.join(",")})&select=id,name,price`)
+      : Promise.resolve(null),
+  ]);
+  const barber = (await barberRes.json())[0];
+
+  // Garante que svcs é sempre um array mesmo se a query falhar
+  let svcs: { id: number; name: string; price: number }[] = [];
+  if (svcsRes) {
+    const svcsData = await svcsRes.json();
+    if (Array.isArray(svcsData)) {
+      svcs = svcsData;
+    } else {
+      console.error("[confirm] Falha ao buscar serviços:", svcsData);
+    }
+  }
+  console.log("[confirm] serviceIds:", serviceIds, "svcs:", svcs);
+
+  // Cria atendimento rascunho (payment=Pendente) para aparecer no painel do admin
+  // Mesmo comportamento da confirmação pelo painel (AppointmentsView.updateStatus)
+  try {
+    // Usa svcs detalhados se disponíveis, senão usa service_id direto como fallback
+    const primaryId   = svcs.length > 0 ? svcs[0].id : serviceIds[0] ?? null;
+    const totalPrice  = svcs.reduce((sum, s) => sum + Number(s.price || 0), 0);
+    const extras      = svcs.slice(1).map(s => ({ serviceId: s.id, name: s.name, price: s.price }));
+
+    if (primaryId) {
+      const attRes = await db("attendances", {
+        method: "POST",
+        body: JSON.stringify({
+          barbershop_id:  appt.barbershop_id,
+          barber_id:      appt.barber_id,
+          client_id:      appt.client_id || null,
+          service_id:     primaryId,
+          price:          totalPrice,
+          services_price: totalPrice,
+          payment:        "Pendente",
+          date:           appt.scheduled_date,
+          time:           (appt.scheduled_time || "").slice(0, 5),
+          notes:          appt.notes || null,
+          extra_services: extras,
+          appointment_id: appt.id,
+          source:         "appointment",
+        }),
+        headers: { Prefer: "return=minimal" },
+      });
+
+      if (attRes.ok) {
+        console.log("[confirm] Atendimento criado para appointment:", appt.id);
+      } else {
+        const errBody = await attRes.text();
+        // 409 = unique constraint (já criado pelo painel) — esperado
+        if (attRes.status === 409 || errBody.includes("unique")) {
+          console.log("[confirm] Atendimento já existia (unique constraint), ok.");
+        } else {
+          console.error("[confirm-create-attendance] ERRO HTTP", attRes.status, errBody);
+        }
+      }
+    } else {
+      console.warn("[confirm] Sem service_id válido, atendimento não criado. appt.id:", appt.id);
+    }
+  } catch (e) {
+    console.error("[confirm-create-attendance] EXCEÇÃO:", e);
+  }
+
+  // Envia e-mail de confirmação ao cliente via nodemailer direto
   if (appt.client_email) {
     try {
-      const serviceIds: number[] = Array.isArray(appt.service_ids) && appt.service_ids.length > 0
-        ? appt.service_ids : appt.service_id ? [appt.service_id] : [];
-
-      const [barberRes, shopRes, svcsRes] = await Promise.all([
-        db(`barbers?id=eq.${appt.barber_id}&select=name&limit=1`),
-        db(`barbershops?id=eq.${appt.barbershop_id}&select=name,logo_url,accent_color&limit=1`),
-        serviceIds.length > 0 ? db(`services?id=in.(${serviceIds.join(",")})&select=name`) : Promise.resolve(null),
-      ]);
-      const barber = (await barberRes.json())[0];
-      const shop   = (await shopRes.json())[0];
-      const svcs   = svcsRes ? await svcsRes.json() : [];
       const serviceNames = Array.isArray(svcs) && svcs.length > 0
-        ? svcs.map((s: { name: string }) => s.name).join(" + ")
+        ? svcs.map(s => s.name).join(" + ")
         : "Serviço";
 
-      await fetch(`${SUPABASE_URL}/functions/v1/notify-appointment`, {
-        method:  "POST",
-        headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          client_name:     appt.client_name  || "",
-          client_email:    appt.client_email,
-          barbershop_name: shop?.name         || "Barbearia",
-          barbershop_logo: shop?.logo_url     || null,
-          accent_color:    shop?.accent_color || "#4db8ff",
-          barber_name:     barber?.name       || "—",
-          services:        serviceNames,
-          scheduled_date:  appt.scheduled_date,
-          scheduled_time:  (appt.scheduled_time || "").slice(0, 5),
-        }),
+      await notifyClient({
+        client_name:     appt.client_name  || "",
+        client_email:    appt.client_email,
+        barbershop_name: shop?.name         || "Barbearia",
+        barbershop_logo: shop?.logo_url     || null,
+        accent_color:    shop?.accent_color || "#4db8ff",
+        barber_name:     barber?.name       || "—",
+        services:        serviceNames,
+        scheduled_date:  appt.scheduled_date,
+        scheduled_time:  (appt.scheduled_time || "").slice(0, 5),
       });
     } catch (e) {
       console.error("[confirm-notify-client]", e);
     }
   }
 
-  return redirect(`/?booking=confirmed&name=${encodeURIComponent(appt.client_name)}`);
+  return buildRedirect("confirmed");
 }
 
 // ── Handler principal ────────────────────────────────────────────

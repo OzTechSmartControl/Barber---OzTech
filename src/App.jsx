@@ -1341,7 +1341,7 @@ function AttendancesView({ attendances, setAttendances, clients, services, barbe
   });
 
   const [filterFrom,   setFilterFrom]   = useState(() => { const t = today(); return t.substring(0,7) + "-01"; });
-  const [filterTo,     setFilterTo]     = useState(today);
+  const [filterTo,     setFilterTo]     = useState(() => { const d = new Date(); d.setMonth(d.getMonth() + 1); return d.toISOString().slice(0, 10); });
   const [filterBarber, setFilterBarber] = useState("");
   const [showModal,    setShowModal]    = useState(false);
   const [saving,       setSaving]       = useState(false);
