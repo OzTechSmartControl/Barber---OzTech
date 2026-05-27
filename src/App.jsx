@@ -4493,12 +4493,8 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     return params.get('plans') === 'true';
   });
-  const [showLanding,    setShowLanding]    = useState(() => {
-    const host = window.location.hostname;
-    // ozbarber.vercel.app e localhost vão direto pro app (sem landing)
-    if (host === "ozbarber.vercel.app" || host === "localhost") return false;
-    return true;
-  });
+  // Landing page removida do app — acesse ozbarber-oztech.vercel.app
+  const [showLanding,    setShowLanding]    = useState(false);
   const [expiredMsg,     setExpiredMsg]     = useState("");
   const [postPaymentPlan, setPostPaymentPlan] = useState(null);
   const [courtesyEmail,setCourtesyEmail]= useState(null);
