@@ -4745,7 +4745,7 @@ export default function App() {
         api.list("services",     withShop("select=*&order=name"), tok),
         api.list("attendances",  attQuery, tok),
         isAdm ? api.list("expenses",     withShop("select=*&order=date.desc"), tok) : Promise.resolve([]),
-        isAdm ? api.list("products",     withShop("select=*&order=name"), tok)      : Promise.resolve([]),
+        api.list("products", withShop("select=*&order=name"), tok),
         isAdm ? api.list("product_sales","select=*&order=sold_at.desc", tok)        : Promise.resolve([]),
       ]);
 
