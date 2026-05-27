@@ -1333,11 +1333,12 @@ function MeuPlanoView({ token, userEmail, profile, onRenew }) {
 }
 
 // ── ATENDIMENTOS ──────────────────────────────────────────────
-function AttendancesView({ attendances, setAttendances, clients, services, barbers, token, isAdmin, myBarberId, barbershopId, products = [], setProducts, setProductSales, onRefresh }) {
+function AttendancesView({ attendances, setAttendances, clients, setClients, services, barbers, token, isAdmin, myBarberId, barbershopId, products = [], setProducts, setProductSales, onRefresh }) {
   const emptyForm = () => ({
     clientId: "", barberId: isAdmin ? "" : String(myBarberId||""),
     selectedServices: [], selectedProducts: [], payment: "PIX",
     date: today(), time: nowTime(), notes: "",
+    newClientName: "", newClientPhone: "",
   });
 
   const [filterFrom,   setFilterFrom]   = useState(() => { const t = today(); return t.substring(0,7) + "-01"; });
@@ -1420,10 +1421,27 @@ function AttendancesView({ attendances, setAttendances, clients, services, barbe
 
   // ── Save ──────────────────────────────────────────────────────
   const save = async () => {
-    if (!form.clientId || !form.barberId || form.selectedServices.length === 0)
+    const isNewClient = form.clientId === "__new__";
+    if (!isNewClient && !form.clientId || !form.barberId || form.selectedServices.length === 0)
       return setErr("Preencha cliente, barbeiro e pelo menos um serviço.");
+    if (isNewClient && !form.newClientName.trim())
+      return setErr("Preencha o nome do novo cliente.");
     setSaving(true); setErr("");
     try {
+      // Se for novo cliente, cadastra primeiro
+      let finalClientId = +form.clientId;
+      if (isNewClient) {
+        const newClientRows = await api.insert("clients", {
+          name:         form.newClientName.trim(),
+          whatsapp:     form.newClientPhone.trim() || null,
+          phone:        form.newClientPhone.trim() || null,
+          barbershop_id: barbershopId,
+          points:       0,
+        }, token);
+        finalClientId = newClientRows[0].id;
+        if (setClients) setClients(prev => [...prev, toClient(newClientRows[0])].sort((a,b) => a.name.localeCompare(b.name)));
+      }
+
       const [primary, ...extras] = form.selectedServices;
 
       // Validar estoque dos produtos selecionados
@@ -1438,7 +1456,7 @@ function AttendancesView({ attendances, setAttendances, clients, services, barbe
         productId: sp.productId, name: sp.name, price: sp.price, quantity: sp.quantity, unit: sp.unit,
       }));
       const rows = await api.insert("attendances", {
-        client_id: +form.clientId, barber_id: +form.barberId,
+        client_id: finalClientId, barber_id: +form.barberId,
         service_id: primary.serviceId, price: totalPrice, services_price: totalServices,
         payment: form.payment, date: form.date, time: form.time,
         notes: form.notes, extra_services: extras,
@@ -1624,10 +1642,27 @@ function AttendancesView({ attendances, setAttendances, clients, services, barbe
         <Modal title="Novo Atendimento" onClose={() => setShowModal(false)}>
           <ErrorBar msg={err}/>
 
-          <FSelect label="Cliente" value={form.clientId} onChange={e => setForm(f => ({ ...f, clientId: e.target.value }))}>
+          <FSelect label="Cliente" value={form.clientId} onChange={e => setForm(f => ({ ...f, clientId: e.target.value, newClientName: "", newClientPhone: "" }))}>
             <option value="">Selecione o cliente</option>
+            <option value="__new__">➕ Cadastrar novo cliente</option>
             {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </FSelect>
+
+          {form.clientId === "__new__" && (
+            <div style={{ background:`${T.accent}0d`, border:`1px solid ${T.accent}33`, borderRadius:10, padding:"12px 14px", marginBottom:"1rem" }}>
+              <div style={{ fontSize:11, color:T.accent, fontWeight:700, letterSpacing:1, marginBottom:10 }}>NOVO CLIENTE</div>
+              <Row g="0.5rem">
+                <FG label="Nome *" half>
+                  <input style={inputSt} placeholder="Nome completo" value={form.newClientName}
+                    onChange={e => setForm(f => ({ ...f, newClientName: e.target.value }))} />
+                </FG>
+                <FG label="WhatsApp" half>
+                  <input style={inputSt} placeholder="(11) 99999-9999" value={form.newClientPhone}
+                    onChange={e => setForm(f => ({ ...f, newClientPhone: e.target.value }))} />
+                </FG>
+              </Row>
+            </div>
+          )}
 
           {isAdmin && (
             <FSelect label="Barbeiro" value={form.barberId} onChange={e => setForm(f => ({ ...f, barberId: e.target.value }))}>
@@ -4897,7 +4932,7 @@ export default function App() {
       }
     : {
         dashboard:   <Dashboard   attendances={finalizedAtts} clients={clients} services={services} barbers={barbers} products={products} isAdmin={isAdmin} myBarberId={myBarberId} onGoReports={isAdmin?()=>setView('reports'):undefined} isMobile={isMobile} onRefresh={() => loadData(tok, auth.profile)}/>,
-        attendances: <AttendancesView attendances={attendances} setAttendances={setAttendances} clients={clients} services={services} barbers={barbers} token={tok} isAdmin={isAdmin} myBarberId={myBarberId} barbershopId={barbershopId} products={products} setProducts={setProducts} setProductSales={setProductSales} onRefresh={() => loadData(tok, auth.profile)}/>,
+        attendances: <AttendancesView attendances={attendances} setAttendances={setAttendances} clients={clients} setClients={setClients} services={services} barbers={barbers} token={tok} isAdmin={isAdmin} myBarberId={myBarberId} barbershopId={barbershopId} products={products} setProducts={setProducts} setProductSales={setProductSales} onRefresh={() => loadData(tok, auth.profile)}/>,
         clients:      <ClientsView clients={clients} setClients={setClients} attendances={finalizedAtts} services={services} token={tok} isAdmin={isAdmin} barbershopId={barbershopId} onRefresh={() => loadData(tok, auth.profile)}/>,
         appointments: <AppointmentsView barbers={barbers} services={services} token={tok} isAdmin={isAdmin} myBarberId={myBarberId} barbershopId={barbershopId} isMobile={isMobile} onRefresh={() => loadData(tok, auth.profile)} shop={shop}/>,
         barbers:      <BarbersView  barbers={barbers} setBarbers={setBarbers} attendances={finalizedAtts} token={tok} barbershopId={barbershopId} onRefresh={() => loadData(tok, auth.profile)} isMobile={isMobile}/>,
