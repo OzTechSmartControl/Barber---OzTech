@@ -4829,7 +4829,6 @@ export default function App() {
     setView("dashboard");
     setShowPlans(false);
     setExpiredMsg("");
-    setShowLanding(true);
   };
 
   const checkoutAuth = auth || safeLoadAuth() || (session?.access_token ? {
