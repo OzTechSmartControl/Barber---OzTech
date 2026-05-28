@@ -2382,7 +2382,7 @@ function FinancialView({ attendances, expenses, setExpenses, token, barbershopId
             Despesas
           </div>
           <div style={{ maxHeight:300, overflowY:"auto" }}>
-            {expenses.sort((a, b) => b.date.localeCompare(a.date)).map(e => (
+            {rangeExp.slice().sort((a, b) => b.date.localeCompare(a.date)).map(e => (
               <div key={e.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"9px 0", borderTop:`1px solid ${T.borderLight}`, fontSize:13 }}>
                 <div>
                   <div style={{ color:T.text }}>{e.desc}</div>
@@ -2398,8 +2398,8 @@ function FinancialView({ attendances, expenses, setExpenses, token, barbershopId
                 </div>
               </div>
             ))}
-            {expenses.length === 0 && (
-              <div style={{ textAlign:"center", padding:"2rem", color:T.muted }}>Sem despesas cadastradas</div>
+            {rangeExp.length === 0 && (
+              <div style={{ textAlign:"center", padding:"2rem", color:T.muted }}>Sem despesas no período</div>
             )}
           </div>
         </Card>
