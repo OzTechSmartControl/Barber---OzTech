@@ -2176,6 +2176,29 @@ function FinancialView({ attendances, expenses, setExpenses, token, barbershopId
   const byPay = {};
   rangeAtts.forEach(a => { byPay[a.payment] = (byPay[a.payment] || 0) + a.price; });
 
+  // ── Chips de mês rápido ──
+  const quickMonths = useMemo(() => {
+    const s = new Set();
+    attendances.forEach(a => s.add(a.date.slice(0, 7)));
+    expenses.forEach(e => s.add(e.date.slice(0, 7)));
+    productSales.forEach(p => p.date && s.add(p.date.slice(0, 7)));
+    return Array.from(s).filter(Boolean).sort().reverse().slice(0, 12);
+  }, [attendances, expenses, productSales]);
+
+  const MON_LABELS = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+
+  const applyFullMonth = (ym) => {
+    const [y, m] = ym.split("-");
+    const last = new Date(+y, +m, 0).toISOString().slice(0, 10);
+    setFilterFrom(`${ym}-01`);
+    setFilterTo(last);
+  };
+
+  const activeMonthChip = filterFrom.slice(0, 7) === filterTo.slice(0, 7)
+    && filterFrom.endsWith("-01")
+    ? filterFrom.slice(0, 7)
+    : null;
+
   // ── Gráfico de evolução mensal (usa TODOS os dados, sem filtro de período) ──
   const monthlyChartData = useMemo(() => {
     const monthsSet = new Set();
@@ -2231,12 +2254,37 @@ function FinancialView({ attendances, expenses, setExpenses, token, barbershopId
       />
 
       {/* ── Filtro de período ── */}
-      <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:"1.5rem", flexWrap:"wrap", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center" }}>
-        <DateRangePicker
-          from={filterFrom}
-          to={filterTo}
-          onChange={({ from, to }) => { setFilterFrom(from); setFilterTo(to); }}
-        />
+      <div style={{ marginBottom:"1.5rem" }}>
+        {/* Chips de mês rápido */}
+        {quickMonths.length > 0 && (
+          <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:"0.75rem" }}>
+            {quickMonths.map(ym => {
+              const [yr, mo] = ym.split("-");
+              const label = `${MON_LABELS[+mo-1]}/${yr.slice(2)}`;
+              const active = activeMonthChip === ym;
+              return (
+                <button key={ym} onClick={() => applyFullMonth(ym)} style={{
+                  padding:"4px 14px", borderRadius:20, cursor:"pointer",
+                  border:`1px solid ${active ? T.accent : T.border}`,
+                  background: active ? `${T.accent}22` : T.surface,
+                  color: active ? T.accent : T.muted,
+                  fontSize:12, fontFamily:"'DM Sans', sans-serif",
+                  fontWeight: active ? 700 : 400, transition:"all .15s",
+                }}>
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        )}
+        {/* Seletor de data personalizado */}
+        <div style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center" }}>
+          <DateRangePicker
+            from={filterFrom}
+            to={filterTo}
+            onChange={({ from, to }) => { setFilterFrom(from); setFilterTo(to); }}
+          />
+        </div>
       </div>
 
       {/* ── KPI Cards ── */}
