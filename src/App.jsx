@@ -2287,7 +2287,13 @@ function FinancialView({ attendances, expenses, setExpenses, token, barbershopId
                 width={45}
               />
               <Tooltip
-                formatter={(value, name) => [R$(value), name.charAt(0).toUpperCase() + name.slice(1)]}
+                formatter={(value, name, props) => {
+                  const rec = props.payload?.receitas ?? 0;
+                  const pct = rec > 0 ? ((value / rec) * 100).toFixed(1) : null;
+                  const label = name.charAt(0).toUpperCase() + name.slice(1);
+                  const pctStr = (name !== "receitas" && pct !== null) ? `  (${pct}%)` : "";
+                  return [`${R$(value)}${pctStr}`, label];
+                }}
                 contentStyle={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:8, fontSize:12, color:T.text }}
                 labelStyle={{ color:T.muted, marginBottom:4 }}
               />
