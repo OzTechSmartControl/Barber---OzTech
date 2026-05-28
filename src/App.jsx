@@ -2158,6 +2158,40 @@ function FinancialView({ attendances, expenses, setExpenses, token, barbershopId
   const [form, setForm] = useState({ desc:"", amount:"", date:todayStr, category:"Aluguel" });
   const setF = k => e => setForm(f=>({...f,[k]:e.target.value}));
 
+  // ── Dropdowns Ano / Mês ──
+  const [dropYear,  setDropYear]  = useState("Tudo");
+  const [dropMonth, setDropMonth] = useState("Tudo");
+  const MONTHS_PT = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+
+  const availableYears = useMemo(() => {
+    const s = new Set();
+    attendances.forEach(a => s.add(a.date.slice(0,4)));
+    expenses.forEach(e => s.add(e.date.slice(0,4)));
+    productSales.forEach(p => p.date && s.add(p.date.slice(0,4)));
+    return Array.from(s).filter(Boolean).sort().reverse();
+  }, [attendances, expenses, productSales]);
+
+  const applyDropFilter = (yr, mo) => {
+    if (yr === "Tudo") {
+      const allDates = [
+        ...attendances.map(a => a.date),
+        ...expenses.map(e => e.date),
+        ...productSales.map(p => p.date).filter(Boolean),
+      ].sort();
+      setFilterFrom(allDates[0] ?? monthStart);
+      setFilterTo(allDates[allDates.length - 1] ?? todayStr);
+    } else if (mo === "Tudo") {
+      setFilterFrom(`${yr}-01-01`);
+      setFilterTo(`${yr}-12-31`);
+    } else {
+      const moIdx = MONTHS_PT.indexOf(mo);
+      const moNum = String(moIdx + 1).padStart(2, "0");
+      const lastDay = new Date(+yr, moIdx + 1, 0).toISOString().slice(0, 10);
+      setFilterFrom(`${yr}-${moNum}-01`);
+      setFilterTo(lastDay);
+    }
+  };
+
   // Filter by selected date range
   const rangeAtts     = attendances.filter(a => a.date >= filterFrom && a.date <= filterTo);
   const rangeExp      = expenses.filter(e => e.date >= filterFrom && e.date <= filterTo);
@@ -2258,6 +2292,33 @@ function FinancialView({ attendances, expenses, setExpenses, token, barbershopId
 
       {/* ── Filtro de período ── */}
       <div style={{ marginBottom:"1.5rem" }}>
+
+        {/* Dropdowns Ano / Mês */}
+        <div style={{ display:"flex", gap:12, flexWrap:"wrap", marginBottom:"0.75rem" }}>
+          <div style={{ display:"flex", flexDirection:"column", gap:4, minWidth:120 }}>
+            <span style={{ fontSize:11, color:T.muted, fontWeight:600, letterSpacing:.5 }}>ANO</span>
+            <select
+              style={{ ...inputSt, padding:"0.45rem 0.875rem" }}
+              value={dropYear}
+              onChange={e => { setDropYear(e.target.value); applyDropFilter(e.target.value, dropMonth); }}
+            >
+              <option value="Tudo">Tudo</option>
+              {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+          </div>
+          <div style={{ display:"flex", flexDirection:"column", gap:4, minWidth:160 }}>
+            <span style={{ fontSize:11, color:T.muted, fontWeight:600, letterSpacing:.5 }}>MÊS</span>
+            <select
+              style={{ ...inputSt, padding:"0.45rem 0.875rem" }}
+              value={dropMonth}
+              onChange={e => { setDropMonth(e.target.value); applyDropFilter(dropYear, e.target.value); }}
+            >
+              <option value="Tudo">Tudo</option>
+              {MONTHS_PT.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+          </div>
+        </div>
+
         {/* Chips de mês rápido */}
         {quickMonths.length > 0 && (
           <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:"0.75rem" }}>
