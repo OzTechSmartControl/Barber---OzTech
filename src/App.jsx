@@ -2210,28 +2210,13 @@ function FinancialView({ attendances, expenses, setExpenses, token, barbershopId
   const byPay = {};
   rangeAtts.forEach(a => { byPay[a.payment] = (byPay[a.payment] || 0) + a.price; });
 
-  // ── Chips de mês rápido ──
-  const quickMonths = useMemo(() => {
-    const s = new Set();
-    attendances.forEach(a => s.add(a.date.slice(0, 7)));
-    expenses.forEach(e => s.add(e.date.slice(0, 7)));
-    productSales.forEach(p => p.date && s.add(p.date.slice(0, 7)));
-    return Array.from(s).filter(Boolean).sort().reverse().slice(0, 12);
-  }, [attendances, expenses, productSales]);
-
-  const MON_LABELS = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
-
-  const applyFullMonth = (ym) => {
-    const [y, m] = ym.split("-");
-    const last = new Date(+y, +m, 0).toISOString().slice(0, 10);
-    setFilterFrom(`${ym}-01`);
-    setFilterTo(last);
+  // estilo local para selects (inputSt não está no escopo aqui)
+  const selSt = {
+    background: T.surface, border:`1px solid ${T.border}`, borderRadius:8,
+    padding:"0.45rem 0.875rem", color:T.text, fontSize:14, outline:"none",
+    fontFamily:"'DM Sans', sans-serif", WebkitAppearance:"none",
+    MozAppearance:"none", appearance:"none", cursor:"pointer", width:"100%",
   };
-
-  const activeMonthChip = filterFrom.slice(0, 7) === filterTo.slice(0, 7)
-    && filterFrom.endsWith("-01")
-    ? filterFrom.slice(0, 7)
-    : null;
 
   // ── Gráfico de evolução mensal (segue o filtro de período selecionado) ──
   const monthlyChartData = useMemo(() => {
@@ -2297,52 +2282,23 @@ function FinancialView({ attendances, expenses, setExpenses, token, barbershopId
         <div style={{ display:"flex", gap:12, flexWrap:"wrap", marginBottom:"0.75rem" }}>
           <div style={{ display:"flex", flexDirection:"column", gap:4, minWidth:120 }}>
             <span style={{ fontSize:11, color:T.muted, fontWeight:600, letterSpacing:.5 }}>ANO</span>
-            <select
-              style={{ ...inputSt, padding:"0.45rem 0.875rem" }}
-              value={dropYear}
-              onChange={e => { setDropYear(e.target.value); applyDropFilter(e.target.value, dropMonth); }}
-            >
+            <select style={selSt} value={dropYear}
+              onChange={e => { setDropYear(e.target.value); applyDropFilter(e.target.value, dropMonth); }}>
               <option value="Tudo">Tudo</option>
               {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
             </select>
           </div>
           <div style={{ display:"flex", flexDirection:"column", gap:4, minWidth:160 }}>
             <span style={{ fontSize:11, color:T.muted, fontWeight:600, letterSpacing:.5 }}>MÊS</span>
-            <select
-              style={{ ...inputSt, padding:"0.45rem 0.875rem" }}
-              value={dropMonth}
-              onChange={e => { setDropMonth(e.target.value); applyDropFilter(dropYear, e.target.value); }}
-            >
+            <select style={selSt} value={dropMonth}
+              onChange={e => { setDropMonth(e.target.value); applyDropFilter(dropYear, e.target.value); }}>
               <option value="Tudo">Tudo</option>
               {MONTHS_PT.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
           </div>
         </div>
-
-        {/* Chips de mês rápido */}
-        {quickMonths.length > 0 && (
-          <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:"0.75rem" }}>
-            {quickMonths.map(ym => {
-              const [yr, mo] = ym.split("-");
-              const label = `${MON_LABELS[+mo-1]}/${yr.slice(2)}`;
-              const active = activeMonthChip === ym;
-              return (
-                <button key={ym} onClick={() => applyFullMonth(ym)} style={{
-                  padding:"4px 14px", borderRadius:20, cursor:"pointer",
-                  border:`1px solid ${active ? T.accent : T.border}`,
-                  background: active ? `${T.accent}22` : T.surface,
-                  color: active ? T.accent : T.muted,
-                  fontSize:12, fontFamily:"'DM Sans', sans-serif",
-                  fontWeight: active ? 700 : 400, transition:"all .15s",
-                }}>
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-        )}
         {/* Seletor de data personalizado */}
-        <div style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap", flexDirection: isMobile ? "column" : "row" }}>
           <DateRangePicker
             from={filterFrom}
             to={filterTo}
@@ -2416,19 +2372,6 @@ function FinancialView({ attendances, expenses, setExpenses, token, barbershopId
               <Line type="monotone" dataKey="receitas" stroke={T.success}  strokeWidth={2} dot={{ r:3, fill:T.success }}  activeDot={{ r:5 }} name="receitas" />
               <Line type="monotone" dataKey="despesas" stroke={T.danger}   strokeWidth={2} dot={{ r:3, fill:T.danger }}   activeDot={{ r:5 }} name="despesas" />
               <Line type="monotone" dataKey="lucro"    stroke={T.accent}   strokeWidth={2} dot={{ r:3, fill:T.accent }}   activeDot={{ r:5 }} name="lucro" />
-              {activeMonthChip && (() => {
-                const [yr, mo] = activeMonthChip.split("-");
-                const mesLabel = `${MON_LABELS[+mo-1]}/${yr.slice(2)}`;
-                return (
-                  <ReferenceLine
-                    x={mesLabel}
-                    stroke={T.accent}
-                    strokeWidth={2}
-                    strokeDasharray="5 3"
-                    label={{ value: mesLabel, position:"top", fill:T.accent, fontSize:11, fontWeight:700 }}
-                  />
-                );
-              })()}
             </LineChart>
           </ResponsiveContainer>
         </Card>
