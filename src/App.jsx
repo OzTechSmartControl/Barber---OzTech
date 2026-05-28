@@ -2199,23 +2199,26 @@ function FinancialView({ attendances, expenses, setExpenses, token, barbershopId
     ? filterFrom.slice(0, 7)
     : null;
 
-  // ── Gráfico de evolução mensal (usa TODOS os dados, sem filtro de período) ──
+  // ── Gráfico de evolução mensal (segue o filtro de período selecionado) ──
   const monthlyChartData = useMemo(() => {
     const monthsSet = new Set();
-    attendances.forEach(a => monthsSet.add(a.date.slice(0, 7)));
-    expenses.forEach(e => monthsSet.add(e.date.slice(0, 7)));
-    productSales.forEach(s => monthsSet.add(s.date?.slice(0, 7)).valueOf());
+    attendances.forEach(a => { if (a.date >= filterFrom && a.date <= filterTo) monthsSet.add(a.date.slice(0, 7)); });
+    expenses.forEach(e => { if (e.date >= filterFrom && e.date <= filterTo) monthsSet.add(e.date.slice(0, 7)); });
+    productSales.forEach(s => { if (s.date && s.date >= filterFrom && s.date <= filterTo) monthsSet.add(s.date.slice(0, 7)); });
     const months = Array.from(monthsSet).filter(Boolean).sort();
     const MON = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
     return months.map(m => {
-      const mAtts      = attendances.filter(a => a.date.startsWith(m));
-      const mExp       = expenses.filter(e => e.date.startsWith(m));
-      const mProd      = productSales.filter(s => s.date?.startsWith(m));
-      const servRev    = mAtts.reduce((s,a) => s + (a.servicesPrice ?? a.price), 0);
-      const prodRev    = mProd.reduce((s,p) => s + p.totalPrice, 0);
-      const receitas   = servRev + prodRev;
-      const despesas   = mExp.reduce((s,e) => s + e.amount, 0);
-      const comissoes  = mAtts.reduce((s,a) => {
+      const mFrom = m + "-01", mTo = m + "-31";
+      const eFrom = filterFrom > mFrom ? filterFrom : mFrom;
+      const eTo   = filterTo   < mTo   ? filterTo   : mTo;
+      const mAtts = attendances.filter(a => a.date >= eFrom && a.date <= eTo);
+      const mExp  = expenses.filter(e => e.date >= eFrom && e.date <= eTo);
+      const mProd = productSales.filter(s => s.date && s.date >= eFrom && s.date <= eTo);
+      const servRev  = mAtts.reduce((s,a) => s + (a.servicesPrice ?? a.price), 0);
+      const prodRev  = mProd.reduce((s,p) => s + p.totalPrice, 0);
+      const receitas = servRev + prodRev;
+      const despesas = mExp.reduce((s,e) => s + e.amount, 0);
+      const comissoes = mAtts.reduce((s,a) => {
         const b = barbers.find(x => x.id === a.barberId);
         return s + ((a.servicesPrice ?? a.price) * (b?.commission || 0) / 100);
       }, 0);
@@ -2223,7 +2226,7 @@ function FinancialView({ attendances, expenses, setExpenses, token, barbershopId
       const [yr, mo] = m.split("-");
       return { mes: `${MON[+mo-1]}/${yr.slice(2)}`, receitas, despesas, lucro };
     });
-  }, [attendances, expenses, productSales, barbers]);
+  }, [attendances, expenses, productSales, barbers, filterFrom, filterTo]);
 
   const periodLabel = filterFrom === filterTo
     ? fDate(filterFrom)
