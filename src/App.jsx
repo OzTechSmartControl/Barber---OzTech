@@ -2323,7 +2323,7 @@ function FinancialView({ attendances, expenses, setExpenses, token, barbershopId
       </div>
 
       {/* ── Gráfico de Evolução Mensal ── */}
-      {monthlyChartData.length > 1 && (
+      {monthlyChartData.length > 0 && (
         <Card style={{ marginBottom:"1.5rem" }}>
           <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:18, letterSpacing:1.5, color:T.text, marginBottom:"1.2rem" }}>
             Evolução Mensal
