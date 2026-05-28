@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { supabase } from "./supabase";
 import Onboarding from "./Onboarding";
 import PlansView   from "./PlansView";
@@ -2175,6 +2176,32 @@ function FinancialView({ attendances, expenses, setExpenses, token, barbershopId
   const byPay = {};
   rangeAtts.forEach(a => { byPay[a.payment] = (byPay[a.payment] || 0) + a.price; });
 
+  // ── Gráfico de evolução mensal (usa TODOS os dados, sem filtro de período) ──
+  const monthlyChartData = useMemo(() => {
+    const monthsSet = new Set();
+    attendances.forEach(a => monthsSet.add(a.date.slice(0, 7)));
+    expenses.forEach(e => monthsSet.add(e.date.slice(0, 7)));
+    productSales.forEach(s => monthsSet.add(s.date?.slice(0, 7)).valueOf());
+    const months = Array.from(monthsSet).filter(Boolean).sort();
+    const MON = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+    return months.map(m => {
+      const mAtts      = attendances.filter(a => a.date.startsWith(m));
+      const mExp       = expenses.filter(e => e.date.startsWith(m));
+      const mProd      = productSales.filter(s => s.date?.startsWith(m));
+      const servRev    = mAtts.reduce((s,a) => s + (a.servicesPrice ?? a.price), 0);
+      const prodRev    = mProd.reduce((s,p) => s + p.totalPrice, 0);
+      const receitas   = servRev + prodRev;
+      const despesas   = mExp.reduce((s,e) => s + e.amount, 0);
+      const comissoes  = mAtts.reduce((s,a) => {
+        const b = barbers.find(x => x.id === a.barberId);
+        return s + ((a.servicesPrice ?? a.price) * (b?.commission || 0) / 100);
+      }, 0);
+      const lucro = receitas - despesas - comissoes;
+      const [yr, mo] = m.split("-");
+      return { mes: `${MON[+mo-1]}/${yr.slice(2)}`, receitas, despesas, lucro };
+    });
+  }, [attendances, expenses, productSales, barbers]);
+
   const periodLabel = filterFrom === filterTo
     ? fDate(filterFrom)
     : `${fDate(filterFrom)} → ${fDate(filterTo)}`;
@@ -2243,6 +2270,38 @@ function FinancialView({ attendances, expenses, setExpenses, token, barbershopId
           sub={`Margem: ${totalRev > 0 ? ((profit / totalRev) * 100).toFixed(1) : 0}%`}
         />
       </div>
+
+      {/* ── Gráfico de Evolução Mensal ── */}
+      {monthlyChartData.length > 1 && (
+        <Card style={{ marginBottom:"1.5rem" }}>
+          <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:18, letterSpacing:1.5, color:T.text, marginBottom:"1.2rem" }}>
+            Evolução Mensal
+          </div>
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={monthlyChartData} margin={{ top:5, right:10, left:0, bottom:5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={T.border} />
+              <XAxis dataKey="mes" tick={{ fontSize:11, fill:T.muted }} />
+              <YAxis
+                tick={{ fontSize:11, fill:T.muted }}
+                tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(0)}k` : v}
+                width={45}
+              />
+              <Tooltip
+                formatter={(value, name) => [R$(value), name.charAt(0).toUpperCase() + name.slice(1)]}
+                contentStyle={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:8, fontSize:12, color:T.text }}
+                labelStyle={{ color:T.muted, marginBottom:4 }}
+              />
+              <Legend
+                wrapperStyle={{ fontSize:12, paddingTop:8 }}
+                formatter={n => n.charAt(0).toUpperCase() + n.slice(1)}
+              />
+              <Line type="monotone" dataKey="receitas" stroke={T.success}  strokeWidth={2} dot={{ r:3, fill:T.success }}  activeDot={{ r:5 }} name="receitas" />
+              <Line type="monotone" dataKey="despesas" stroke={T.danger}   strokeWidth={2} dot={{ r:3, fill:T.danger }}   activeDot={{ r:5 }} name="despesas" />
+              <Line type="monotone" dataKey="lucro"    stroke={T.accent}   strokeWidth={2} dot={{ r:3, fill:T.accent }}   activeDot={{ r:5 }} name="lucro" />
+            </LineChart>
+          </ResponsiveContainer>
+        </Card>
+      )}
 
       {/* ── Tabelas ── */}
       <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap:"1.5rem" }}>
