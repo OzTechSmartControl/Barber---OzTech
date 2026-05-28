@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine, ReferenceArea } from "recharts";
 import { supabase } from "./supabase";
 import Onboarding from "./Onboarding";
 import PlansView   from "./PlansView";
@@ -2352,6 +2352,19 @@ function FinancialView({ attendances, expenses, setExpenses, token, barbershopId
               <Line type="monotone" dataKey="receitas" stroke={T.success}  strokeWidth={2} dot={{ r:3, fill:T.success }}  activeDot={{ r:5 }} name="receitas" />
               <Line type="monotone" dataKey="despesas" stroke={T.danger}   strokeWidth={2} dot={{ r:3, fill:T.danger }}   activeDot={{ r:5 }} name="despesas" />
               <Line type="monotone" dataKey="lucro"    stroke={T.accent}   strokeWidth={2} dot={{ r:3, fill:T.accent }}   activeDot={{ r:5 }} name="lucro" />
+              {activeMonthChip && (() => {
+                const [yr, mo] = activeMonthChip.split("-");
+                const mesLabel = `${MON_LABELS[+mo-1]}/${yr.slice(2)}`;
+                return (
+                  <ReferenceLine
+                    x={mesLabel}
+                    stroke={T.accent}
+                    strokeWidth={2}
+                    strokeDasharray="5 3"
+                    label={{ value: mesLabel, position:"top", fill:T.accent, fontSize:11, fontWeight:700 }}
+                  />
+                );
+              })()}
             </LineChart>
           </ResponsiveContainer>
         </Card>
