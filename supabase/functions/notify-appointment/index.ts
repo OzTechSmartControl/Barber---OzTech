@@ -47,7 +47,7 @@ serve(async (req) => {
 
     // Cabeçalho: logo da barbearia se disponível, senão nome em texto
     const logoHtml = (barbershop_logo && barbershop_logo !== "null")
-      ? `<img src="${barbershop_logo}" alt="${barbershop_name}" style="height:56px;width:56px;object-fit:cover;border-radius:14px;border:2px solid ${color}44;display:block;margin:0 auto 10px;" />`
+      ? `<img src="${barbershop_logo}" alt="${barbershop_name}" style="max-height:64px;max-width:160px;width:auto;height:auto;border-radius:10px;display:block;margin:0 auto 10px;" />`
       : `<div style="width:56px;height:56px;border-radius:14px;background:${colorDim};border:2px solid ${color}44;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;font-size:26px;font-weight:900;color:${color};font-family:'Segoe UI',Arial,sans-serif;">${(barbershop_name||"B")[0].toUpperCase()}</div>`;
 
     const html = `

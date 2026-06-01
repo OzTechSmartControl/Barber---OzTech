@@ -6,7 +6,8 @@ import PlansView   from "./PlansView";
 import SuperAdminView from "./SuperAdminView";
 import ResetPassword from "./ResetPassword";
 import LandingPage from "./LandingPage";
-import BookingPage from "./BookingPage";
+import BookingPage   from "./BookingPage";
+import FeedbackPage  from "./FeedbackPage";
 import ozBarberLogo from "./assets/ozbarber-logo.png.png";
 import sharedT from "./config/theme"; // T compartilhado com SuperAdminView
 import {
@@ -15,7 +16,7 @@ import {
   Phone, LogOut, Lock, Mail, CreditCard, Banknote, Smartphone,
   BadgePercent, AlertCircle, RefreshCw, FileText, Download, Calendar, Bell, Gift,
   Settings, Upload, Palette, Image, Shield, Clock, Layers,
-  ShoppingCart, Package, Sun, Moon, Zap, ChevronLeft,
+  ShoppingCart, Package, Sun, Moon, Zap, ChevronLeft, Star, MessageSquare,
 } from "lucide-react";
 
 (() => {
@@ -137,7 +138,7 @@ const accessDeniedMessage = (reason) => {
 // ── TRANSFORMS ────────────────────────────────────────────────
 const toAtt  = a => ({ id: a.id, clientId: a.client_id, barberId: a.barber_id, serviceId: a.service_id, price: +a.price, servicesPrice: +(a.services_price ?? a.price), payment: a.payment, date: a.date, time: a.time || "", notes: a.notes || "", extraServices: Array.isArray(a.extra_services) ? a.extra_services : [], productsSold: Array.isArray(a.products_sold) ? a.products_sold : [], appointmentId: a.appointment_id || null, source: a.source || "manual" });
 const fromAtt = a => ({ client_id: +a.clientId||0, barber_id: +a.barberId||0, service_id: +a.serviceId||0, price: +a.price, payment: a.payment, date: a.date, time: a.time, notes: a.notes, extra_services: a.extraServices||[] });
-const toClient = c => ({ id: c.id, name: c.name, phone: c.phone || "", whatsapp: c.whatsapp || "", birthdate: c.birthdate || "", notes: c.notes || "", points: +c.points });
+const toClient = c => ({ id: c.id, name: c.name, phone: c.phone || "", whatsapp: c.whatsapp || "", birthdate: c.birthdate || "", notes: c.notes || "", points: +c.points, email: c.email || "" });
 const toBarber = b => ({ id: b.id, name: b.name, phone: b.phone || "", commission: +b.commission, status: b.status, userId: b.user_id, notificationEmail: b.notification_email || "" });
 const toService = s => ({ id: s.id, name: s.name, price: +s.price, duration: +s.duration, active: s.active });
 const toExpense     = e => ({ id: e.id, desc: e.description, amount: +e.amount, date: e.date, category: e.category || "" });
@@ -1512,6 +1513,28 @@ function AttendancesView({ attendances, setAttendances, clients, setClients, ser
         body: JSON.stringify({ p_attendance_id: id, p_payment: finPay }),
       });
       setAttendances(prev => prev.map(a => a.id === id ? { ...a, payment: finPay } : a));
+
+      // Dispara e-mail de feedback automaticamente (sem aguardar)
+      const att    = attendances.find(a => a.id === id);
+      if (att) {
+        const client     = clients.find(c => c.id === att.clientId);
+        const barber     = barbers.find(b => b.id === att.barberId);
+        const clientEmail = client?.email || "";
+        if (clientEmail) {
+          fetch(`${SUPABASE_URL}/functions/v1/send-feedback-request`, {
+            method:  "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body:    JSON.stringify({
+              attendance_id: att.id,
+              barbershop_id: barbershopId,
+              barber_name:   barber?.name  || null,
+              client_name:   client?.name  || att.clientName || null,
+              client_email:  clientEmail,
+            }),
+          }).catch(e => console.warn("[feedback-email]", e));
+        }
+      }
+
       setFinalModal(null);
       setFinPay("PIX");
     } catch(e) { console.error(e); }
@@ -2146,6 +2169,82 @@ function ServicesView({ services, setServices, token, barbershopId, onRefresh })
 }
 
 // ── FINANCIAL ────────────────────────────────────────────────
+// ── FEEDBACKS VIEW ───────────────────────────────────────────
+function FeedbacksView({ feedbacks = [], isMobile, onRefresh }) {
+  const [filterFrom, setFilterFrom] = useState(() => { const d = new Date(); d.setDate(1); return d.toISOString().slice(0,10); });
+  const [filterTo,   setFilterTo]   = useState(() => new Date().toISOString().slice(0,10));
+
+  const filtered = feedbacks.filter(f => f.submitted_at && f.submitted_at.slice(0,10) >= filterFrom && f.submitted_at.slice(0,10) <= filterTo);
+  const avg = filtered.length ? (filtered.reduce((s,f) => s + f.rating, 0) / filtered.length) : 0;
+
+  const byRating = [5,4,3,2,1].map(r => ({ r, count: filtered.filter(f => f.rating === r).length }));
+  const starColor = ["","#ef4444","#f97316","#eab308","#84cc16","#22c55e"];
+
+  return (
+    <div>
+      <PageHeader title="Feedbacks" sub={`${filtered.length} avaliação${filtered.length !== 1 ? "ões" : ""}`} onRefresh={onRefresh} />
+
+      <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:"1.5rem", flexWrap:"wrap" }}>
+        <DateRangePicker from={filterFrom} to={filterTo} onChange={({ from, to }) => { setFilterFrom(from); setFilterTo(to); }} />
+      </div>
+
+      {/* KPIs */}
+      <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(3,1fr)", gap:"1rem", marginBottom:"1.5rem" }}>
+        <StatCard label="MÉDIA" value={avg > 0 ? `${avg.toFixed(1)} ⭐` : "—"} color={T.success} icon={Star} sub={`${filtered.length} avaliações`} />
+        <StatCard label="5 ESTRELAS" value={byRating[0].count} color="#22c55e" icon={Star} sub={`${filtered.length > 0 ? ((byRating[0].count/filtered.length)*100).toFixed(0) : 0}% do total`} />
+        <StatCard label="1-2 ESTRELAS" value={byRating[3].count + byRating[4].count} color={T.danger} icon={Star} sub="Avaliações negativas" />
+      </div>
+
+      {/* Distribuição */}
+      {filtered.length > 0 && (
+        <Card style={{ marginBottom:"1.5rem" }}>
+          <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, letterSpacing:1.5, color:T.text, marginBottom:"1rem" }}>Distribuição</div>
+          {byRating.map(({ r, count }) => {
+            const pct = filtered.length > 0 ? (count / filtered.length) * 100 : 0;
+            return (
+              <div key={r} style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
+                <span style={{ width:20, textAlign:"right", color:T.muted, fontSize:12 }}>{r}⭐</span>
+                <div style={{ flex:1, background:T.border, borderRadius:4, height:8, overflow:"hidden" }}>
+                  <div style={{ width:`${pct}%`, background: starColor[r], height:"100%", borderRadius:4, transition:"width .4s" }} />
+                </div>
+                <span style={{ width:30, color:T.muted, fontSize:12 }}>{count}</span>
+              </div>
+            );
+          })}
+        </Card>
+      )}
+
+      {/* Lista de feedbacks */}
+      <Card>
+        <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, letterSpacing:1.5, color:T.text, marginBottom:"1rem" }}>Avaliações</div>
+        {filtered.length === 0 ? (
+          <div style={{ textAlign:"center", padding:"2rem", color:T.muted }}>Nenhuma avaliação no período</div>
+        ) : (
+          filtered.slice().sort((a,b) => b.submitted_at.localeCompare(a.submitted_at)).map(f => (
+            <div key={f.id} style={{ padding:"14px 0", borderTop:`1px solid ${T.borderLight}` }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", flexWrap:"wrap", gap:8 }}>
+                <div>
+                  <span style={{ color:T.text, fontWeight:600, fontSize:14 }}>{f.client_name || "Cliente"}</span>
+                  {f.barber_name && <span style={{ color:T.muted, fontSize:12, marginLeft:8 }}>· {f.barber_name}</span>}
+                </div>
+                <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                  <span style={{ color: starColor[f.rating], fontWeight:700, fontSize:15 }}>{"⭐".repeat(f.rating)}</span>
+                  <span style={{ color:T.muted, fontSize:11 }}>{f.submitted_at ? fDate(f.submitted_at.slice(0,10)) : ""}</span>
+                </div>
+              </div>
+              {f.comment && (
+                <p style={{ color:T.muted, fontSize:13, margin:"6px 0 0", lineHeight:1.5, fontStyle:"italic" }}>
+                  "{f.comment}"
+                </p>
+              )}
+            </div>
+          ))
+        )}
+      </Card>
+    </div>
+  );
+}
+
 function FinancialView({ attendances, expenses, setExpenses, token, barbershopId, barbers = [], isMobile, productSales = [], onRefresh }) {
   const todayStr   = today();
   const monthStart = todayStr.substring(0, 7) + "-01";
@@ -4098,10 +4197,11 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
           { id:"barbers",   label:"Barbeiros",     Icon:Award },
           { id:"services",  label:"Serviços",      Icon:Tag },
           { id:"produtos",  label:"Produtos",      Icon:Package, badge: lowStockCount },
-          { id:"financial", label:"Financeiro",    Icon:DollarSign },
-          { id:"reports",   label:"Relatórios",    Icon:FileText },
-          { id:"settings",  label:"Configurações", Icon:Settings },
-          { id:"meuPlano",  label:"Meu Plano",     Icon:Shield },
+          { id:"financial",  label:"Financeiro",    Icon:DollarSign },
+          { id:"feedbacks",  label:"Feedbacks",     Icon:Star },
+          { id:"reports",    label:"Relatórios",    Icon:FileText },
+          { id:"settings",   label:"Configurações", Icon:Settings },
+          { id:"meuPlano",   label:"Meu Plano",     Icon:Shield },
         ] : []),
       ];
 
@@ -4644,6 +4744,11 @@ export default function App() {
     return <ResetPassword />;
   }
 
+  // Rota pública de avaliação: /feedback?token=xxx
+  if (window.location.pathname === "/feedback") {
+    return <FeedbackPage />;
+  }
+
   // Rota pública de agendamento: /agendar/<slug>
   const isBookingRoute = window.location.pathname.startsWith("/agendar/");
   if (isBookingRoute) {
@@ -4728,6 +4833,7 @@ export default function App() {
   const [expenses,     setExpenses]     = useState([]);
   const [products,     setProducts]     = useState([]);
   const [productSales, setProductSales] = useState([]);
+  const [feedbacks,    setFeedbacks]    = useState([]);
 
   useEffect(() => {
     let mounted = true;
@@ -4867,7 +4973,7 @@ export default function App() {
         ? withShop("select=*&order=date.desc,time.desc")
         : withShop(`select=*&barber_id=eq.${profile.barber_id}&order=date.desc,time.desc`);
 
-      const [shopRows, brs, cls, svcs, atts, exps, prods, prodSales] = await Promise.all([
+      const [shopRows, brs, cls, svcs, atts, exps, prods, prodSales, fbs] = await Promise.all([
         api.list("barbershops",  `id=eq.${shopId}&select=*`, tok),
         api.list("barbers",      withShop("select=*&order=name"), tok),
         api.list("clients",      withShop("select=*&order=name"), tok),
@@ -4875,7 +4981,8 @@ export default function App() {
         api.list("attendances",  attQuery, tok),
         isAdm ? api.list("expenses",     withShop("select=*&order=date.desc"), tok) : Promise.resolve([]),
         api.list("products", withShop("select=*&order=name"), tok),
-        isAdm ? api.list("product_sales","select=*&order=sold_at.desc", tok)        : Promise.resolve([]),
+        isAdm ? api.list("product_sales","select=*&order=sold_at.desc", tok) : Promise.resolve([]),
+        isAdm ? api.list("feedback_requests", withShop("select=*&submitted_at=not.is.null&order=submitted_at.desc"), tok) : Promise.resolve([]),
       ]);
 
       const currentShop = ensureArray(shopRows)[0] || null;
@@ -4889,6 +4996,7 @@ export default function App() {
       setExpenses(ensureArray(exps).map(toExpense));
       setProducts(ensureArray(prods).map(toProduct));
       setProductSales(ensureArray(prodSales).map(toProductSale));
+      setFeedbacks(ensureArray(fbs));
       setDataLoaded(true);
     } catch(e) {
       console.error(e);
@@ -5067,6 +5175,7 @@ export default function App() {
         services:    <ServicesView services={services} setServices={setServices} token={tok} barbershopId={barbershopId} onRefresh={() => loadData(tok, auth.profile)}/>,
         produtos:    <ProductsView products={products} setProducts={setProducts} productSales={productSales} setProductSales={setProductSales} barbers={barbers} token={tok} barbershopId={barbershopId} isMobile={isMobile} onRefresh={() => loadData(tok, auth.profile)}/>,
         financial:   <FinancialView attendances={finalizedAtts} expenses={expenses} setExpenses={setExpenses} token={tok} barbershopId={barbershopId} barbers={barbers} isMobile={isMobile} productSales={productSales} onRefresh={() => loadData(tok, auth.profile)}/>,
+        feedbacks:   <FeedbacksView feedbacks={feedbacks} isMobile={isMobile} onRefresh={() => loadData(tok, auth.profile)}/>,
         reports:     <ReportsView attendances={finalizedAtts} clients={clients} services={services} barbers={barbers} expenses={expenses} shop={shop} isMobile={isMobile} onRefresh={() => loadData(tok, auth.profile)}/>,
         settings:    <SettingsView token={tok} shop={shop} onShopUpdated={(updatedShop) => { setShop(updatedShop); applyTenantTheme(updatedShop, themeMode); }} themeMode={themeMode} onToggleTheme={toggleTheme}/>,
         meuPlano:    <MeuPlanoView token={tok} userEmail={auth.user?.email} profile={auth.profile} onRenew={() => setShowPlans(true)} />,

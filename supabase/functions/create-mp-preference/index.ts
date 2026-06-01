@@ -94,8 +94,9 @@ serve(async (req) => {
       });
 
       const preapproval = await mpRes.json();
+      console.error("[preapproval] status:", mpRes.status, "body:", JSON.stringify(preapproval));
       if (!preapproval.init_point)
-        throw new Error(preapproval.message ?? "Mercado Pago não retornou a URL de assinatura mensal.");
+        throw new Error(preapproval.message ?? JSON.stringify(preapproval.cause ?? preapproval) ?? "Mercado Pago não retornou a URL de assinatura mensal.");
 
       checkoutUrl = preapproval.init_point;
 
