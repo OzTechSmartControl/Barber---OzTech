@@ -2934,11 +2934,11 @@ function RevenueReportContent({ attendances, expenses, barbers = [], selMonth, s
       {/* Comissões por Barbeiro */}
       <div style={{ fontSize:14, fontWeight:700, marginBottom:8, borderBottom:"1px solid #eee", paddingBottom:4 }}>Comissões do Mês</div>
       <div style={{ fontSize:11, color:"#888", marginBottom:8, fontStyle:"italic" }}>
-        * Comissão calculada somente sobre o valor de serviços prestados.
+        * Comissão = (% serviços × valor serviços) + (% produto × valor produto vendido no atendimento)
       </div>
       {barberCommissions.length > 0 ? (
         <ReportTable
-          cols={["Barbeiro","Atend.","Serviços","Produtos","Total","% Comissão","Comissão (s/ serv.)"]}
+          cols={["Barbeiro","Atend.","Serviços","Produtos","Total","% Serv.","Comis. Serv.","Comis. Prod.","Total Comis."]}
           rows={barberCommissions.map(x => [
             {val: x.name, style:{fontWeight:600}},
             x.count,
@@ -2946,6 +2946,8 @@ function RevenueReportContent({ attendances, expenses, barbers = [], selMonth, s
             {val: R$(x.prodRev), style:{color:"#1e40af", fontWeight:600}},
             {val: R$(x.total),   style:{fontWeight:700}},
             x.pct + "%",
+            {val: R$(x.commServ), style:{color:"#166534", fontWeight:600}},
+            {val: x.commProd > 0 ? R$(x.commProd) : "—", style:{color:"#1e40af", fontWeight:600}},
             {val: R$(x.commission), style:{fontWeight:700, color: accentColor}},
           ])}
           totalRow={[
@@ -2954,6 +2956,8 @@ function RevenueReportContent({ attendances, expenses, barbers = [], selMonth, s
             R$(mProdRev),
             R$(mRev),
             "",
+            R$(barberCommissions.reduce((s,x)=>s+x.commServ,0)),
+            R$(barberCommissions.reduce((s,x)=>s+x.commProd,0)),
             R$(mCommissions),
           ]}
         />
@@ -2981,8 +2985,8 @@ function BarberReportContent({ attendances, services, barbers, selMonth, shop })
   const accentColor = shop?.accent_color || "#b5a642";
 
   const stats = barbers.filter(b=>b.status==="active").map(b=>{
-    const bA       = mAtts.filter(a=>a.barberId===b.id);
-    const total    = bA.reduce((s,a)=>s+a.price,0);
+    const bA        = mAtts.filter(a=>a.barberId===b.id);
+    const total     = bA.reduce((s,a)=>s+a.price,0);
     const servOnly  = bA.reduce((s,a)=>s+(a.servicesPrice??a.price),0);
     const prodOnly  = total - servOnly;
     const commServ  = servOnly * b.commission / 100;
@@ -2990,26 +2994,27 @@ function BarberReportContent({ attendances, services, barbers, selMonth, shop })
     const commission = commServ + commProd;
     const sm={}; bA.forEach(a=>{const sv=services.find(sv=>sv.id===a.serviceId);if(sv)sm[sv.name]=(sm[sv.name]||0)+1;});
     const top=Object.entries(sm).sort((a,b)=>b[1]-a[1])[0];
-    return {b, count:bA.length, total, servOnly, prodOnly, commission, ticket:bA.length?total/bA.length:0, top:top?top[0]+" ("+top[1]+"×)":"—"};
+    return {b, count:bA.length, total, servOnly, prodOnly, commServ, commProd, commission, ticket:bA.length?total/bA.length:0, top:top?top[0]+" ("+top[1]+"×)":"—"};
   }).sort((a,b)=>b.total-a.total);
 
   return (
     <div style={{ fontFamily:"Arial, sans-serif", color:"#111", background:"white", padding:28 }}>
       <ReportHeader title="Relatório por Barbeiro" selMonth={selMonth} shop={shop} />
       <div style={{ fontSize:11, color:"#888", marginBottom:8, fontStyle:"italic" }}>
-        * Comissão calculada somente sobre o valor de serviços prestados.
+        * Comissão = (% serviços × valor serviços) + (% produto × valor produto vendido no atendimento)
       </div>
       <ReportTable
-        cols={["#","Barbeiro","Atend.","Serviços","Produtos","Total","Comissão*","Ticket Méd."]}
-        rows={stats.map(({b,count,total,servOnly,prodOnly,commission,ticket},i)=>[
+        cols={["#","Barbeiro","Atend.","Serviços","Produtos","Total","Comis. Serv.*","Comis. Prod.*","Total Comis."]}
+        rows={stats.map(({b,count,total,servOnly,prodOnly,commServ,commProd,commission,ticket},i)=>[
           {val:i+1, style:{color:accentColor, fontWeight:700}},
           {val:b.name, style:{fontWeight:600}},
           count,
           {val:R$(servOnly), style:{color:"#166534", fontWeight:600}},
           {val:R$(prodOnly), style:{color:"#1e40af", fontWeight:600}},
           {val:R$(total),    style:{fontWeight:700}},
-          {val:R$(commission)+" ("+b.commission+"%)", style:{color:accentColor, fontWeight:600}},
-          R$(ticket),
+          {val:R$(commServ)+" ("+b.commission+"%)", style:{color:"#166534", fontWeight:600}},
+          {val:commProd > 0 ? R$(commProd) : "—", style:{color:"#1e40af", fontWeight:600}},
+          {val:R$(commission), style:{color:accentColor, fontWeight:700}},
         ])}
         totalRow={[
           "TOTAL GERAL","",
@@ -3017,8 +3022,9 @@ function BarberReportContent({ attendances, services, barbers, selMonth, shop })
           R$(stats.reduce((s,x)=>s+x.servOnly,0)),
           R$(stats.reduce((s,x)=>s+x.prodOnly,0)),
           R$(stats.reduce((s,x)=>s+x.total,0)),
+          R$(stats.reduce((s,x)=>s+x.commServ,0)),
+          R$(stats.reduce((s,x)=>s+x.commProd,0)),
           R$(stats.reduce((s,x)=>s+x.commission,0)),
-          "",
         ]}
       />
       <ReportFooter />
