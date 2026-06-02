@@ -2389,14 +2389,14 @@ function FeedbacksView({ feedbacks = [], barbers = [], isMobile, onRefresh }) {
       {barberRanking.length > 0 && (
         <Card style={{ marginBottom:"1.5rem" }}>
           <SectionTitle>🏆 Ranking de Barbeiros</SectionTitle>
-          <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap:"1.5rem" }}>
+          <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr" : "auto 1fr", gap:"1.5rem" }}>
             {/* Tabela */}
             <div>
-              <div style={{ display:"grid", gridTemplateColumns:"30px 1fr 60px 70px", gap:6, fontSize:11, color:T.muted, padding:"0 0 8px", borderBottom:`1px solid ${T.border}`, marginBottom:8 }}>
+              <div style={{ display:"grid", gridTemplateColumns:"30px minmax(80px,1fr) 60px 70px", gap:6, fontSize:11, color:T.muted, padding:"0 0 8px", borderBottom:`1px solid ${T.border}`, marginBottom:8 }}>
                 <span>#</span><span>Barbeiro</span><span style={{textAlign:"right"}}>Média</span><span style={{textAlign:"right"}}>Avals.</span>
               </div>
               {barberRanking.map((b,i) => (
-                <div key={b.name} style={{ display:"grid", gridTemplateColumns:"30px 1fr 60px 70px", gap:6, padding:"8px 0", borderTop:`1px solid ${T.borderLight}`, alignItems:"center" }}>
+                <div key={b.name} style={{ display:"grid", gridTemplateColumns:"30px minmax(80px,1fr) 60px 70px", gap:6, padding:"8px 0", borderTop:`1px solid ${T.borderLight}`, alignItems:"center" }}>
                   <span style={{ fontSize:16 }}>{medals[i] || `${i+1}`}</span>
                   <span style={{ color:T.text, fontWeight:600, fontSize:13 }}>{b.name}</span>
                   <span style={{ textAlign:"right", color:T.success, fontWeight:700, fontSize:13 }}>{b.avg.toFixed(1)} ⭐</span>
