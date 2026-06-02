@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine, ReferenceArea } from "recharts";
+import { LineChart, Line, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine, ReferenceArea } from "recharts";
 import { supabase } from "./supabase";
 import Onboarding from "./Onboarding";
 import PlansView   from "./PlansView";
@@ -2170,77 +2170,327 @@ function ServicesView({ services, setServices, token, barbershopId, onRefresh })
 
 // ── FINANCIAL ────────────────────────────────────────────────
 // ── FEEDBACKS VIEW ───────────────────────────────────────────
-function FeedbacksView({ feedbacks = [], isMobile, onRefresh }) {
-  const [filterFrom, setFilterFrom] = useState(() => { const d = new Date(); d.setDate(1); return d.toISOString().slice(0,10); });
-  const [filterTo,   setFilterTo]   = useState(() => new Date().toISOString().slice(0,10));
+function FeedbacksView({ feedbacks = [], barbers = [], isMobile, onRefresh }) {
+  const todayStr    = today();
+  const monthStart  = todayStr.slice(0,7) + "-01";
 
-  const filtered = feedbacks.filter(f => f.submitted_at && f.submitted_at.slice(0,10) >= filterFrom && f.submitted_at.slice(0,10) <= filterTo);
-  const avg = filtered.length ? (filtered.reduce((s,f) => s + f.rating, 0) / filtered.length) : 0;
+  const [preset,      setPreset]      = useState("month");
+  const [filterFrom,  setFilterFrom]  = useState(monthStart);
+  const [filterTo,    setFilterTo]    = useState(todayStr);
+  const [filterBarber, setFilterBarber] = useState("");
 
-  const byRating = [5,4,3,2,1].map(r => ({ r, count: filtered.filter(f => f.rating === r).length }));
+  const applyPreset = (p) => {
+    setPreset(p);
+    const d = new Date();
+    const iso = (dt) => dt.toISOString().slice(0,10);
+    if (p === "today")   { setFilterFrom(iso(d)); setFilterTo(iso(d)); }
+    if (p === "week")    { const f=new Date(d); f.setDate(d.getDate()-6); setFilterFrom(iso(f)); setFilterTo(iso(d)); }
+    if (p === "30days")  { const f=new Date(d); f.setDate(d.getDate()-29); setFilterFrom(iso(f)); setFilterTo(iso(d)); }
+    if (p === "month")   { setFilterFrom(iso(d).slice(0,7)+"-01"); setFilterTo(iso(d)); }
+  };
+
   const starColor = ["","#ef4444","#f97316","#eab308","#84cc16","#22c55e"];
+  const medals    = ["🥇","🥈","🥉"];
+
+  const inRange = (f) => {
+    if (!f.submitted_at) return false;
+    const d = f.submitted_at.slice(0,10);
+    return d >= filterFrom && d <= filterTo;
+  };
+
+  const filtered = useMemo(() => feedbacks.filter(f =>
+    inRange(f) && (!filterBarber || f.barber_name === filterBarber)
+  ), [feedbacks, filterFrom, filterTo, filterBarber]);
+
+  // ── KPIs ──
+  const avg        = filtered.length ? (filtered.reduce((s,f) => s + f.rating, 0) / filtered.length) : 0;
+  const positivos  = filtered.filter(f => f.rating >= 4);
+  const negativos  = filtered.filter(f => f.rating <= 3);
+  const promotores = filtered.filter(f => f.rating === 5).length;
+  const detratores = filtered.filter(f => f.rating <= 3).length;
+  const nps        = filtered.length ? Math.round(((promotores - detratores) / filtered.length) * 100) : null;
+  const npsLabel   = nps === null ? "—" : nps >= 75 ? "Excelente" : nps >= 50 ? "Ótimo" : nps >= 0 ? "Bom" : "Crítico";
+  const npsColor   = nps === null ? T.muted : nps >= 50 ? T.success : nps >= 0 ? "#eab308" : T.danger;
+
+  // ── Comparação com período anterior ──
+  const days = Math.max(1, Math.round((new Date(filterTo) - new Date(filterFrom)) / 86400000) + 1);
+  const prevTo   = new Date(filterFrom); prevTo.setDate(prevTo.getDate()-1);
+  const prevFrom = new Date(prevTo);     prevFrom.setDate(prevFrom.getDate() - days + 1);
+  const prevISO  = (d) => d.toISOString().slice(0,10);
+  const prevFbs  = feedbacks.filter(f => {
+    if (!f.submitted_at) return false;
+    const d = f.submitted_at.slice(0,10);
+    return d >= prevISO(prevFrom) && d <= prevISO(prevTo);
+  });
+  const prevAvg  = prevFbs.length ? (prevFbs.reduce((s,f) => s + f.rating, 0) / prevFbs.length) : null;
+  const avgDiff  = (avg > 0 && prevAvg !== null) ? (avg - prevAvg) : null;
+
+  // ── Ranking de barbeiros ──
+  const barberMap = {};
+  filtered.forEach(f => {
+    const name = f.barber_name || "Sem barbeiro";
+    if (!barberMap[name]) barberMap[name] = { name, sum:0, count:0 };
+    barberMap[name].sum   += f.rating;
+    barberMap[name].count += 1;
+  });
+  const barberRanking = Object.values(barberMap)
+    .filter(b => b.count >= 1)
+    .map(b => ({ ...b, avg: b.sum / b.count }))
+    .sort((a,b) => b.avg - a.avg || b.count - a.count);
+
+  // ── Distribuição por estrelas ──
+  const byRating = [5,4,3,2,1].map(r => ({ r, count: filtered.filter(f => f.rating === r).length }));
+
+  // ── Evolução diária ──
+  const dayMap = {};
+  filtered.forEach(f => {
+    const d = f.submitted_at.slice(0,10);
+    if (!dayMap[d]) dayMap[d] = { date:d, sum:0, count:0 };
+    dayMap[d].sum   += f.rating;
+    dayMap[d].count += 1;
+  });
+  const MON_ABR = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+  const evolution = Object.values(dayMap).sort((a,b) => a.date.localeCompare(b.date)).map(d => ({
+    dia:   `${d.date.slice(8)}/${MON_ABR[parseInt(d.date.slice(5,7))-1]}`,
+    média: parseFloat((d.sum/d.count).toFixed(2)),
+    total: d.count,
+  }));
+
+  // ── Insights automáticos ──
+  const insights = [];
+  if (barberRanking.length > 0) {
+    const top = barberRanking[0];
+    insights.push({ icon:"✅", text:`${top.name} possui a maior média do período (${top.avg.toFixed(1)} ⭐).` });
+  }
+  const last7 = new Date(); last7.setDate(last7.getDate()-7);
+  const recentNeg = feedbacks.filter(f => f.submitted_at && new Date(f.submitted_at) >= last7 && f.rating <= 2);
+  if (recentNeg.length > 0) {
+    insights.push({ icon:"⚠️", text:`${recentNeg.length} avaliação(ões) negativa(s) nos últimos 7 dias.` });
+  }
+  if (avgDiff !== null) {
+    const sinal = avgDiff >= 0 ? "+" : "";
+    insights.push({ icon: avgDiff >= 0 ? "📈" : "📉", text:`Média ${avgDiff >= 0 ? "subiu" : "caiu"} ${sinal}${avgDiff.toFixed(1)} em relação ao período anterior.` });
+  }
+
+  // ── Barbeiros únicos para filtro ──
+  const barberNames = [...new Set(feedbacks.filter(f=>f.barber_name).map(f=>f.barber_name))].sort();
+
+  const SectionTitle = ({ children }) => (
+    <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, letterSpacing:1.5, color:T.text, marginBottom:"1rem" }}>{children}</div>
+  );
+
+  const presetBtns = [
+    { id:"today",  label:"Hoje" },
+    { id:"week",   label:"7 dias" },
+    { id:"30days", label:"30 dias" },
+    { id:"month",  label:"Este mês" },
+    { id:"custom", label:"Personalizado" },
+  ];
 
   return (
     <div>
       <PageHeader title="Feedbacks" sub={`${filtered.length} avaliação${filtered.length !== 1 ? "ões" : ""}`} onRefresh={onRefresh} />
 
-      <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:"1.5rem", flexWrap:"wrap" }}>
-        <DateRangePicker from={filterFrom} to={filterTo} onChange={({ from, to }) => { setFilterFrom(from); setFilterTo(to); }} />
+      {/* ── Filtros ── */}
+      <div style={{ marginBottom:"1.5rem" }}>
+        {/* Botões de período */}
+        <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:"0.75rem" }}>
+          {presetBtns.map(b => (
+            <button key={b.id} onClick={() => applyPreset(b.id)}
+              style={{
+                padding:"5px 14px", borderRadius:20, cursor:"pointer", fontSize:12,
+                fontFamily:"'DM Sans',sans-serif", fontWeight: preset===b.id ? 700 : 400,
+                border:`1px solid ${preset===b.id ? T.accent : T.border}`,
+                background: preset===b.id ? `${T.accent}22` : T.surface,
+                color: preset===b.id ? T.accent : T.muted,
+              }}>{b.label}</button>
+          ))}
+        </div>
+        {/* DateRangePicker (só no modo Personalizado) + filtro barbeiro */}
+        <div style={{ display:"flex", gap:10, flexWrap:"wrap", alignItems:"center" }}>
+          {preset === "custom" && (
+            <DateRangePicker from={filterFrom} to={filterTo} onChange={({ from, to }) => { setFilterFrom(from); setFilterTo(to); }} />
+          )}
+          <select value={filterBarber} onChange={e => setFilterBarber(e.target.value)}
+            style={{ background:T.card, border:`1px solid ${T.border}`, borderRadius:8, padding:"0.5rem 0.875rem", color: filterBarber ? T.text : T.muted, fontSize:13, outline:"none", fontFamily:"'DM Sans',sans-serif" }}>
+            <option value="">Todos os barbeiros</option>
+            {barberNames.map(n => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </div>
       </div>
 
-      {/* KPIs */}
-      <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(3,1fr)", gap:"1rem", marginBottom:"1.5rem" }}>
-        <StatCard label="MÉDIA" value={avg > 0 ? `${avg.toFixed(1)} ⭐` : "—"} color={T.success} icon={Star} sub={`${filtered.length} avaliações`} />
-        <StatCard label="5 ESTRELAS" value={byRating[0].count} color="#22c55e" icon={Star} sub={`${filtered.length > 0 ? ((byRating[0].count/filtered.length)*100).toFixed(0) : 0}% do total`} />
-        <StatCard label="1-2 ESTRELAS" value={byRating[3].count + byRating[4].count} color={T.danger} icon={Star} sub="Avaliações negativas" />
+      {/* ── KPI Cards ── */}
+      <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4,1fr)", gap:"1rem", marginBottom:"1.5rem" }}>
+        {/* Média geral */}
+        <Card style={{ textAlign:"center" }}>
+          <div style={{ fontSize:11, color:T.muted, letterSpacing:1, marginBottom:8 }}>MÉDIA GERAL</div>
+          <div style={{ fontSize:32, fontWeight:700, color:T.success }}>{avg > 0 ? avg.toFixed(1) : "—"} ⭐</div>
+          <div style={{ fontSize:12, color:T.muted, margin:"4px 0" }}>{filtered.length} avaliações</div>
+          {avgDiff !== null && (
+            <div style={{ fontSize:12, color: avgDiff >= 0 ? T.success : T.danger, fontWeight:600 }}>
+              {avgDiff >= 0 ? "↑" : "↓"} {avgDiff >= 0 ? "+" : ""}{avgDiff.toFixed(1)} vs período anterior
+            </div>
+          )}
+        </Card>
+        {/* Positivas */}
+        <Card style={{ textAlign:"center" }}>
+          <div style={{ fontSize:11, color:T.muted, letterSpacing:1, marginBottom:8 }}>POSITIVAS</div>
+          <div style={{ fontSize:32, fontWeight:700, color:T.success }}>{filtered.length > 0 ? ((positivos.length/filtered.length)*100).toFixed(0) : "—"}%</div>
+          <div style={{ fontSize:12, color:T.muted, margin:"4px 0" }}>{positivos.length} avaliações (4-5 ⭐)</div>
+        </Card>
+        {/* Negativas */}
+        <Card style={{ textAlign:"center" }}>
+          <div style={{ fontSize:11, color:T.muted, letterSpacing:1, marginBottom:8 }}>NEGATIVAS</div>
+          <div style={{ fontSize:32, fontWeight:700, color:T.danger }}>{filtered.length > 0 ? ((negativos.length/filtered.length)*100).toFixed(0) : "—"}%</div>
+          <div style={{ fontSize:12, color:T.muted, margin:"4px 0" }}>{negativos.length} avaliações (1-3 ⭐)</div>
+        </Card>
+        {/* NPS */}
+        <Card style={{ textAlign:"center" }}>
+          <div style={{ fontSize:11, color:T.muted, letterSpacing:1, marginBottom:8 }}>NPS</div>
+          <div style={{ fontSize:32, fontWeight:700, color:npsColor }}>{nps !== null ? nps : "—"}</div>
+          <div style={{ fontSize:12, color:npsColor, fontWeight:600, margin:"4px 0" }}>{npsLabel}</div>
+          <div style={{ fontSize:11, color:T.muted }}>Promotores - Detratores</div>
+        </Card>
       </div>
 
-      {/* Distribuição */}
+      {/* ── Insights automáticos ── */}
+      {insights.length > 0 && (
+        <Card style={{ marginBottom:"1.5rem" }}>
+          <SectionTitle>Insights</SectionTitle>
+          {insights.map((ins, i) => (
+            <div key={i} style={{ display:"flex", gap:10, padding:"8px 0", borderTop: i>0 ? `1px solid ${T.borderLight}` : "none", fontSize:13, color:T.text, lineHeight:1.5 }}>
+              <span style={{ fontSize:16 }}>{ins.icon}</span>
+              <span>{ins.text}</span>
+            </div>
+          ))}
+        </Card>
+      )}
+
+      {/* ── Ranking de Barbeiros ── */}
+      {barberRanking.length > 0 && (
+        <Card style={{ marginBottom:"1.5rem" }}>
+          <SectionTitle>🏆 Ranking de Barbeiros</SectionTitle>
+          <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap:"1.5rem" }}>
+            {/* Tabela */}
+            <div>
+              <div style={{ display:"grid", gridTemplateColumns:"30px 1fr 60px 70px", gap:6, fontSize:11, color:T.muted, padding:"0 0 8px", borderBottom:`1px solid ${T.border}`, marginBottom:8 }}>
+                <span>#</span><span>Barbeiro</span><span style={{textAlign:"right"}}>Média</span><span style={{textAlign:"right"}}>Avals.</span>
+              </div>
+              {barberRanking.map((b,i) => (
+                <div key={b.name} style={{ display:"grid", gridTemplateColumns:"30px 1fr 60px 70px", gap:6, padding:"8px 0", borderTop:`1px solid ${T.borderLight}`, alignItems:"center" }}>
+                  <span style={{ fontSize:16 }}>{medals[i] || `${i+1}`}</span>
+                  <span style={{ color:T.text, fontWeight:600, fontSize:13 }}>{b.name}</span>
+                  <span style={{ textAlign:"right", color:T.success, fontWeight:700, fontSize:13 }}>{b.avg.toFixed(1)} ⭐</span>
+                  <span style={{ textAlign:"right", color:T.muted, fontSize:12 }}>{b.count}</span>
+                </div>
+              ))}
+            </div>
+            {/* Gráfico horizontal */}
+            <div>
+              <ResponsiveContainer width="100%" height={Math.max(120, barberRanking.length * 44)}>
+                <BarChart data={barberRanking} layout="vertical" margin={{ left:0, right:30, top:0, bottom:0 }}>
+                  <XAxis type="number" domain={[0,5]} tick={{ fontSize:10, fill:T.muted }} />
+                  <YAxis type="category" dataKey="name" tick={{ fontSize:11, fill:T.text }} width={80} />
+                  <Tooltip formatter={v => [`${v.toFixed(2)} ⭐`, "Média"]} contentStyle={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:8, fontSize:12, color:T.text }} />
+                  <Bar dataKey="avg" radius={[0,4,4,0]}>
+                    {barberRanking.map((b,i) => <Cell key={i} fill={[T.success,"#84cc16","#eab308","#f97316",T.danger][Math.min(i,4)]} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* ── Distribuição ── */}
       {filtered.length > 0 && (
         <Card style={{ marginBottom:"1.5rem" }}>
-          <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, letterSpacing:1.5, color:T.text, marginBottom:"1rem" }}>Distribuição</div>
+          <SectionTitle>Distribuição</SectionTitle>
           {byRating.map(({ r, count }) => {
             const pct = filtered.length > 0 ? (count / filtered.length) * 100 : 0;
             return (
-              <div key={r} style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
-                <span style={{ width:20, textAlign:"right", color:T.muted, fontSize:12 }}>{r}⭐</span>
-                <div style={{ flex:1, background:T.border, borderRadius:4, height:8, overflow:"hidden" }}>
-                  <div style={{ width:`${pct}%`, background: starColor[r], height:"100%", borderRadius:4, transition:"width .4s" }} />
+              <div key={r} style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}>
+                <span style={{ width:24, textAlign:"right", color:T.muted, fontSize:13 }}>{r}⭐</span>
+                <div style={{ flex:1, background:T.border, borderRadius:6, height:10, overflow:"hidden" }}>
+                  <div style={{ width:`${pct}%`, background:starColor[r], height:"100%", borderRadius:6, transition:"width .4s" }} />
                 </div>
-                <span style={{ width:30, color:T.muted, fontSize:12 }}>{count}</span>
+                <span style={{ width:80, color:T.muted, fontSize:12, textAlign:"right" }}>{count} ({pct.toFixed(0)}%)</span>
               </div>
             );
           })}
         </Card>
       )}
 
-      {/* Lista de feedbacks */}
-      <Card>
-        <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, letterSpacing:1.5, color:T.text, marginBottom:"1rem" }}>Avaliações</div>
-        {filtered.length === 0 ? (
-          <div style={{ textAlign:"center", padding:"2rem", color:T.muted }}>Nenhuma avaliação no período</div>
-        ) : (
-          filtered.slice().sort((a,b) => b.submitted_at.localeCompare(a.submitted_at)).map(f => (
-            <div key={f.id} style={{ padding:"14px 0", borderTop:`1px solid ${T.borderLight}` }}>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", flexWrap:"wrap", gap:8 }}>
+      {/* ── Evolução diária ── */}
+      {evolution.length > 1 && (
+        <Card style={{ marginBottom:"1.5rem" }}>
+          <SectionTitle>Evolução das Avaliações</SectionTitle>
+          <ResponsiveContainer width="100%" height={200}>
+            <LineChart data={evolution} margin={{ top:5, right:10, left:0, bottom:5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={T.border} />
+              <XAxis dataKey="dia" tick={{ fontSize:10, fill:T.muted }} />
+              <YAxis domain={[1,5]} tick={{ fontSize:10, fill:T.muted }} width={25} />
+              <Tooltip formatter={(v,n) => [n==="média" ? `${v} ⭐` : v, n==="média" ? "Média" : "Qtd"]} contentStyle={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:8, fontSize:12, color:T.text }} />
+              <Legend wrapperStyle={{ fontSize:12 }} formatter={n => n==="média" ? "Média ⭐" : "Quantidade"} />
+              <Line type="monotone" dataKey="média" stroke={T.accent} strokeWidth={2} dot={{ r:3 }} activeDot={{ r:5 }} name="média" />
+              <Line type="monotone" dataKey="total" stroke={T.muted} strokeWidth={1} strokeDasharray="4 2" dot={false} name="total" />
+            </LineChart>
+          </ResponsiveContainer>
+        </Card>
+      )}
+
+      {/* ── Grid: Comentários Recentes + Piores ── */}
+      <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap:"1.5rem" }}>
+        {/* Comentários recentes */}
+        <Card>
+          <SectionTitle>Avaliações Recentes</SectionTitle>
+          {filtered.length === 0 ? (
+            <div style={{ textAlign:"center", padding:"1.5rem", color:T.muted }}>Nenhuma avaliação no período</div>
+          ) : filtered.slice().sort((a,b) => b.submitted_at.localeCompare(a.submitted_at)).slice(0,8).map(f => (
+            <div key={f.id} style={{ padding:"12px 0", borderTop:`1px solid ${T.borderLight}` }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:8, flexWrap:"wrap" }}>
                 <div>
-                  <span style={{ color:T.text, fontWeight:600, fontSize:14 }}>{f.client_name || "Cliente"}</span>
-                  {f.barber_name && <span style={{ color:T.muted, fontSize:12, marginLeft:8 }}>· {f.barber_name}</span>}
+                  <span style={{ color:T.text, fontWeight:600, fontSize:13 }}>{f.client_name || "Cliente"}</span>
+                  {f.barber_name && <span style={{ color:T.muted, fontSize:11, marginLeft:6 }}>· {f.barber_name}</span>}
                 </div>
                 <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                  <span style={{ color: starColor[f.rating], fontWeight:700, fontSize:15 }}>{"⭐".repeat(f.rating)}</span>
-                  <span style={{ color:T.muted, fontSize:11 }}>{f.submitted_at ? fDate(f.submitted_at.slice(0,10)) : ""}</span>
+                  <span style={{ color:starColor[f.rating], fontSize:13 }}>{"⭐".repeat(f.rating)}</span>
+                  <span style={{ color:T.muted, fontSize:11 }}>{fDate(f.submitted_at.slice(0,10))}</span>
                 </div>
               </div>
-              {f.comment && (
-                <p style={{ color:T.muted, fontSize:13, margin:"6px 0 0", lineHeight:1.5, fontStyle:"italic" }}>
-                  "{f.comment}"
-                </p>
-              )}
+              {f.comment && <p style={{ color:T.muted, fontSize:12, margin:"4px 0 0", lineHeight:1.4, fontStyle:"italic" }}>"{f.comment}"</p>}
             </div>
-          ))
-        )}
-      </Card>
+          ))}
+        </Card>
+
+        {/* Piores avaliações */}
+        <Card>
+          <SectionTitle>⚠️ Piores Avaliações (1-2 ⭐)</SectionTitle>
+          {(() => {
+            const ruins = filtered.filter(f => f.rating <= 2).sort((a,b) => b.submitted_at.localeCompare(a.submitted_at));
+            return ruins.length === 0 ? (
+              <div style={{ textAlign:"center", padding:"1.5rem" }}>
+                <div style={{ fontSize:32, marginBottom:8 }}>🎉</div>
+                <div style={{ color:T.muted, fontSize:13 }}>Nenhuma avaliação negativa no período!</div>
+              </div>
+            ) : ruins.slice(0,8).map(f => (
+              <div key={f.id} style={{ padding:"12px 0", borderTop:`1px solid ${T.borderLight}` }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:8, flexWrap:"wrap" }}>
+                  <div>
+                    <span style={{ color:T.text, fontWeight:600, fontSize:13 }}>{f.client_name || "Cliente"}</span>
+                    {f.barber_name && <span style={{ color:T.muted, fontSize:11, marginLeft:6 }}>· {f.barber_name}</span>}
+                  </div>
+                  <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                    <span style={{ color:starColor[f.rating], fontSize:13 }}>{"⭐".repeat(f.rating)}</span>
+                    <span style={{ color:T.muted, fontSize:11 }}>{fDate(f.submitted_at.slice(0,10))}</span>
+                  </div>
+                </div>
+                {f.comment && <p style={{ color:T.danger, fontSize:12, margin:"4px 0 0", lineHeight:1.4, fontStyle:"italic" }}>"{f.comment}"</p>}
+              </div>
+            ));
+          })()}
+        </Card>
+      </div>
     </div>
   );
 }
@@ -5182,7 +5432,7 @@ export default function App() {
         services:    <ServicesView services={services} setServices={setServices} token={tok} barbershopId={barbershopId} onRefresh={() => loadData(tok, auth.profile)}/>,
         produtos:    <ProductsView products={products} setProducts={setProducts} productSales={productSales} setProductSales={setProductSales} barbers={barbers} token={tok} barbershopId={barbershopId} isMobile={isMobile} onRefresh={() => loadData(tok, auth.profile)}/>,
         financial:   <FinancialView attendances={finalizedAtts} expenses={expenses} setExpenses={setExpenses} token={tok} barbershopId={barbershopId} barbers={barbers} isMobile={isMobile} productSales={productSales} onRefresh={() => loadData(tok, auth.profile)}/>,
-        feedbacks:   <FeedbacksView feedbacks={feedbacks} isMobile={isMobile} onRefresh={() => loadData(tok, auth.profile)}/>,
+        feedbacks:   <FeedbacksView feedbacks={feedbacks} barbers={barbers} isMobile={isMobile} onRefresh={() => loadData(tok, auth.profile)}/>,
         reports:     <ReportsView attendances={finalizedAtts} clients={clients} services={services} barbers={barbers} expenses={expenses} shop={shop} isMobile={isMobile} onRefresh={() => loadData(tok, auth.profile)}/>,
         settings:    <SettingsView token={tok} shop={shop} onShopUpdated={(updatedShop) => { setShop(updatedShop); applyTenantTheme(updatedShop, themeMode); }} themeMode={themeMode} onToggleTheme={toggleTheme}/>,
         meuPlano:    <MeuPlanoView token={tok} userEmail={auth.user?.email} profile={auth.profile} onRenew={() => setShowPlans(true)} />,
