@@ -2389,7 +2389,7 @@ function FeedbacksView({ feedbacks = [], barbers = [], isMobile, onRefresh }) {
       {barberRanking.length > 0 && (
         <Card style={{ marginBottom:"1.5rem" }}>
           <SectionTitle>🏆 Ranking de Barbeiros</SectionTitle>
-          <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr" : "auto 1fr", gap:"1.5rem" }}>
+          <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr" : "280px 1fr", gap:"1.5rem" }}>
             {/* Tabela */}
             <div>
               <div style={{ display:"grid", gridTemplateColumns:"30px minmax(80px,1fr) 60px 70px", gap:6, fontSize:11, color:T.muted, padding:"0 0 8px", borderBottom:`1px solid ${T.border}`, marginBottom:8 }}>
@@ -2405,7 +2405,7 @@ function FeedbacksView({ feedbacks = [], barbers = [], isMobile, onRefresh }) {
               ))}
             </div>
             {/* Gráfico horizontal */}
-            <div>
+            <div style={{ minWidth:0 }}>
               <ResponsiveContainer width="100%" height={Math.max(120, barberRanking.length * 44)}>
                 <BarChart data={barberRanking} layout="vertical" margin={{ left:0, right:30, top:0, bottom:0 }}>
                   <XAxis type="number" domain={[0,5]} tick={{ fontSize:10, fill:T.muted }} />
