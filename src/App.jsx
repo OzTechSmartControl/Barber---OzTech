@@ -2409,7 +2409,7 @@ function FeedbacksView({ feedbacks = [], barbers = [], isMobile, onRefresh }) {
               <ResponsiveContainer width="100%" height={Math.max(120, barberRanking.length * 44)}>
                 <BarChart data={barberRanking} layout="vertical" margin={{ left:0, right:30, top:0, bottom:0 }}>
                   <XAxis type="number" domain={[0,5]} tick={{ fontSize:10, fill:T.muted }} />
-                  <YAxis type="category" dataKey="name" tick={{ fontSize:11, fill:T.text }} width={80} />
+                  <YAxis type="category" dataKey="name" tick={{ fontSize:11, fill:T.text }} width={110} />
                   <Tooltip formatter={v => [`${v.toFixed(2)} ⭐`, "Média"]} contentStyle={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:8, fontSize:12, color:T.text }} />
                   <Bar dataKey="avg" radius={[0,4,4,0]}>
                     {barberRanking.map((b,i) => <Cell key={i} fill={[T.success,"#84cc16","#eab308","#f97316",T.danger][Math.min(i,4)]} />)}
