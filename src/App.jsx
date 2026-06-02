@@ -2370,18 +2370,6 @@ function FeedbacksView({ feedbacks = [], barbers = [], isMobile, onRefresh }) {
         </Card>
       )}
 
-      {/* ── Insights automáticos ── */}
-      {insights.length > 0 && (
-        <Card style={{ marginBottom:"1.5rem" }}>
-          <SectionTitle>Insights</SectionTitle>
-          {insights.map((ins, i) => (
-            <div key={i} style={{ display:"flex", gap:10, padding:"8px 0", borderTop: i>0 ? `1px solid ${T.borderLight}` : "none", fontSize:13, color:T.text, lineHeight:1.5 }}>
-              <span style={{ fontSize:16 }}>{ins.icon}</span>
-              <span>{ins.text}</span>
-            </div>
-          ))}
-        </Card>
-      )}
 
       {/* ── Ranking de Barbeiros ── */}
       {barberRanking.length > 0 && (
