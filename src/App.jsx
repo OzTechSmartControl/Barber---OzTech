@@ -218,9 +218,12 @@ const WARN_COLOR   = "#f59e0b";
 // ── SHARED UI ─────────────────────────────────────────────────
 const inputSt = { width: "100%", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 8, padding: "0.6rem 0.875rem", color: T.text, fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "'DM Sans', sans-serif", WebkitAppearance: "none", MozAppearance: "none", appearance: "none", colorScheme: "dark" };
 
-const Modal = ({ title, onClose, children }) => (
+const Modal = ({ title, onClose, children }) => {
+  const mdRef = React.useRef(null);
+  return (
   <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem", backdropFilter: "blur(4px)" }}
-    onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+    onMouseDown={e => { mdRef.current = e.target; }}
+    onClick={e => { if (e.target === e.currentTarget && mdRef.current === e.currentTarget) onClose(); }}>
     <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 18, width: "100%", maxWidth: 540, maxHeight: "92vh", overflow: "hidden", display: "flex", flexDirection: "column" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "1.25rem 1.5rem", borderBottom: `1px solid ${T.border}`, flexShrink: 0 }}>
         <h3 style={{ margin: 0, fontFamily: "'Bebas Neue', sans-serif", fontSize: 21, letterSpacing: 1.5, color: T.text }}>{title}</h3>
@@ -229,7 +232,8 @@ const Modal = ({ title, onClose, children }) => (
       <div style={{ padding: "1.5rem", overflowY: "auto", WebkitOverflowScrolling: "touch", flex: 1, paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom))" }}>{children}</div>
     </div>
   </div>
-);
+  );
+};
 
 const FLabel = ({ c }) => <div style={{ fontSize: 11, fontWeight: 600, color: T.muted, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.8 }}>{c}</div>;
 const FG = ({ label, children, half }) => <div style={{ marginBottom: "1rem", flex: half ? "1 1 140px" : undefined, minWidth: half ? 0 : undefined }}>{label && <FLabel c={label} />}{children}</div>;
