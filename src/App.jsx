@@ -2389,14 +2389,14 @@ function FeedbacksView({ feedbacks = [], barbers = [], isMobile, onRefresh }) {
       {barberRanking.length > 0 && (
         <Card style={{ marginBottom:"1.5rem" }}>
           <SectionTitle>🏆 Ranking de Barbeiros</SectionTitle>
-          <div style={ isMobile ? {} : { display:"flex", gap:"1.5rem", alignItems:"flex-start" }}>
+          <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr" : "2fr 3fr", gap:"1.5rem" }}>
             {/* Tabela */}
-            <div style={{ flex:"0 0 auto" }}>
-              <div style={{ display:"grid", gridTemplateColumns:"30px auto 60px 70px", gap:6, fontSize:11, color:T.muted, padding:"0 0 8px", borderBottom:`1px solid ${T.border}`, marginBottom:8 }}>
+            <div style={{ minWidth:0 }}>
+              <div style={{ display:"grid", gridTemplateColumns:"30px 1fr 60px 70px", gap:6, fontSize:11, color:T.muted, padding:"0 0 8px", borderBottom:`1px solid ${T.border}`, marginBottom:8 }}>
                 <span>#</span><span>Barbeiro</span><span style={{textAlign:"right"}}>Média</span><span style={{textAlign:"right"}}>Avals.</span>
               </div>
               {barberRanking.map((b,i) => (
-                <div key={b.name} style={{ display:"grid", gridTemplateColumns:"30px auto 60px 70px", gap:6, padding:"8px 0", borderTop:`1px solid ${T.borderLight}`, alignItems:"center" }}>
+                <div key={b.name} style={{ display:"grid", gridTemplateColumns:"30px 1fr 60px 70px", gap:6, padding:"8px 0", borderTop:`1px solid ${T.borderLight}`, alignItems:"center" }}>
                   <span style={{ fontSize:16 }}>{medals[i] || `${i+1}`}</span>
                   <span style={{ color:T.text, fontWeight:600, fontSize:13 }}>{b.name}</span>
                   <span style={{ textAlign:"right", color:T.success, fontWeight:700, fontSize:13 }}>{b.avg.toFixed(1)} ⭐</span>
@@ -2405,7 +2405,7 @@ function FeedbacksView({ feedbacks = [], barbers = [], isMobile, onRefresh }) {
               ))}
             </div>
             {/* Gráfico horizontal */}
-            <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ minWidth:0 }}>
               <ResponsiveContainer width="100%" height={Math.max(120, barberRanking.length * 44)}>
                 <BarChart data={barberRanking} layout="vertical" margin={{ left:0, right:30, top:0, bottom:0 }}>
                   <XAxis type="number" domain={[0,5]} tick={{ fontSize:10, fill:T.muted }} />
