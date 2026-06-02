@@ -136,7 +136,7 @@ const accessDeniedMessage = (reason) => {
 
 
 // ── TRANSFORMS ────────────────────────────────────────────────
-const toAtt  = a => ({ id: a.id, clientId: a.client_id, barberId: a.barber_id, serviceId: a.service_id, price: +a.price, servicesPrice: +(a.services_price ?? a.price), payment: a.payment, date: a.date, time: a.time || "", notes: a.notes || "", extraServices: Array.isArray(a.extra_services) ? a.extra_services : [], productsSold: Array.isArray(a.products_sold) ? a.products_sold : [], appointmentId: a.appointment_id || null, source: a.source || "manual" });
+const toAtt  = a => ({ id: a.id, clientId: a.client_id, barberId: a.barber_id, serviceId: a.service_id, price: +a.price, servicesPrice: +(a.services_price ?? a.price), payment: a.payment, date: a.date, time: a.time || "", notes: a.notes || "", extraServices: Array.isArray(a.extra_services) ? a.extra_services : [], productsSold: Array.isArray(a.products_sold) ? a.products_sold : [], appointmentId: a.appointment_id || null, source: a.source || "manual", barberCommissionPct: a.barber_commission_pct != null ? +a.barber_commission_pct : null });
 const fromAtt = a => ({ client_id: +a.clientId||0, barber_id: +a.barberId||0, service_id: +a.serviceId||0, price: +a.price, payment: a.payment, date: a.date, time: a.time, notes: a.notes, extra_services: a.extraServices||[] });
 const toClient = c => ({ id: c.id, name: c.name, phone: c.phone || "", whatsapp: c.whatsapp || "", birthdate: c.birthdate || "", notes: c.notes || "", points: +c.points, email: c.email || "" });
 const toBarber = b => ({ id: b.id, name: b.name, phone: b.phone || "", commission: +b.commission, status: b.status, userId: b.user_id, notificationEmail: b.notification_email || "" });
@@ -145,6 +145,11 @@ const toExpense     = e => ({ id: e.id, desc: e.description, amount: +e.amount, 
 const toProduct     = p => ({ id: p.id, name: p.name, description: p.description || "", price: +(p.price||0), cost: +(p.cost||0), stockCurrent: +(p.stock_current||0), stockMinimum: +(p.stock_minimum||0), unit: p.unit || "un", active: p.active !== false, commissionPct: +(p.commission_pct||0) });
 // Calcula comissão sobre produtos vendidos num atendimento (usa o % histórico gravado no JSONB)
 const calcProdComm  = (att) => (att.productsSold||[]).reduce((s,p) => s + (p.price*(p.quantity||1)*(p.commissionPct||0)/100), 0);
+// Calcula comissão sobre serviços usando % histórico do atendimento; fallback para % atual do barbeiro
+const calcServComm  = (att, barbers) => {
+  const pct = att.barberCommissionPct ?? (barbers.find(b => b.id === att.barberId)?.commission ?? 0);
+  return (att.servicesPrice ?? att.price) * pct / 100;
+};
 const toProductSale = s => ({ id: s.id, productId: s.product_id, barberId: s.barber_id, quantity: +(s.quantity||1), unitPrice: +(s.unit_price||0), totalPrice: +(s.total_price||0), payment: s.payment || "PIX", date: (s.sold_at||s.created_at||"").substring(0,10) });
 
 // ── THEME ─────────────────────────────────────────────────────
@@ -1039,7 +1044,7 @@ function Dashboard({ attendances, clients, services, barbers, isAdmin, myBarberI
   if (!isAdmin) {
     const me = barbers.find(b => b.id === myBarberId);
     const monthServRev  = monthAtts.reduce((s, a) => s + (a.servicesPrice ?? a.price), 0);
-    const commServ      = monthServRev * (me?.commission || 0) / 100;
+    const commServ      = monthAtts.reduce((s, a) => s + calcServComm(a, barbers), 0);
     const commProd      = monthAtts.reduce((s, a) => s + calcProdComm(a), 0);
     const commission    = commServ + commProd;
     return (
@@ -1097,7 +1102,7 @@ function Dashboard({ attendances, clients, services, barbers, isAdmin, myBarberI
     const bA = allMonth.filter(a => a.barberId === b.id);
     const total        = bA.reduce((s, a) => s + a.price, 0);
     const servicesOnly = bA.reduce((s, a) => s + (a.servicesPrice ?? a.price), 0);
-    const commServ     = servicesOnly * b.commission / 100;
+    const commServ     = bA.reduce((s, a) => s + calcServComm(a, barbers), 0);
     const commProd     = bA.reduce((s, a) => s + calcProdComm(a), 0);
     return { b, count: bA.length, total, commission: commServ + commProd, commServ, commProd, ticket: bA.length ? total / bA.length : 0 };
   }).sort((a, b) => b.total - a.total);
@@ -1464,12 +1469,14 @@ function AttendancesView({ attendances, setAttendances, clients, setClients, ser
         productId: sp.productId, name: sp.name, price: sp.price, quantity: sp.quantity, unit: sp.unit,
         commissionPct: products.find(p => p.id === sp.productId)?.commissionPct || 0,
       }));
+      const barberCommPct = barbers.find(b => b.id === +form.barberId)?.commission ?? null;
       const rows = await api.insert("attendances", {
         client_id: finalClientId, barber_id: +form.barberId,
         service_id: primary.serviceId, price: totalPrice, services_price: totalServices,
         payment: form.payment, date: form.date, time: form.time,
         notes: form.notes, extra_services: extras,
         products_sold: productsSoldPayload,
+        barber_commission_pct: barberCommPct,
         barbershop_id: barbershopId,
       }, token);
       setAttendances(prev => [toAtt(rows[0]), ...prev]);
@@ -2025,8 +2032,7 @@ function BarbersView({ barbers, setBarbers, attendances, token, barbershopId, on
         {barbers.map(b=>{
           const bA          = monthAtts.filter(a => a.barberId === b.id);
           const total       = bA.reduce((s, a) => s + a.price, 0);
-          const servTotal   = bA.reduce((s, a) => s + (a.servicesPrice ?? a.price), 0);
-          const commServ    = servTotal * b.commission / 100;
+          const commServ    = bA.reduce((s, a) => s + calcServComm(a, barbers), 0);
           const commProd    = bA.reduce((s, a) => s + calcProdComm(a), 0);
           const commission  = commServ + commProd;
           return (
@@ -2545,10 +2551,7 @@ function FinancialView({ attendances, expenses, setExpenses, token, barbershopId
   const totalProdRev     = rangeProdSales.reduce((s,ps) => s + ps.totalPrice, 0);
   const totalRev         = totalServRev + totalProdRev;
   const totalExp         = rangeExp.reduce((s,e) => s + e.amount, 0);
-  const totalCommissions = rangeAtts.reduce((s,a) => {
-    const b = barbers.find(x => x.id === a.barberId);
-    return s + ((a.servicesPrice ?? a.price) * (b?.commission || 0) / 100) + calcProdComm(a);
-  }, 0);
+  const totalCommissions = rangeAtts.reduce((s,a) => s + calcServComm(a, barbers) + calcProdComm(a), 0);
   const profit = totalRev - totalExp - totalCommissions;
 
   const byPay = {};
@@ -2581,10 +2584,7 @@ function FinancialView({ attendances, expenses, setExpenses, token, barbershopId
       const prodRev  = mProd.reduce((s,p) => s + p.totalPrice, 0);
       const receitas = servRev + prodRev;
       const despesas = mExp.reduce((s,e) => s + e.amount, 0);
-      const comissoes = mAtts.reduce((s,a) => {
-        const b = barbers.find(x => x.id === a.barberId);
-        return s + ((a.servicesPrice ?? a.price) * (b?.commission || 0) / 100) + calcProdComm(a);
-      }, 0);
+      const comissoes = mAtts.reduce((s,a) => s + calcServComm(a, barbers) + calcProdComm(a), 0);
       const lucro = receitas - despesas - comissoes;
       const [yr, mo] = m.split("-");
       return { mes: `${MON[+mo-1]}/${yr.slice(2)}`, receitas, despesas, lucro };
@@ -2877,10 +2877,7 @@ function RevenueReportContent({ attendances, expenses, barbers = [], selMonth, s
   const mProdRev = mRev - mServRev;
 
   const mExpT = mExp.reduce((s,e) => s + e.amount, 0);
-  const mCommissions = mAtts.reduce((s,a) => {
-    const b = barbers.find(x => x.id === a.barberId);
-    return s + ((a.servicesPrice ?? a.price) * (b?.commission || 0) / 100) + calcProdComm(a);
-  }, 0);
+  const mCommissions = mAtts.reduce((s,a) => s + calcServComm(a, barbers) + calcProdComm(a), 0);
   const profit = mRev - mExpT - mCommissions;
 
   const byPay = {};
@@ -2893,7 +2890,7 @@ function RevenueReportContent({ attendances, expenses, barbers = [], selMonth, s
       const bTotal   = bAtts.reduce((s,a) => s + a.price, 0);
       const bServRev  = bAtts.reduce((s,a) => s + (a.servicesPrice ?? a.price), 0);
       const bProdRev  = bTotal - bServRev;
-      const bCommServ = bServRev * (b.commission || 0) / 100;
+      const bCommServ = bAtts.reduce((s,a) => s + calcServComm(a, barbers), 0);
       const bCommProd = bAtts.reduce((s,a) => s + calcProdComm(a), 0);
       const bComm     = bCommServ + bCommProd;
       return { name: b.name, pct: b.commission || 0, servRev: bServRev, prodRev: bProdRev, total: bTotal, commission: bComm, commServ: bCommServ, commProd: bCommProd, count: bAtts.length };
@@ -2989,7 +2986,7 @@ function BarberReportContent({ attendances, services, barbers, selMonth, shop })
     const total     = bA.reduce((s,a)=>s+a.price,0);
     const servOnly  = bA.reduce((s,a)=>s+(a.servicesPrice??a.price),0);
     const prodOnly  = total - servOnly;
-    const commServ  = servOnly * b.commission / 100;
+    const commServ  = bA.reduce((s,a)=>s+calcServComm(a,barbers),0);
     const commProd  = bA.reduce((s,a)=>s+calcProdComm(a),0);
     const commission = commServ + commProd;
     const sm={}; bA.forEach(a=>{const sv=services.find(sv=>sv.id===a.serviceId);if(sv)sm[sv.name]=(sm[sv.name]||0)+1;});
@@ -3141,7 +3138,7 @@ function ReportsView({ attendances, clients, services, barbers, expenses, shop, 
   const mExp         = expenses.filter(e => e.date.startsWith(selMonth));
   const mRev         = mAtts.reduce((s,a)=>s+a.price,0);
   const mExpT        = mExp.reduce((s,e)=>s+e.amount,0);
-  const mCommissions = mAtts.reduce((s,a)=>{ const b=barbers.find(x=>x.id===a.barberId); return s+((a.servicesPrice??a.price)*(b?.commission||0)/100)+calcProdComm(a); },0);
+  const mCommissions = mAtts.reduce((s,a)=>s+calcServComm(a,barbers)+calcProdComm(a),0);
   const mProfit      = mRev - mExpT - mCommissions;
 
   const REPORTS = [
