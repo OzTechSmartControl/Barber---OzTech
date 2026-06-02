@@ -142,7 +142,9 @@ const toClient = c => ({ id: c.id, name: c.name, phone: c.phone || "", whatsapp:
 const toBarber = b => ({ id: b.id, name: b.name, phone: b.phone || "", commission: +b.commission, status: b.status, userId: b.user_id, notificationEmail: b.notification_email || "" });
 const toService = s => ({ id: s.id, name: s.name, price: +s.price, duration: +s.duration, active: s.active });
 const toExpense     = e => ({ id: e.id, desc: e.description, amount: +e.amount, date: e.date, category: e.category || "" });
-const toProduct     = p => ({ id: p.id, name: p.name, description: p.description || "", price: +(p.price||0), cost: +(p.cost||0), stockCurrent: +(p.stock_current||0), stockMinimum: +(p.stock_minimum||0), unit: p.unit || "un", active: p.active !== false });
+const toProduct     = p => ({ id: p.id, name: p.name, description: p.description || "", price: +(p.price||0), cost: +(p.cost||0), stockCurrent: +(p.stock_current||0), stockMinimum: +(p.stock_minimum||0), unit: p.unit || "un", active: p.active !== false, commissionPct: +(p.commission_pct||0) });
+// Calcula comissão sobre produtos vendidos num atendimento (usa o % histórico gravado no JSONB)
+const calcProdComm  = (att) => (att.productsSold||[]).reduce((s,p) => s + (p.price*(p.quantity||1)*(p.commissionPct||0)/100), 0);
 const toProductSale = s => ({ id: s.id, productId: s.product_id, barberId: s.barber_id, quantity: +(s.quantity||1), unitPrice: +(s.unit_price||0), totalPrice: +(s.total_price||0), payment: s.payment || "PIX", date: (s.sold_at||s.created_at||"").substring(0,10) });
 
 // ── THEME ─────────────────────────────────────────────────────
@@ -1036,8 +1038,10 @@ function Dashboard({ attendances, clients, services, barbers, isAdmin, myBarberI
   // Barbeiro: painel próprio
   if (!isAdmin) {
     const me = barbers.find(b => b.id === myBarberId);
-    const monthServRev = monthAtts.reduce((s, a) => s + (a.servicesPrice ?? a.price), 0); // base da comissão
-    const commission   = monthServRev * (me?.commission || 0) / 100;
+    const monthServRev  = monthAtts.reduce((s, a) => s + (a.servicesPrice ?? a.price), 0);
+    const commServ      = monthServRev * (me?.commission || 0) / 100;
+    const commProd      = monthAtts.reduce((s, a) => s + calcProdComm(a), 0);
+    const commission    = commServ + commProd;
     return (
       <div>
         <div style={{ marginBottom: "1.75rem" }}>
@@ -1048,7 +1052,7 @@ function Dashboard({ attendances, clients, services, barbers, isAdmin, myBarberI
           <StatCard label="Atendimentos hoje"  value={todayAtts.length}  icon={Scissors} />
           <StatCard label="Faturamento hoje"    value={R$(todayRev)}     color={T.accent}  icon={DollarSign} />
           <StatCard label="Faturamento do mês"  value={R$(monthRev)}     color={T.success} icon={TrendingUp} />
-          <StatCard label="Comissão do mês"     value={R$(commission)}   color={T.accent}  icon={BadgePercent} sub={`${me?.commission || 0}% sobre serviços (${R$(monthServRev)})`} />
+          <StatCard label="Comissão do mês" value={R$(commission)} color={T.accent} icon={BadgePercent} sub={`Serv: ${R$(commServ)} · Prod: ${R$(commProd)}`} />
         </div>
         <Card>
           <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1.5, color: T.text, marginBottom: "1rem" }}>Últimos atendimentos</div>
@@ -1091,9 +1095,11 @@ function Dashboard({ attendances, clients, services, barbers, isAdmin, myBarberI
 
   const bStats = barbers.filter(b => b.status === "active").map(b => {
     const bA = allMonth.filter(a => a.barberId === b.id);
-    const total        = bA.reduce((s, a) => s + a.price, 0);                           // total pago pelo cliente
-    const servicesOnly = bA.reduce((s, a) => s + (a.servicesPrice ?? a.price), 0);      // base da comissão
-    return { b, count: bA.length, total, commission: servicesOnly * b.commission / 100, ticket: bA.length ? total / bA.length : 0 };
+    const total        = bA.reduce((s, a) => s + a.price, 0);
+    const servicesOnly = bA.reduce((s, a) => s + (a.servicesPrice ?? a.price), 0);
+    const commServ     = servicesOnly * b.commission / 100;
+    const commProd     = bA.reduce((s, a) => s + calcProdComm(a), 0);
+    return { b, count: bA.length, total, commission: commServ + commProd, commServ, commProd, ticket: bA.length ? total / bA.length : 0 };
   }).sort((a, b) => b.total - a.total);
 
   const bToday = barbers.filter(b => b.status === "active").map(b => {
@@ -1456,6 +1462,7 @@ function AttendancesView({ attendances, setAttendances, clients, setClients, ser
       // 1. Salva o atendimento (preço = serviços)
       const productsSoldPayload = form.selectedProducts.map(sp => ({
         productId: sp.productId, name: sp.name, price: sp.price, quantity: sp.quantity, unit: sp.unit,
+        commissionPct: products.find(p => p.id === sp.productId)?.commissionPct || 0,
       }));
       const rows = await api.insert("attendances", {
         client_id: finalClientId, barber_id: +form.barberId,
@@ -2017,9 +2024,11 @@ function BarbersView({ barbers, setBarbers, attendances, token, barbershopId, on
       <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap:"1rem" }}>
         {barbers.map(b=>{
           const bA          = monthAtts.filter(a => a.barberId === b.id);
-          const total       = bA.reduce((s, a) => s + a.price, 0);                          // total pago pelo cliente
-          const servTotal   = bA.reduce((s, a) => s + (a.servicesPrice ?? a.price), 0);     // base da comissão
-          const commission  = servTotal * b.commission / 100;
+          const total       = bA.reduce((s, a) => s + a.price, 0);
+          const servTotal   = bA.reduce((s, a) => s + (a.servicesPrice ?? a.price), 0);
+          const commServ    = servTotal * b.commission / 100;
+          const commProd    = bA.reduce((s, a) => s + calcProdComm(a), 0);
+          const commission  = commServ + commProd;
           return (
             <Card key={b.id} style={{ opacity:b.status==="inactive"?0.55:1 }}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:"1rem" }}>
@@ -2036,7 +2045,7 @@ function BarbersView({ barbers, setBarbers, attendances, token, barbershopId, on
               {b.userId&&<div style={{ fontSize:11, color:T.success+"aa", marginBottom:"0.75rem", display:"flex", alignItems:"center", gap:4 }}><Check size={11}/>Login configurado</div>}
               {!b.userId&&<div style={{ fontSize:11, color:T.muted, marginBottom:"0.75rem" }}>⚠ Sem login configurado</div>}
               <div style={{ borderTop:`1px solid ${T.borderLight}`, paddingTop:"1rem", display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0.75rem" }}>
-                {[["Comissão",b.commission+"%",T.accent,"big"],["Aten. Mês",bA.length,T.text,"big"],["Total Mês",R$(total),T.success,"sm"],["A receber",R$(commission),T.accent,"sm"]].map(([l,v,c,sz])=>(
+                {[["Serv. %",b.commission+"%",T.accent,"big"],["Aten. Mês",bA.length,T.text,"big"],["Total Mês",R$(total),T.success,"sm"],["A receber",R$(commission),T.accent,"sm"],["💈 Serviços",R$(commServ),T.muted,"sm"],["🛍️ Produtos",R$(commProd),T.success,"sm"]].map(([l,v,c,sz])=>(
                   <div key={l}>
                     <div style={{ fontSize:10, color:T.muted, textTransform:"uppercase", letterSpacing:0.5 }}>{l}</div>
                     <div style={sz==="big"?{fontFamily:"'Bebas Neue', sans-serif",fontSize:26,color:c}:{fontSize:14,fontWeight:600,color:c}}>{v}</div>
@@ -2538,7 +2547,7 @@ function FinancialView({ attendances, expenses, setExpenses, token, barbershopId
   const totalExp         = rangeExp.reduce((s,e) => s + e.amount, 0);
   const totalCommissions = rangeAtts.reduce((s,a) => {
     const b = barbers.find(x => x.id === a.barberId);
-    return s + ((a.servicesPrice ?? a.price) * (b?.commission || 0) / 100); // comissão sobre serviços
+    return s + ((a.servicesPrice ?? a.price) * (b?.commission || 0) / 100) + calcProdComm(a);
   }, 0);
   const profit = totalRev - totalExp - totalCommissions;
 
@@ -2574,7 +2583,7 @@ function FinancialView({ attendances, expenses, setExpenses, token, barbershopId
       const despesas = mExp.reduce((s,e) => s + e.amount, 0);
       const comissoes = mAtts.reduce((s,a) => {
         const b = barbers.find(x => x.id === a.barberId);
-        return s + ((a.servicesPrice ?? a.price) * (b?.commission || 0) / 100);
+        return s + ((a.servicesPrice ?? a.price) * (b?.commission || 0) / 100) + calcProdComm(a);
       }, 0);
       const lucro = receitas - despesas - comissoes;
       const [yr, mo] = m.split("-");
@@ -2870,7 +2879,7 @@ function RevenueReportContent({ attendances, expenses, barbers = [], selMonth, s
   const mExpT = mExp.reduce((s,e) => s + e.amount, 0);
   const mCommissions = mAtts.reduce((s,a) => {
     const b = barbers.find(x => x.id === a.barberId);
-    return s + ((a.servicesPrice ?? a.price) * (b?.commission || 0) / 100);
+    return s + ((a.servicesPrice ?? a.price) * (b?.commission || 0) / 100) + calcProdComm(a);
   }, 0);
   const profit = mRev - mExpT - mCommissions;
 
@@ -2882,10 +2891,12 @@ function RevenueReportContent({ attendances, expenses, barbers = [], selMonth, s
     .map(b => {
       const bAtts    = mAtts.filter(a => a.barberId === b.id);
       const bTotal   = bAtts.reduce((s,a) => s + a.price, 0);
-      const bServRev = bAtts.reduce((s,a) => s + (a.servicesPrice ?? a.price), 0);
-      const bProdRev = bTotal - bServRev;
-      const bComm    = bServRev * (b.commission || 0) / 100;
-      return { name: b.name, pct: b.commission || 0, servRev: bServRev, prodRev: bProdRev, total: bTotal, commission: bComm, count: bAtts.length };
+      const bServRev  = bAtts.reduce((s,a) => s + (a.servicesPrice ?? a.price), 0);
+      const bProdRev  = bTotal - bServRev;
+      const bCommServ = bServRev * (b.commission || 0) / 100;
+      const bCommProd = bAtts.reduce((s,a) => s + calcProdComm(a), 0);
+      const bComm     = bCommServ + bCommProd;
+      return { name: b.name, pct: b.commission || 0, servRev: bServRev, prodRev: bProdRev, total: bTotal, commission: bComm, commServ: bCommServ, commProd: bCommProd, count: bAtts.length };
     })
     .filter(x => x.count > 0)
     .sort((a, b) => b.total - a.total);
@@ -2972,9 +2983,11 @@ function BarberReportContent({ attendances, services, barbers, selMonth, shop })
   const stats = barbers.filter(b=>b.status==="active").map(b=>{
     const bA       = mAtts.filter(a=>a.barberId===b.id);
     const total    = bA.reduce((s,a)=>s+a.price,0);
-    const servOnly = bA.reduce((s,a)=>s+(a.servicesPrice??a.price),0);
-    const prodOnly = total - servOnly;
-    const commission = servOnly * b.commission / 100;
+    const servOnly  = bA.reduce((s,a)=>s+(a.servicesPrice??a.price),0);
+    const prodOnly  = total - servOnly;
+    const commServ  = servOnly * b.commission / 100;
+    const commProd  = bA.reduce((s,a)=>s+calcProdComm(a),0);
+    const commission = commServ + commProd;
     const sm={}; bA.forEach(a=>{const sv=services.find(sv=>sv.id===a.serviceId);if(sv)sm[sv.name]=(sm[sv.name]||0)+1;});
     const top=Object.entries(sm).sort((a,b)=>b[1]-a[1])[0];
     return {b, count:bA.length, total, servOnly, prodOnly, commission, ticket:bA.length?total/bA.length:0, top:top?top[0]+" ("+top[1]+"×)":"—"};
@@ -3122,7 +3135,7 @@ function ReportsView({ attendances, clients, services, barbers, expenses, shop, 
   const mExp         = expenses.filter(e => e.date.startsWith(selMonth));
   const mRev         = mAtts.reduce((s,a)=>s+a.price,0);
   const mExpT        = mExp.reduce((s,e)=>s+e.amount,0);
-  const mCommissions = mAtts.reduce((s,a)=>{ const b=barbers.find(x=>x.id===a.barberId); return s+((a.servicesPrice??a.price)*(b?.commission||0)/100); },0); // comissão sobre serviços
+  const mCommissions = mAtts.reduce((s,a)=>{ const b=barbers.find(x=>x.id===a.barberId); return s+((a.servicesPrice??a.price)*(b?.commission||0)/100)+calcProdComm(a); },0);
   const mProfit      = mRev - mExpT - mCommissions;
 
   const REPORTS = [
@@ -3724,7 +3737,7 @@ function ProductsView({ products, setProducts, productSales, setProductSales, ba
   const [saving, setSaving]       = useState(false);
   const [err, setErr]             = useState("");
 
-  const emptyForm = () => ({ name:"", description:"", price:"", cost:"0", stockCurrent:"0", stockMinimum:"5", unit:"un", active: true });
+  const emptyForm = () => ({ name:"", description:"", price:"", cost:"0", stockCurrent:"0", stockMinimum:"5", unit:"un", active: true, commissionPct:"0" });
   const [form, setForm]           = useState(emptyForm());
   const setF = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
 
@@ -3750,13 +3763,13 @@ function ProductsView({ products, setProducts, productSales, setProductSales, ba
 
   // ── CRUD ──────────────────────────────────────────────────────
   const openAdd  = () => { setEditing(null); setForm(emptyForm()); setErr(""); setShowModal(true); };
-  const openEdit = p  => { setEditing(p.id); setForm({ name:p.name, description:p.description, price:String(p.price), cost:String(p.cost), stockCurrent:String(p.stockCurrent), stockMinimum:String(p.stockMinimum), unit:p.unit, active:p.active }); setErr(""); setShowModal(true); };
+  const openEdit = p  => { setEditing(p.id); setForm({ name:p.name, description:p.description, price:String(p.price), cost:String(p.cost), stockCurrent:String(p.stockCurrent), stockMinimum:String(p.stockMinimum), unit:p.unit, active:p.active, commissionPct:String(p.commissionPct||0) }); setErr(""); setShowModal(true); };
 
   const saveProduct = async () => {
     if (!form.name || !form.price) return setErr("Nome e preço são obrigatórios.");
     setSaving(true); setErr("");
     try {
-      const body = { name:form.name, description:form.description, price:+form.price, cost:+(form.cost||0), stock_current:+(form.stockCurrent||0), stock_minimum:+(form.stockMinimum||0), unit:form.unit||"un", active:form.active, barbershop_id:barbershopId };
+      const body = { name:form.name, description:form.description, price:+form.price, cost:+(form.cost||0), stock_current:+(form.stockCurrent||0), stock_minimum:+(form.stockMinimum||0), unit:form.unit||"un", active:form.active, commission_pct:+(form.commissionPct||0), barbershop_id:barbershopId };
       if (editing) {
         await api.update("products", editing, body, token);
         setProducts(ps => ps.map(p => p.id===editing ? toProduct({...body, id:editing}) : p));
@@ -3882,7 +3895,10 @@ function ProductsView({ products, setProducts, productSales, setProductSales, ba
                 <div style={{ fontSize:11, color:T.muted, marginBottom:10, lineHeight:1.4 }}>{p.description}</div>
               )}
 
-              <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:28, color:T.accent, letterSpacing:1, lineHeight:1, marginBottom:10 }}>{R$(p.price)}</div>
+              <div style={{ display:"flex", alignItems:"baseline", gap:8, marginBottom:10 }}>
+                <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:28, color:T.accent, letterSpacing:1, lineHeight:1 }}>{R$(p.price)}</div>
+                {p.commissionPct > 0 && <span style={{ fontSize:11, color:T.success, fontWeight:700, background:`${T.success}18`, borderRadius:6, padding:"2px 7px" }}>💰 {p.commissionPct}% comissão</span>}
+              </div>
 
               {/* Estoque indicator */}
               <div style={{ background:T.surface, borderRadius:8, padding:"8px 10px", marginBottom:10 }}>
@@ -3975,6 +3991,9 @@ function ProductsView({ products, setProducts, productSales, setProductSales, ba
                 {UNIT_OPTS.map(u => <option key={u}>{u}</option>)}
               </select>
             </FG>
+            <FG label="Comissão barbeiro (%)" half><input style={inputSt} type="number" min="0" max="100" step="0.5" value={form.commissionPct} onChange={setF("commissionPct")} placeholder="0"/></FG>
+          </Row>
+          <Row>
             <FG label="Status" half>
               <select style={{ ...inputSt, appearance:"none" }} value={form.active ? "1" : "0"} onChange={e => setForm(f => ({ ...f, active: e.target.value === "1" }))}>
                 <option value="1">Ativo</option>
