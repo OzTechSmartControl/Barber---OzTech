@@ -89,7 +89,15 @@ export default function FeedbackPage() {
     <div style={centeredWrap}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet"/>
       <div style={{ ...card, textAlign: "center" }}>
-        <div style={{ fontSize: 56, marginBottom: 16 }}>⭐</div>
+        {fb?.logo_url ? (
+          <img
+            src={fb.logo_url}
+            alt={fb.barbershop_name || "Logo"}
+            style={{ height:80, width:80, objectFit:"contain", borderRadius:"50%", marginBottom:16, display:"block", margin:"0 auto 16px" }}
+          />
+        ) : (
+          <div style={{ fontSize:56, marginBottom:16 }}>⭐</div>
+        )}
         <h2 style={{ color:"#fff", fontFamily:"'Bebas Neue',sans-serif", fontSize:28, letterSpacing:2, margin:"0 0 10px" }}>
           Obrigado!
         </h2>
