@@ -539,6 +539,10 @@
                 <img src="screenshots/s5.png" alt="Configurações" />
                 <div class="ss-slide-label">Configurações</div>
               </div>
+              <div class="ss-slide">
+                <img src="screenshots/s6.png" alt="Feedbacks" />
+                <div class="ss-slide-label">Feedbacks</div>
+              </div>
             </div>
             <div class="ss-controls">
               <button class="ss-nav-dot active" onclick="ssGo(0)"></button>
@@ -546,6 +550,7 @@
               <button class="ss-nav-dot" onclick="ssGo(2)"></button>
               <button class="ss-nav-dot" onclick="ssGo(3)"></button>
               <button class="ss-nav-dot" onclick="ssGo(4)"></button>
+              <button class="ss-nav-dot" onclick="ssGo(5)"></button>
             </div>
           </div>
           <button class="ss-prev-btn" onclick="ssPrev()" aria-label="Anterior">
@@ -829,7 +834,7 @@
 
   /* Desktop carousel */
   (function () {
-    var cur = 0, n = 5, timer;
+    var cur = 0, n = 6, timer;
     function goTo(i) {
       var slides = document.querySelectorAll('.ss-slide');
       var dots   = document.querySelectorAll('.ss-nav-dot');
