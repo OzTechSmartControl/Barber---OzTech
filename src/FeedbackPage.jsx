@@ -66,7 +66,7 @@ export default function FeedbackPage() {
     setSubmitting(false);
   };
 
-  const accent = "#4db8ff";
+  const accent = fb?.accent_color || "#4db8ff";
 
   const centeredWrap = {
     minHeight: "100vh", background: "#0f0f0f",
@@ -121,6 +121,13 @@ export default function FeedbackPage() {
       <div style={card}>
         {/* Cabeçalho */}
         <div style={{ textAlign:"center", marginBottom:24 }}>
+          {fb?.logo_url && (
+            <img
+              src={fb.logo_url}
+              alt={fb.barbershop_name || "Logo"}
+              style={{ height:72, width:72, objectFit:"contain", borderRadius:"50%", marginBottom:12, display:"block", margin:"0 auto 12px" }}
+            />
+          )}
           <h1 style={{ color:"#fff", fontFamily:"'Bebas Neue',sans-serif", fontSize:26, letterSpacing:2, margin:"0 0 4px" }}>
             {fb?.barbershop_name || "Avaliação"}
           </h1>

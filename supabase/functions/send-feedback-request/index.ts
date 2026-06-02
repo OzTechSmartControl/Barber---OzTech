@@ -63,6 +63,8 @@ serve(async (req) => {
         client_name:     client_name   ?? null,
         client_email,
         barbershop_name: shop.name,
+        logo_url:        shop.logo_url    ?? null,
+        accent_color:    shop.accent_color ?? "#4db8ff",
       }),
     });
 
@@ -78,7 +80,7 @@ serve(async (req) => {
       .map(n => `<a href="${feedbackUrl}&rating=${n}" style="display:inline-block;margin:0 3px;text-decoration:none;font-size:38px;">⭐</a>`)
       .join("");
 
-    const transporter = nodemailer.createTransporter({
+    const transporter = nodemailer.createTransport({
       service: "gmail",
       auth: { user: GMAIL_USER, pass: GMAIL_PASS },
     });
@@ -117,7 +119,7 @@ serve(async (req) => {
       </div>
     </div>
     <p style="text-align:center;color:#444;font-size:11px;margin-top:20px;">
-      Powered by <strong style="color:#666">Oz.Barber</strong> · Se não reconhece este e-mail, ignore-o.
+      Powered by <strong style="color:#666">Oz.Barber</strong>
     </p>
   </div>
 </body>
