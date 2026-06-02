@@ -2353,6 +2353,25 @@ function FeedbacksView({ feedbacks = [], barbers = [], isMobile, onRefresh }) {
         </Card>
       </div>
 
+      {/* ── Distribuição ── */}
+      {filtered.length > 0 && (
+        <Card style={{ marginBottom:"1.5rem" }}>
+          <SectionTitle>Distribuição</SectionTitle>
+          {byRating.map(({ r, count }) => {
+            const pct = filtered.length > 0 ? (count / filtered.length) * 100 : 0;
+            return (
+              <div key={r} style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}>
+                <span style={{ width:24, textAlign:"right", color:T.muted, fontSize:13 }}>{r}⭐</span>
+                <div style={{ flex:1, background:T.border, borderRadius:6, height:10, overflow:"hidden" }}>
+                  <div style={{ width:`${pct}%`, background:starColor[r], height:"100%", borderRadius:6, transition:"width .4s" }} />
+                </div>
+                <span style={{ width:80, color:T.muted, fontSize:12, textAlign:"right" }}>{count} ({pct.toFixed(0)}%)</span>
+              </div>
+            );
+          })}
+        </Card>
+      )}
+
       {/* ── Insights automáticos ── */}
       {insights.length > 0 && (
         <Card style={{ marginBottom:"1.5rem" }}>
@@ -2399,25 +2418,6 @@ function FeedbacksView({ feedbacks = [], barbers = [], isMobile, onRefresh }) {
               </ResponsiveContainer>
             </div>
           </div>
-        </Card>
-      )}
-
-      {/* ── Distribuição ── */}
-      {filtered.length > 0 && (
-        <Card style={{ marginBottom:"1.5rem" }}>
-          <SectionTitle>Distribuição</SectionTitle>
-          {byRating.map(({ r, count }) => {
-            const pct = filtered.length > 0 ? (count / filtered.length) * 100 : 0;
-            return (
-              <div key={r} style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}>
-                <span style={{ width:24, textAlign:"right", color:T.muted, fontSize:13 }}>{r}⭐</span>
-                <div style={{ flex:1, background:T.border, borderRadius:6, height:10, overflow:"hidden" }}>
-                  <div style={{ width:`${pct}%`, background:starColor[r], height:"100%", borderRadius:6, transition:"width .4s" }} />
-                </div>
-                <span style={{ width:80, color:T.muted, fontSize:12, textAlign:"right" }}>{count} ({pct.toFixed(0)}%)</span>
-              </div>
-            );
-          })}
         </Card>
       )}
 
