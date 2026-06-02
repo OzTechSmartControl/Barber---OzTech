@@ -73,22 +73,24 @@ export default function FeedbackPage() {
 
   const pageStyle = {
     minHeight: "100vh",
+    width: "100%",
     background: BG,
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
-    padding: "32px 20px 40px",
+    padding: "40px 20px",
+    boxSizing: "border-box",
     fontFamily: "'DM Sans', Helvetica, Arial, sans-serif",
   };
 
   const Header = () => (
-    <div style={{ textAlign: "center", marginBottom: 28 }}>
+    <div style={{ textAlign: "center", marginBottom: 24, width: "100%", maxWidth: 420 }}>
       {fb?.logo_url && (
         <img
           src={fb.logo_url}
           alt={fb.barbershop_name || "Logo"}
-          style={{ height: 80, width: 80, objectFit: "contain", display: "block", margin: "0 auto 14px" }}
+          style={{ height: 76, width: 76, objectFit: "contain", display: "block", margin: "0 auto 14px" }}
         />
       )}
       <h1 style={{
@@ -100,7 +102,7 @@ export default function FeedbackPage() {
       }}>
         {fb?.barbershop_name || "Avaliação"}
       </h1>
-      <p style={{ color: "#666", fontSize: 12, margin: 0, letterSpacing: 1 }}>
+      <p style={{ color: "#666", fontSize: 11, margin: 0, letterSpacing: 1.5 }}>
         AVALIAÇÃO DE ATENDIMENTO
       </p>
     </div>
@@ -109,17 +111,25 @@ export default function FeedbackPage() {
   const cardStyle = {
     background: CARD,
     borderRadius: 18,
-    padding: "32px 24px",
-    maxWidth: 400,
+    padding: "28px 22px",
+    maxWidth: 420,
     width: "100%",
+    boxSizing: "border-box",
     border: `1px solid ${BORDER}`,
     textAlign: "center",
   };
 
+  const GlobalStyle = () => (
+    <>
+      <GlobalStyle />
+      <style>{`html,body{margin:0;padding:0;background:#0a0a0a;}`}</style>
+    </>
+  );
+
   // ── Loading ──
   if (loading) return (
     <div style={pageStyle}>
-      <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet"/>
+      <GlobalStyle />
       <p style={{ color: "#555" }}>Carregando…</p>
     </div>
   );
@@ -127,7 +137,7 @@ export default function FeedbackPage() {
   // ── Erro sem dados ──
   if (err && !fb) return (
     <div style={pageStyle}>
-      <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet"/>
+      <GlobalStyle />
       <div style={cardStyle}>
         <div style={{ fontSize: 48, marginBottom: 16 }}>😕</div>
         <p style={{ color: "#aaa" }}>{err}</p>
@@ -138,7 +148,7 @@ export default function FeedbackPage() {
   // ── Confirmação (Obrigado) ──
   if (done) return (
     <div style={pageStyle}>
-      <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet"/>
+      <GlobalStyle />
       <Header />
       <div style={cardStyle}>
         {/* Círculo de confirmação */}
@@ -179,7 +189,7 @@ export default function FeedbackPage() {
 
   return (
     <div style={pageStyle}>
-      <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet"/>
+      <GlobalStyle />
       <Header />
       <div style={cardStyle}>
         {fb?.barber_name && (
