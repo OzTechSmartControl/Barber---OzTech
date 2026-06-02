@@ -2293,8 +2293,8 @@ function FeedbacksView({ feedbacks = [], barbers = [], isMobile, onRefresh }) {
 
       {/* ── Filtros ── */}
       <div style={{ marginBottom:"1.5rem" }}>
-        {/* Botões de período */}
-        <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:"0.75rem" }}>
+        {/* Botões de período + filtro barbeiro na mesma linha */}
+        <div style={{ display:"flex", gap:6, flexWrap:"wrap", alignItems:"center", marginBottom: preset === "custom" ? "0.75rem" : 0 }}>
           {presetBtns.map(b => (
             <button key={b.id} onClick={() => applyPreset(b.id)}
               style={{
@@ -2305,18 +2305,16 @@ function FeedbacksView({ feedbacks = [], barbers = [], isMobile, onRefresh }) {
                 color: preset===b.id ? T.accent : T.muted,
               }}>{b.label}</button>
           ))}
-        </div>
-        {/* DateRangePicker (só no modo Personalizado) + filtro barbeiro */}
-        <div style={{ display:"flex", gap:10, flexWrap:"wrap", alignItems:"center" }}>
-          {preset === "custom" && (
-            <DateRangePicker from={filterFrom} to={filterTo} onChange={({ from, to }) => { setFilterFrom(from); setFilterTo(to); }} />
-          )}
           <select value={filterBarber} onChange={e => setFilterBarber(e.target.value)}
-            style={{ background:T.card, border:`1px solid ${T.border}`, borderRadius:8, padding:"0.5rem 0.875rem", color: filterBarber ? T.text : T.muted, fontSize:13, outline:"none", fontFamily:"'DM Sans',sans-serif" }}>
+            style={{ background:T.card, border:`1px solid ${T.border}`, borderRadius:8, padding:"5px 14px", color: filterBarber ? T.text : T.muted, fontSize:12, outline:"none", fontFamily:"'DM Sans',sans-serif", cursor:"pointer" }}>
             <option value="">Todos os barbeiros</option>
             {barberNames.map(n => <option key={n} value={n}>{n}</option>)}
           </select>
         </div>
+        {/* DateRangePicker só no modo Personalizado */}
+        {preset === "custom" && (
+          <DateRangePicker from={filterFrom} to={filterTo} onChange={({ from, to }) => { setFilterFrom(from); setFilterTo(to); }} />
+        )}
       </div>
 
       {/* ── KPI Cards ── */}
