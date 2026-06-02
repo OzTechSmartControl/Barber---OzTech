@@ -4776,23 +4776,30 @@ export default function App() {
     const accent = (shopColor && (bookingStatus === "confirmed" || bookingStatus === "already"))
       ? shopColor : cfg.baseColor;
 
+    // Cobre body branco sem CSS externo
+    if (typeof document !== "undefined") {
+      document.body.style.margin = "0";
+      document.body.style.padding = "0";
+      document.body.style.background = "#08090c";
+    }
+
     return (
-      <div style={{ minHeight:"100vh", background:"#08090c", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", fontFamily:"'DM Sans',sans-serif", padding:"2rem" }}>
+      <div style={{ minHeight:"100vh", width:"100%", background:"#08090c", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", fontFamily:"'DM Sans',sans-serif", padding:"40px 20px", boxSizing:"border-box" }}>
         {/* Branding da barbearia */}
-        <div style={{ marginBottom:"2rem", textAlign:"center" }}>
+        <div style={{ marginBottom:"1.75rem", textAlign:"center", width:"100%", maxWidth:420 }}>
           {shopLogo ? (
-            <img src={shopLogo} alt={shopName} style={{ maxHeight:72, maxWidth:180, width:"auto", height:"auto", borderRadius:12, display:"block", margin:"0 auto 12px" }} />
+            <img src={shopLogo} alt={shopName} style={{ maxHeight:76, maxWidth:180, width:"auto", height:"auto", display:"block", margin:"0 auto 12px" }} />
           ) : shopName ? (
             <div style={{ width:64, height:64, borderRadius:16, background:`${accent}22`, border:`2px solid ${accent}44`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 12px", fontSize:28, fontWeight:900, color:accent, fontFamily:"'Bebas Neue',sans-serif" }}>
               {shopName[0].toUpperCase()}
             </div>
           ) : null}
-          {shopName && <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:22, letterSpacing:3, color:"#ffffff", opacity:0.9 }}>{shopName.toUpperCase()}</div>}
-          <div style={{ fontSize:11, color:"#4b5563", letterSpacing:1, marginTop:2 }}>Sistema de Agendamento</div>
+          {shopName && <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:24, letterSpacing:3, color:"#ffffff" }}>{shopName.toUpperCase()}</div>}
+          <div style={{ fontSize:11, color:"#4b5563", letterSpacing:1.5, marginTop:4 }}>Sistema de Agendamento</div>
         </div>
 
         {/* Card */}
-        <div style={{ background:"#13141a", border:`1px solid ${accent}33`, borderRadius:20, padding:"2.5rem 2rem", maxWidth:400, width:"100%", textAlign:"center", boxShadow:`0 0 40px ${accent}11` }}>
+        <div style={{ background:"#13141a", border:`1px solid ${accent}33`, borderRadius:20, padding:"28px 22px", maxWidth:420, width:"100%", boxSizing:"border-box", textAlign:"center", boxShadow:`0 0 40px ${accent}11` }}>
           {/* Ícone */}
           <div style={{
             width:80, height:80, borderRadius:"50%",
