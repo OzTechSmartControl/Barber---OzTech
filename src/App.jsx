@@ -2347,7 +2347,7 @@ function FeedbacksView({ feedbacks = [], barbers = [], isMobile, onRefresh }) {
           <div style={{ fontSize:11, color:T.muted, letterSpacing:1, marginBottom:8 }}>NPS</div>
           <div style={{ fontSize:32, fontWeight:700, color:npsColor }}>{nps !== null ? nps : "—"}</div>
           <div style={{ fontSize:12, color:npsColor, fontWeight:600, margin:"4px 0" }}>{npsLabel}</div>
-          <div style={{ fontSize:11, color:T.muted }}>Promotores - Detratores</div>
+
         </Card>
       </div>
 
