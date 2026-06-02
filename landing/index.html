@@ -761,6 +761,8 @@
           <div class="mobile-slide"><img src="screenshots/mobile/m3.png" alt="Atendimentos" /></div>
           <div class="mobile-slide"><img src="screenshots/mobile/m4.png" alt="Financeiro" /></div>
           <div class="mobile-slide"><img src="screenshots/mobile/m5.png" alt="Relatórios" /></div>
+          <div class="mobile-slide"><img src="screenshots/mobile/m6.png" alt="Feedbacks" /></div>
+          <div class="mobile-slide"><img src="screenshots/mobile/m7.png" alt="Ranking" /></div>
         </div>
         <div class="mobile-nav-dots">
           <button class="mobile-dot active" onclick="mGo(0)"></button>
@@ -768,6 +770,8 @@
           <button class="mobile-dot" onclick="mGo(2)"></button>
           <button class="mobile-dot" onclick="mGo(3)"></button>
           <button class="mobile-dot" onclick="mGo(4)"></button>
+          <button class="mobile-dot" onclick="mGo(5)"></button>
+          <button class="mobile-dot" onclick="mGo(6)"></button>
         </div>
       </div>
 
@@ -808,7 +812,7 @@
 <script>
   /* Mobile carousel */
   (function () {
-    var mc = 0, mn = 5, mt;
+    var mc = 0, mn = 7, mt;
     function mGoTo(i) {
       var slides = document.querySelectorAll('.mobile-slide');
       var dots   = document.querySelectorAll('.mobile-dot');
