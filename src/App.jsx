@@ -2389,7 +2389,7 @@ function FeedbacksView({ feedbacks = [], barbers = [], isMobile, onRefresh }) {
       {barberRanking.length > 0 && (
         <Card style={{ marginBottom:"1.5rem" }}>
           <SectionTitle>🏆 Ranking de Barbeiros</SectionTitle>
-          <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr" : "2fr 3fr", gap:"1.5rem" }}>
+          <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr" : "7fr 13fr", gap:"1.5rem" }}>
             {/* Tabela */}
             <div style={{ minWidth:0 }}>
               <div style={{ display:"grid", gridTemplateColumns:"30px 1fr 60px 70px", gap:6, fontSize:11, color:T.muted, padding:"0 0 8px", borderBottom:`1px solid ${T.border}`, marginBottom:8 }}>
