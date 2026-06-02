@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { LineChart, Line, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine, ReferenceArea } from "recharts";
 import { supabase } from "./supabase";
 import Onboarding from "./Onboarding";
@@ -219,7 +219,7 @@ const WARN_COLOR   = "#f59e0b";
 const inputSt = { width: "100%", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 8, padding: "0.6rem 0.875rem", color: T.text, fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "'DM Sans', sans-serif", WebkitAppearance: "none", MozAppearance: "none", appearance: "none", colorScheme: "dark" };
 
 const Modal = ({ title, onClose, children }) => {
-  const mdRef = React.useRef(null);
+  const mdRef = useRef(null);
   return (
   <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem", backdropFilter: "blur(4px)" }}
     onMouseDown={e => { mdRef.current = e.target; }}
