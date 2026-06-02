@@ -4,10 +4,10 @@ const SUPABASE_URL  = "https://kqjzontxfwlwmvbddbnv.supabase.co";
 const SUPABASE_ANON = "sb_publishable_cTk8su9HL7LcXoPQE-bqVQ_5Idjyf1a";
 
 const anonHdr = () => ({
-  apikey:        SUPABASE_ANON,
-  Authorization: `Bearer ${SUPABASE_ANON}`,
+  apikey:         SUPABASE_ANON,
+  Authorization:  `Bearer ${SUPABASE_ANON}`,
   "Content-Type": "application/json",
-  Prefer:        "return=representation",
+  Prefer:         "return=representation",
 });
 
 const LABELS = ["", "Muito ruim 😞", "Ruim 😕", "Regular 😐", "Bom 😊", "Excelente! 🤩"];
@@ -34,9 +34,9 @@ export default function FeedbackPage() {
       .then(r => r.json())
       .then(rows => {
         const row = rows[0];
-        if (!row)            setErr("Link inválido ou expirado.");
-        else if (row.submitted_at) setDone(true);
-        else                 setFb(row);
+        if (!row)              setErr("Link inválido ou expirado.");
+        else if (row.submitted_at) { setFb(row); setDone(true); }
+        else                   setFb(row);
       })
       .catch(() => setErr("Erro ao carregar. Tente novamente."))
       .finally(() => setLoading(false));
@@ -67,91 +67,133 @@ export default function FeedbackPage() {
   };
 
   const accent = fb?.accent_color || "#4db8ff";
+  const BG     = "#0a0a0a";
+  const CARD   = "#161616";
+  const BORDER = "#2a2a2a";
 
-  const centeredWrap = {
-    minHeight: "100vh", background: "#0f0f0f",
-    display: "flex", alignItems: "center", justifyContent: "center",
-    padding: 20, fontFamily: "'DM Sans',sans-serif",
-  };
-  const card = {
-    background: "#1a1a1a", borderRadius: 16, padding: "36px 28px",
-    maxWidth: 440, width: "100%", border: "1px solid #2a2a2a",
+  const pageStyle = {
+    minHeight: "100vh",
+    background: BG,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "32px 20px 40px",
+    fontFamily: "'DM Sans', Helvetica, Arial, sans-serif",
   };
 
-  if (loading) return (
-    <div style={centeredWrap}>
-      <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet"/>
-      <p style={{ color: "#aaa" }}>Carregando…</p>
+  const Header = () => (
+    <div style={{ textAlign: "center", marginBottom: 28 }}>
+      {fb?.logo_url && (
+        <img
+          src={fb.logo_url}
+          alt={fb.barbershop_name || "Logo"}
+          style={{ height: 80, width: 80, objectFit: "contain", display: "block", margin: "0 auto 14px" }}
+        />
+      )}
+      <h1 style={{
+        color: "#fff",
+        fontFamily: "'Bebas Neue', sans-serif",
+        fontSize: 28,
+        letterSpacing: 3,
+        margin: "0 0 4px",
+      }}>
+        {fb?.barbershop_name || "Avaliação"}
+      </h1>
+      <p style={{ color: "#666", fontSize: 12, margin: 0, letterSpacing: 1 }}>
+        AVALIAÇÃO DE ATENDIMENTO
+      </p>
     </div>
   );
 
-  if (done) return (
-    <div style={centeredWrap}>
+  const cardStyle = {
+    background: CARD,
+    borderRadius: 18,
+    padding: "32px 24px",
+    maxWidth: 400,
+    width: "100%",
+    border: `1px solid ${BORDER}`,
+    textAlign: "center",
+  };
+
+  // ── Loading ──
+  if (loading) return (
+    <div style={pageStyle}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet"/>
-      <div style={{ ...card, textAlign: "center" }}>
-        {fb?.logo_url ? (
-          <img
-            src={fb.logo_url}
-            alt={fb.barbershop_name || "Logo"}
-            style={{ height:80, width:80, objectFit:"contain", borderRadius:"50%", marginBottom:16, display:"block", margin:"0 auto 16px" }}
-          />
-        ) : (
-          <div style={{ fontSize:56, marginBottom:16 }}>⭐</div>
-        )}
-        <h2 style={{ color:"#fff", fontFamily:"'Bebas Neue',sans-serif", fontSize:28, letterSpacing:2, margin:"0 0 10px" }}>
+      <p style={{ color: "#555" }}>Carregando…</p>
+    </div>
+  );
+
+  // ── Erro sem dados ──
+  if (err && !fb) return (
+    <div style={pageStyle}>
+      <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet"/>
+      <div style={cardStyle}>
+        <div style={{ fontSize: 48, marginBottom: 16 }}>😕</div>
+        <p style={{ color: "#aaa" }}>{err}</p>
+      </div>
+    </div>
+  );
+
+  // ── Confirmação (Obrigado) ──
+  if (done) return (
+    <div style={pageStyle}>
+      <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet"/>
+      <Header />
+      <div style={cardStyle}>
+        {/* Círculo de confirmação */}
+        <div style={{
+          width: 72, height: 72, borderRadius: "50%",
+          border: `3px solid ${accent}`,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          margin: "0 auto 20px",
+        }}>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
+        <h2 style={{
+          color: accent,
+          fontFamily: "'Bebas Neue', sans-serif",
+          fontSize: 30,
+          letterSpacing: 2,
+          margin: "0 0 10px",
+        }}>
           Obrigado!
         </h2>
-        <p style={{ color:"#aaa", fontSize:15, margin:"0 0 20px" }}>
+        <p style={{ color: "#aaa", fontSize: 15, margin: "0 0 20px", lineHeight: 1.5 }}>
           Sua avaliação foi registrada com sucesso!
         </p>
-        {fb?.barbershop_name && (
-          <p style={{ color:"#555", fontSize:12 }}>{fb.barbershop_name}</p>
+        {fb?.barber_name && (
+          <p style={{ color: "#555", fontSize: 12 }}>Atendimento com {fb.barber_name}</p>
         )}
       </div>
+      <p style={{ color: "#333", fontSize: 11, marginTop: 24 }}>
+        Powered by <strong style={{ color: "#555" }}>Oz.Barber</strong>
+      </p>
     </div>
   );
 
-  if (err && !fb) return (
-    <div style={centeredWrap}>
-      <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet"/>
-      <div style={{ ...card, textAlign:"center" }}>
-        <div style={{ fontSize:48, marginBottom:16 }}>😕</div>
-        <p style={{ color:"#aaa" }}>{err}</p>
-      </div>
-    </div>
-  );
-
+  // ── Formulário de avaliação ──
   const displayRating = hovered || rating;
 
   return (
-    <div style={centeredWrap}>
+    <div style={pageStyle}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet"/>
-      <div style={card}>
-        {/* Cabeçalho */}
-        <div style={{ textAlign:"center", marginBottom:24 }}>
-          {fb?.logo_url && (
-            <img
-              src={fb.logo_url}
-              alt={fb.barbershop_name || "Logo"}
-              style={{ height:72, width:72, objectFit:"contain", borderRadius:"50%", marginBottom:12, display:"block", margin:"0 auto 12px" }}
-            />
-          )}
-          <h1 style={{ color:"#fff", fontFamily:"'Bebas Neue',sans-serif", fontSize:26, letterSpacing:2, margin:"0 0 4px" }}>
-            {fb?.barbershop_name || "Avaliação"}
-          </h1>
-          {fb?.barber_name && (
-            <p style={{ color:"#aaa", fontSize:13, margin:0 }}>
-              Atendimento com <strong style={{ color:"#fff" }}>{fb.barber_name}</strong>
-            </p>
-          )}
-        </div>
+      <Header />
+      <div style={cardStyle}>
+        {fb?.barber_name && (
+          <p style={{ color: "#666", fontSize: 13, margin: "0 0 18px" }}>
+            Atendimento com <strong style={{ color: "#fff" }}>{fb.barber_name}</strong>
+          </p>
+        )}
 
-        <p style={{ color:"#aaa", fontSize:15, textAlign:"center", margin:"0 0 20px" }}>
+        <p style={{ color: "#aaa", fontSize: 15, margin: "0 0 20px", lineHeight: 1.5 }}>
           {fb?.client_name ? `Olá, ${fb.client_name}! Como foi` : "Como foi"} seu atendimento?
         </p>
 
         {/* Estrelas */}
-        <div style={{ display:"flex", justifyContent:"center", gap:6, marginBottom:12 }}>
+        <div style={{ display: "flex", justifyContent: "center", gap: 6, marginBottom: 10 }}>
           {[1,2,3,4,5].map(n => (
             <button
               key={n}
@@ -160,22 +202,22 @@ export default function FeedbackPage() {
               onMouseLeave={() => setHovered(0)}
               style={{
                 background: "none", border: "none", cursor: "pointer",
-                fontSize: 40, padding: 4, lineHeight: 1,
+                fontSize: 38, padding: 4, lineHeight: 1,
                 transform: displayRating >= n ? "scale(1.15)" : "scale(1)",
                 transition: "transform .1s",
               }}
             >
-              {displayRating >= n ? "⭐" : "☆"}
+              {displayRating >= n ? "⭐" : <span style={{ color: accent, opacity: 0.4, fontSize: 36 }}>★</span>}
             </button>
           ))}
         </div>
 
-        {/* Label de rating */}
+        {/* Label */}
         <p style={{
-          textAlign:"center", fontSize:13, fontWeight:600, margin:"0 0 20px",
-          color: rating ? accent : "#555", minHeight:20,
+          textAlign: "center", fontSize: 13, fontWeight: 600,
+          margin: "0 0 20px", color: rating ? accent : "transparent", minHeight: 20,
         }}>
-          {rating ? LABELS[rating] : ""}
+          {rating ? LABELS[rating] : "‎"}
         </p>
 
         {/* Comentário */}
@@ -185,33 +227,35 @@ export default function FeedbackPage() {
           onChange={e => setComment(e.target.value)}
           rows={3}
           style={{
-            width:"100%", boxSizing:"border-box", background:"#0f0f0f",
-            border:"1px solid #2a2a2a", borderRadius:10, padding:"12px 14px",
-            color:"#fff", fontSize:14, fontFamily:"'DM Sans',sans-serif",
-            resize:"none", outline:"none", marginBottom:16,
+            width: "100%", boxSizing: "border-box",
+            background: "#0f0f0f", border: `1px solid ${BORDER}`,
+            borderRadius: 10, padding: "12px 14px",
+            color: "#fff", fontSize: 14,
+            fontFamily: "'DM Sans', sans-serif",
+            resize: "none", outline: "none", marginBottom: 16,
           }}
         />
 
-        {err && <p style={{ color:"#f87171", fontSize:12, textAlign:"center", margin:"0 0 12px" }}>{err}</p>}
+        {err && <p style={{ color: "#f87171", fontSize: 12, textAlign: "center", margin: "0 0 12px" }}>{err}</p>}
 
         <button
           onClick={submit}
           disabled={submitting || !rating}
           style={{
-            width:"100%", padding:14, borderRadius:10, border:"none",
-            background: rating ? accent : "#2a2a2a",
-            color:      rating ? "#000" : "#555",
-            fontFamily: "'DM Sans',sans-serif", fontWeight:700, fontSize:15,
-            cursor: rating ? "pointer" : "not-allowed", transition:"all .2s",
+            width: "100%", padding: 14, borderRadius: 10, border: "none",
+            background: rating ? accent : "#1e1e1e",
+            color:      rating ? "#000" : "#444",
+            fontFamily: "'DM Sans', sans-serif", fontWeight: 700, fontSize: 15,
+            cursor: rating ? "pointer" : "not-allowed", transition: "all .2s",
           }}
         >
           {submitting ? "Enviando…" : "Enviar Avaliação"}
         </button>
-
-        <p style={{ textAlign:"center", color:"#333", fontSize:11, marginTop:16 }}>
-          Powered by Oz.Barber
-        </p>
       </div>
+
+      <p style={{ color: "#333", fontSize: 11, marginTop: 24 }}>
+        Powered by <strong style={{ color: "#555" }}>Oz.Barber</strong>
+      </p>
     </div>
   );
 }
