@@ -1069,15 +1069,17 @@ function Dashboard({ attendances, clients, services, barbers, isAdmin, myBarberI
       const bAvg  = bFbs.length ? bFbs.reduce((s,f) => s + f.rating, 0) / bFbs.length : 0;
       return { id: b.id, rev: bRev, avg: bAvg };
     });
-    const maxRev   = Math.max(...rankingData.map(x => x.rev), 1);
-    const calcScore = (x) => (x.rev / maxRev) * 0.7 + (x.avg / 5) * 0.3;
-    const rankSorted = [...rankingData].sort((a,b) => calcScore(b) - calcScore(a));
-    const myRankPos  = rankSorted.findIndex(x => x.id === myBarberId) + 1;
-    const medals     = ["🥇","🥈","🥉"];
-    const rankLabel  = myRankPos === 1 ? "🥇 Você está em 1º lugar!" :
-                       myRankPos === 2 ? "🥈 Você está em 2º lugar!" :
-                       myRankPos === 3 ? "🥉 Você está em 3º lugar!" :
-                       myRankPos > 0   ? `${myRankPos}º lugar no ranking` : "—";
+    const totalRevMes = rankingData.reduce((s,x) => s + x.rev, 0);
+    const semDadosMes = totalRevMes === 0;
+    const maxRev      = Math.max(...rankingData.map(x => x.rev), 1);
+    const calcScore   = (x) => (x.rev / maxRev) * 0.7 + (x.avg / 5) * 0.3;
+    const rankSorted  = [...rankingData].sort((a,b) => calcScore(b) - calcScore(a));
+    const myRankPos   = semDadosMes ? 0 : rankSorted.findIndex(x => x.id === myBarberId) + 1;
+    const rankLabel   = semDadosMes          ? "Aguardando dados do mês 📅" :
+                        myRankPos === 1      ? "🥇 Você está em 1º lugar!" :
+                        myRankPos === 2      ? "🥈 Você está em 2º lugar!" :
+                        myRankPos === 3      ? "🥉 Você está em 3º lugar!" :
+                        myRankPos > 0        ? `${myRankPos}º lugar no ranking` : "—";
 
     return (
       <div>
@@ -1102,7 +1104,7 @@ function Dashboard({ attendances, clients, services, barbers, isAdmin, myBarberI
           <StatCard
             label="Ranking do mês"
             value={myRankPos > 0 ? rankLabel : "—"}
-            color={myRankPos === 1 ? "#f59e0b" : myRankPos === 2 ? T.muted : myRankPos === 3 ? "#cd7f32" : T.text}
+            color={semDadosMes ? T.muted : myRankPos === 1 ? "#f59e0b" : myRankPos === 2 ? T.muted : myRankPos === 3 ? "#cd7f32" : T.text}
             icon={Award}
             sub={`70% faturamento · 30% avaliação`}
           />
