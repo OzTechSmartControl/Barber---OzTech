@@ -1061,23 +1061,50 @@ function Dashboard({ attendances, clients, services, barbers, isAdmin, myBarberI
       ? (myFeedbacks.reduce((s,f) => s + f.rating, 0) / myFeedbacks.length)
       : null;
 
+    // Ranking combinado (70% faturamento + 30% avaliação) — todos barbeiros ativos no mês
+    const rankingData = barbers.filter(b => b.status === "active").map(b => {
+      const bAtts = attendances.filter(a => a.barberId === b.id && a.date.startsWith(monthStr));
+      const bRev  = bAtts.reduce((s,a) => s + a.price, 0);
+      const bFbs  = feedbacks.filter(f => f.barber_name === b.name && f.submitted_at?.slice(0,7) === monthStr);
+      const bAvg  = bFbs.length ? bFbs.reduce((s,f) => s + f.rating, 0) / bFbs.length : 0;
+      return { id: b.id, rev: bRev, avg: bAvg };
+    });
+    const maxRev   = Math.max(...rankingData.map(x => x.rev), 1);
+    const calcScore = (x) => (x.rev / maxRev) * 0.7 + (x.avg / 5) * 0.3;
+    const rankSorted = [...rankingData].sort((a,b) => calcScore(b) - calcScore(a));
+    const myRankPos  = rankSorted.findIndex(x => x.id === myBarberId) + 1;
+    const medals     = ["🥇","🥈","🥉"];
+    const rankLabel  = myRankPos === 1 ? "🥇 Você está em 1º lugar!" :
+                       myRankPos === 2 ? "🥈 Você está em 2º lugar!" :
+                       myRankPos === 3 ? "🥉 Você está em 3º lugar!" :
+                       myRankPos > 0   ? `${myRankPos}º lugar no ranking` : "—";
+
     return (
       <div>
         <div style={{ marginBottom: "1.75rem" }}>
           <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 38, letterSpacing: 2.5, margin: "0 0 4px", color: T.text }}>Olá, {me?.name?.split(" ")[0] || "Barbeiro"}</h1>
           <div style={{ color: T.muted, fontSize: 13 }}>{new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}</div>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(5, 1fr)", gap: "1rem", marginBottom: "1.5rem" }}>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(3, 1fr)", gap: "1rem", marginBottom: "1rem" }}>
           <StatCard label="Atendimentos hoje"  value={todayAtts.length}  icon={Scissors} />
           <StatCard label="Faturamento hoje"    value={R$(todayRev)}     color={T.accent}  icon={DollarSign} />
           <StatCard label="Faturamento do mês"  value={R$(monthRev)}     color={T.success} icon={TrendingUp} />
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap: "1rem", marginBottom: "1.5rem" }}>
           <StatCard label="Comissão do mês" value={R$(commission)} color={T.accent} icon={BadgePercent} sub={`Serv: ${R$(commServ)} · Prod: ${R$(commProd)}`} />
           <StatCard
-            label="Minha avaliação (mês)"
+            label="Avaliação do mês"
             value={myAvg !== null ? `${myAvg.toFixed(1)} ⭐` : "—"}
             color={myAvg !== null ? T.success : T.muted}
             icon={Star}
             sub={myAvg !== null ? `${myFeedbacks.length} avaliação${myFeedbacks.length !== 1 ? "ões" : ""}` : "Nenhuma avaliação este mês"}
+          />
+          <StatCard
+            label="Ranking do mês"
+            value={myRankPos > 0 ? rankLabel : "—"}
+            color={myRankPos === 1 ? "#f59e0b" : myRankPos === 2 ? T.muted : myRankPos === 3 ? "#cd7f32" : T.text}
+            icon={Award}
+            sub={`70% faturamento · 30% avaliação`}
           />
         </div>
         <Card>
