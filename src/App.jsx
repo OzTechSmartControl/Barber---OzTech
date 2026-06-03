@@ -1148,14 +1148,18 @@ function Dashboard({ attendances, clients, services, barbers, isAdmin, myBarberI
     .map(([id, n]) => ({ svc: services.find(s => s.id === +id), n }));
   const maxN = topSvcs[0]?.n || 1;
 
-  const bStats = barbers.filter(b => b.status === "active").map(b => {
-    const bA = allMonth.filter(a => a.barberId === b.id);
-    const total        = bA.reduce((s, a) => s + a.price, 0);
-    const servicesOnly = bA.reduce((s, a) => s + (a.servicesPrice ?? a.price), 0);
-    const commServ     = bA.reduce((s, a) => s + calcServComm(a, barbers), 0);
-    const commProd     = bA.reduce((s, a) => s + calcProdComm(a), 0);
-    return { b, count: bA.length, total, commission: commServ + commProd, commServ, commProd, ticket: bA.length ? total / bA.length : 0 };
-  }).sort((a, b) => b.total - a.total);
+  const bStatsRaw = barbers.filter(b => b.status === "active").map(b => {
+    const bA     = allMonth.filter(a => a.barberId === b.id);
+    const total  = bA.reduce((s, a) => s + a.price, 0);
+    const commServ = bA.reduce((s, a) => s + calcServComm(a, barbers), 0);
+    const commProd = bA.reduce((s, a) => s + calcProdComm(a), 0);
+    const bFbs   = feedbacks.filter(f => f.barber_name === b.name && f.submitted_at?.slice(0,7) === monthStr);
+    const fbAvg  = bFbs.length ? bFbs.reduce((s,f) => s + f.rating, 0) / bFbs.length : 0;
+    return { b, count: bA.length, total, commission: commServ + commProd, commServ, commProd, ticket: bA.length ? total / bA.length : 0, fbAvg, fbCount: bFbs.length };
+  });
+  const adminMaxRev   = Math.max(...bStatsRaw.map(x => x.total), 1);
+  const adminScore    = (x) => (x.total / adminMaxRev) * 0.7 + (x.fbAvg / 5) * 0.3;
+  const bStats        = [...bStatsRaw].sort((a, b) => adminScore(b) - adminScore(a));
 
   const bToday = barbers.filter(b => b.status === "active").map(b => {
     const bA       = allToday.filter(a => a.barberId === b.id);
@@ -1192,23 +1196,35 @@ function Dashboard({ attendances, clients, services, barbers, isAdmin, myBarberI
 
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1.4fr 1fr", gap: "1.5rem", marginBottom: "1.5rem", minWidth: 0 }}>
         <Card style={{ minWidth: 0, overflow: "hidden" }}>
-          <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1.5, color: T.text, marginBottom: "1rem" }}>Ranking Barbeiros — Mês</div>
+          <div style={{ display:"flex", alignItems:"baseline", gap:8, marginBottom:"1rem" }}>
+            <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:18, letterSpacing:1.5, color:T.text }}>Ranking Barbeiros — Mês</div>
+            <span style={{ fontSize:11, color:T.muted }}>70% faturamento · 30% avaliação</span>
+          </div>
           <div style={{ overflowX:"auto", margin:"0 -1.25rem", padding:"0 1.25rem" }}>
-          <table style={{ width: "100%", minWidth: 400, borderCollapse: "collapse", fontSize: 13 }}>
-            <THead cols={["#", "Barbeiro", "Aten.", "Total", "Comissão", "Ticket Méd."]} />
+          <table style={{ width: "100%", minWidth: 420, borderCollapse: "collapse", fontSize: 13 }}>
+            <THead cols={["#", "Barbeiro", "Aten.", "Total", "Avaliação", "Comissão", "Ticket"]} />
             <tbody>
-              {bStats.map(({ b, count, total, commission, ticket }, i) => (
-                <tr key={b.id} style={{ borderTop: `1px solid ${T.borderLight}` }}>
-                  <td style={{ padding: "9px 0.75rem" }}>
-                    <span style={{ background: i===0?T.accentGlow:T.surface, color: i===0?T.accent:T.muted, borderRadius:"50%", width:22, height:22, display:"inline-flex", alignItems:"center", justifyContent:"center", fontSize:10, fontWeight:700 }}>{i+1}</span>
-                  </td>
-                  <td style={{ padding:"9px 0.75rem", color:T.text, fontWeight:500 }}>{b.name}</td>
-                  <td style={{ padding:"9px 0.75rem", color:T.muted }}>{count}</td>
-                  <td style={{ padding:"9px 0.75rem", color:T.success, fontWeight:600 }}>{R$(total)}</td>
-                  <td style={{ padding:"9px 0.75rem", color:T.accent }}>{R$(commission)}</td>
-                  <td style={{ padding:"9px 0.75rem", color:T.text }}>{R$(ticket)}</td>
-                </tr>
-              ))}
+              {bStats.map(({ b, count, total, commission, ticket, fbAvg, fbCount }, i) => {
+                const medalColor = i===0?"#f59e0b":i===1?"#9ca3af":i===2?"#cd7f32":null;
+                const medal = i===0?"🥇":i===1?"🥈":i===2?"🥉":null;
+                return (
+                  <tr key={b.id} style={{ borderTop:`1px solid ${T.borderLight}` }}>
+                    <td style={{ padding:"9px 0.75rem" }}>
+                      {medal
+                        ? <span style={{ fontSize:16 }}>{medal}</span>
+                        : <span style={{ background:T.surface, color:T.muted, borderRadius:"50%", width:22, height:22, display:"inline-flex", alignItems:"center", justifyContent:"center", fontSize:10, fontWeight:700 }}>{i+1}</span>}
+                    </td>
+                    <td style={{ padding:"9px 0.75rem", color:medalColor||T.text, fontWeight:600 }}>{b.name}</td>
+                    <td style={{ padding:"9px 0.75rem", color:T.muted }}>{count}</td>
+                    <td style={{ padding:"9px 0.75rem", color:T.success, fontWeight:600 }}>{R$(total)}</td>
+                    <td style={{ padding:"9px 0.75rem", color:fbAvg>0?T.success:T.muted }}>
+                      {fbAvg>0 ? `${fbAvg.toFixed(1)} ⭐ (${fbCount})` : "—"}
+                    </td>
+                    <td style={{ padding:"9px 0.75rem", color:T.accent }}>{R$(commission)}</td>
+                    <td style={{ padding:"9px 0.75rem", color:T.text }}>{R$(ticket)}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
           </div>
