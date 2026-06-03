@@ -1035,7 +1035,7 @@ const LoadingScreen = () => (
 );
 
 // ── DASHBOARD ─────────────────────────────────────────────────
-function Dashboard({ attendances, clients, services, barbers, isAdmin, myBarberId, onGoReports, isMobile, products = [], onRefresh }) {
+function Dashboard({ attendances, clients, services, barbers, isAdmin, myBarberId, onGoReports, isMobile, products = [], feedbacks = [], onRefresh }) {
   const todayStr   = today();
   const monthStr   = month();
   const myAtts     = isAdmin ? attendances : attendances.filter(a => a.barberId === myBarberId);
@@ -1051,17 +1051,34 @@ function Dashboard({ attendances, clients, services, barbers, isAdmin, myBarberI
     const commServ      = monthAtts.reduce((s, a) => s + calcServComm(a, barbers), 0);
     const commProd      = monthAtts.reduce((s, a) => s + calcProdComm(a), 0);
     const commission    = commServ + commProd;
+
+    // Avaliações do mês para este barbeiro
+    const myFeedbacks = feedbacks.filter(f =>
+      f.barber_name === me?.name &&
+      f.submitted_at && f.submitted_at.slice(0,7) === monthStr
+    );
+    const myAvg = myFeedbacks.length
+      ? (myFeedbacks.reduce((s,f) => s + f.rating, 0) / myFeedbacks.length)
+      : null;
+
     return (
       <div>
         <div style={{ marginBottom: "1.75rem" }}>
           <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 38, letterSpacing: 2.5, margin: "0 0 4px", color: T.text }}>Olá, {me?.name?.split(" ")[0] || "Barbeiro"}</h1>
           <div style={{ color: T.muted, fontSize: 13 }}>{new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}</div>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: "1rem", marginBottom: "1.5rem" }}>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(5, 1fr)", gap: "1rem", marginBottom: "1.5rem" }}>
           <StatCard label="Atendimentos hoje"  value={todayAtts.length}  icon={Scissors} />
           <StatCard label="Faturamento hoje"    value={R$(todayRev)}     color={T.accent}  icon={DollarSign} />
           <StatCard label="Faturamento do mês"  value={R$(monthRev)}     color={T.success} icon={TrendingUp} />
           <StatCard label="Comissão do mês" value={R$(commission)} color={T.accent} icon={BadgePercent} sub={`Serv: ${R$(commServ)} · Prod: ${R$(commProd)}`} />
+          <StatCard
+            label="Minha avaliação (mês)"
+            value={myAvg !== null ? `${myAvg.toFixed(1)} ⭐` : "—"}
+            color={myAvg !== null ? T.success : T.muted}
+            icon={Star}
+            sub={myAvg !== null ? `${myFeedbacks.length} avaliação${myFeedbacks.length !== 1 ? "ões" : ""}` : "Nenhuma avaliação este mês"}
+          />
         </div>
         <Card>
           <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1.5, color: T.text, marginBottom: "1rem" }}>Últimos atendimentos</div>
@@ -5436,7 +5453,7 @@ export default function App() {
         superadmin_analytics:     <SuperAdminView token={tok} section="analytics"     themeMode={themeMode} />,
       }
     : {
-        dashboard:   <Dashboard   attendances={finalizedAtts} clients={clients} services={services} barbers={barbers} products={products} isAdmin={isAdmin} myBarberId={myBarberId} onGoReports={isAdmin?()=>setView('reports'):undefined} isMobile={isMobile} onRefresh={() => loadData(tok, auth.profile)}/>,
+        dashboard:   <Dashboard   attendances={finalizedAtts} clients={clients} services={services} barbers={barbers} products={products} feedbacks={feedbacks} isAdmin={isAdmin} myBarberId={myBarberId} onGoReports={isAdmin?()=>setView('reports'):undefined} isMobile={isMobile} onRefresh={() => loadData(tok, auth.profile)}/>,
         attendances: <AttendancesView attendances={attendances} setAttendances={setAttendances} clients={clients} setClients={setClients} services={services} barbers={barbers} token={tok} isAdmin={isAdmin} myBarberId={myBarberId} barbershopId={barbershopId} products={products} setProducts={setProducts} setProductSales={setProductSales} onRefresh={() => loadData(tok, auth.profile)}/>,
         clients:      <ClientsView clients={clients} setClients={setClients} attendances={finalizedAtts} services={services} token={tok} isAdmin={isAdmin} barbershopId={barbershopId} onRefresh={() => loadData(tok, auth.profile)}/>,
         appointments: <AppointmentsView barbers={barbers} services={services} token={tok} isAdmin={isAdmin} myBarberId={myBarberId} barbershopId={barbershopId} isMobile={isMobile} onRefresh={() => loadData(tok, auth.profile)} shop={shop}/>,
