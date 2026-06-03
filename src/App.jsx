@@ -1063,17 +1063,23 @@ function Dashboard({ attendances, clients, services, barbers, isAdmin, myBarberI
 
     // Ranking combinado (70% faturamento + 30% avaliação) — todos barbeiros ativos no mês
     const rankingData = barbers.filter(b => b.status === "active").map(b => {
-      const bAtts = attendances.filter(a => a.barberId === b.id && a.date.startsWith(monthStr));
-      const bRev  = bAtts.reduce((s,a) => s + a.price, 0);
-      const bFbs  = feedbacks.filter(f => f.barber_name === b.name && f.submitted_at?.slice(0,7) === monthStr);
-      const bAvg  = bFbs.length ? bFbs.reduce((s,f) => s + f.rating, 0) / bFbs.length : 0;
-      return { id: b.id, rev: bRev, avg: bAvg };
+      const bAtts    = attendances.filter(a => a.barberId === b.id && a.date.startsWith(monthStr));
+      const bRev     = bAtts.reduce((s,a) => s + a.price, 0);
+      const bFbs     = feedbacks.filter(f => f.barber_name === b.name && f.submitted_at?.slice(0,7) === monthStr);
+      const bAvg     = bFbs.length ? bFbs.reduce((s,f) => s + f.rating, 0) / bFbs.length : 0;
+      return { id: b.id, rev: bRev, avg: bAvg, fbCount: bFbs.length, attCount: bAtts.length };
     });
-    const totalRevMes = rankingData.reduce((s,x) => s + x.rev, 0);
-    const semDadosMes = totalRevMes === 0;
-    const maxRev      = Math.max(...rankingData.map(x => x.rev), 1);
-    const calcScore   = (x) => (x.rev / maxRev) * 0.7 + (x.avg / 5) * 0.3;
-    const rankSorted  = [...rankingData].sort((a,b) => calcScore(b) - calcScore(a));
+    const totalRevMes  = rankingData.reduce((s,x) => s + x.rev, 0);
+    const semDadosMes  = totalRevMes === 0;
+    const maxRev       = Math.max(...rankingData.map(x => x.rev), 1);
+    const maxFbCount   = Math.max(...rankingData.map(x => x.fbCount ?? 0), 1);
+    const maxCount     = Math.max(...rankingData.map(x => x.attCount ?? 0), 1);
+    const calcScore    = (x) =>
+      (x.rev / maxRev) * 0.55 +
+      (x.avg / 5) * 0.20 +
+      ((x.fbCount ?? 0) / maxFbCount) * 0.15 +
+      ((x.attCount ?? 0) / maxCount) * 0.10;
+    const rankSorted   = [...rankingData].sort((a,b) => calcScore(b) - calcScore(a));
     const myRankPos   = semDadosMes ? 0 : rankSorted.findIndex(x => x.id === myBarberId) + 1;
     const rankLabel   = semDadosMes          ? "Aguardando dados do mês 📅" :
                         myRankPos === 1      ? "🥇 Você está em 1º lugar!" :
@@ -1106,7 +1112,7 @@ function Dashboard({ attendances, clients, services, barbers, isAdmin, myBarberI
             value={myRankPos > 0 ? rankLabel : "—"}
             color={semDadosMes ? T.muted : myRankPos === 1 ? "#f59e0b" : myRankPos === 2 ? T.muted : myRankPos === 3 ? "#cd7f32" : T.text}
             icon={Award}
-            sub={`70% faturamento · 30% avaliação`}
+            sub={`55% fat. · 20% nota · 15% avals. · 10% atend.`}
           />
         </div>
         <Card>
@@ -1158,7 +1164,13 @@ function Dashboard({ attendances, clients, services, barbers, isAdmin, myBarberI
     return { b, count: bA.length, total, commission: commServ + commProd, commServ, commProd, ticket: bA.length ? total / bA.length : 0, fbAvg, fbCount: bFbs.length };
   });
   const adminMaxRev   = Math.max(...bStatsRaw.map(x => x.total), 1);
-  const adminScore    = (x) => (x.total / adminMaxRev) * 0.7 + (x.fbAvg / 5) * 0.3;
+  const adminMaxFb    = Math.max(...bStatsRaw.map(x => x.fbCount), 1);
+  const adminMaxAtt   = Math.max(...bStatsRaw.map(x => x.count), 1);
+  const adminScore    = (x) =>
+    (x.total / adminMaxRev) * 0.55 +
+    (x.fbAvg / 5) * 0.20 +
+    (x.fbCount / adminMaxFb) * 0.15 +
+    (x.count / adminMaxAtt) * 0.10;
   const bStats        = [...bStatsRaw].sort((a, b) => adminScore(b) - adminScore(a));
 
   const bToday = barbers.filter(b => b.status === "active").map(b => {
@@ -1198,7 +1210,7 @@ function Dashboard({ attendances, clients, services, barbers, isAdmin, myBarberI
         <Card style={{ minWidth: 0, overflow: "hidden" }}>
           <div style={{ display:"flex", alignItems:"baseline", gap:8, marginBottom:"1rem" }}>
             <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:18, letterSpacing:1.5, color:T.text }}>Ranking Barbeiros — Mês</div>
-            <span style={{ fontSize:11, color:T.muted }}>70% faturamento · 30% avaliação</span>
+            <span style={{ fontSize:11, color:T.muted }}>55% fat. · 20% nota · 15% avals. · 10% atend.</span>
           </div>
           <div style={{ overflowX:"auto", margin:"0 -1.25rem", padding:"0 1.25rem" }}>
           <table style={{ width: "100%", minWidth: 420, borderCollapse: "collapse", fontSize: 13 }}>
