@@ -448,8 +448,8 @@ export default function PlansView({
                       <><RefreshCw size={12} style={{ animation:"spin 1s linear infinite" }} /> Aguarde…</>
                     ) : (
                       <div style={{display:"flex", flexDirection:"column", alignItems:"center", gap:2}}>
-                        <span>Assinar com pagamento único</span>
-                        <span style={{fontSize:10, fontWeight:400, opacity:0.75}}>(Sem renovação automática)</span>
+                        <span>Assinar sem renovação automática</span>
+                        <span style={{fontSize:10, fontWeight:400, opacity:0.75}}>(Pagamento via Pix, boleto ou cartão)</span>
                       </div>
                     )}
                   </button>
@@ -464,8 +464,8 @@ export default function PlansView({
                       <><RefreshCw size={12} style={{ animation:"spin 1s linear infinite" }} /> Aguarde…</>
                     ) : (
                       <div style={{display:"flex", flexDirection:"column", alignItems:"center", gap:2}}>
-                        <span>Assinar com cartão de crédito</span>
-                        <span style={{fontSize:10, fontWeight:400, opacity:0.75}}>(Renovação automática)</span>
+                        <span>Assinar com renovação automática</span>
+                        <span style={{fontSize:10, fontWeight:400, opacity:0.75}}>(Pagamento via cartão)</span>
                       </div>
                     )}
                   </button>
