@@ -436,39 +436,28 @@ export default function PlansView({
                   </div>
                 </div>
 
-                {/* Dois botões: PIX e Cartão */}
+                {/* Dois botões iguais */}
                 <div style={{ display:"flex", gap:8, marginTop:"0.9rem" }}>
-                  {/* Botão PIX */}
-                  <button
-                    disabled={!!loadingPlan}
-                    onClick={() => !loadingPlan && handlePlanSelect(plan, "pix")}
-                    style={{ flex:1, background:"#00b37422", border:`1px solid #00b37466`, borderRadius:10, padding:"0.65rem 0.5rem", textAlign:"center", fontSize:12, fontWeight:700, color:"#00b374", display:"flex", alignItems:"center", justifyContent:"center", gap:5, cursor:loadingPlan?"wait":"pointer", opacity:loadingPlan&&loadingPlan!==`${plan.id}-pix`?0.5:1, fontFamily:"'DM Sans',sans-serif" }}
-                  >
-                    {loadingPlan === `${plan.id}-pix` ? (
-                      <><RefreshCw size={12} style={{ animation:"spin 1s linear infinite" }} /> Aguarde…</>
-                    ) : (
-                      <div style={{display:"flex", flexDirection:"column", alignItems:"center", gap:2}}>
-                        <span>Assinar sem renovação automática</span>
-                        <span style={{fontSize:10, fontWeight:400, opacity:0.75}}>(Pagamento via Pix, boleto ou cartão)</span>
-                      </div>
-                    )}
-                  </button>
-
-                  {/* Botão Cartão */}
-                  <button
-                    disabled={!!loadingPlan}
-                    onClick={() => !loadingPlan && handlePlanSelect(plan, "subscription")}
-                    style={{ flex:2, background:plan.highlight?T.accent:"#0d0e14", border:`1px solid ${plan.highlight?T.accent:T.border}`, borderRadius:10, padding:"0.65rem 0.8rem", textAlign:"center", fontSize:12, fontWeight:700, color:plan.highlight?"#0a0c10":T.text, display:"flex", alignItems:"center", justifyContent:"center", gap:5, cursor:loadingPlan?"wait":"pointer", opacity:loadingPlan&&loadingPlan!==`${plan.id}-subscription`?0.5:1, fontFamily:"'DM Sans',sans-serif", boxShadow:plan.highlight?"0 10px 24px rgba(77,184,255,.18)":"none" }}
-                  >
-                    {loadingPlan === `${plan.id}-subscription` ? (
-                      <><RefreshCw size={12} style={{ animation:"spin 1s linear infinite" }} /> Aguarde…</>
-                    ) : (
-                      <div style={{display:"flex", flexDirection:"column", alignItems:"center", gap:2}}>
-                        <span>Assinar com renovação automática</span>
-                        <span style={{fontSize:10, fontWeight:400, opacity:0.75}}>(Pagamento via cartão)</span>
-                      </div>
-                    )}
-                  </button>
+                  {[
+                    { type:"pix",          line1:"Sem renovação automática", line2:"Pix, boleto ou cartão" },
+                    { type:"subscription", line1:"Com renovação automática", line2:"Pagamento via cartão"   },
+                  ].map(({ type, line1, line2 }) => (
+                    <button
+                      key={type}
+                      disabled={!!loadingPlan}
+                      onClick={() => !loadingPlan && handlePlanSelect(plan, type)}
+                      style={{ flex:1, background:"#0d0e14", border:`1px solid ${T.border}`, borderRadius:10, padding:"0.7rem 0.5rem", textAlign:"center", fontSize:11, fontWeight:700, color:T.text, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:3, cursor:loadingPlan?"wait":"pointer", opacity:loadingPlan&&loadingPlan!==`${plan.id}-${type}`?0.5:1, fontFamily:"'DM Sans',sans-serif", lineHeight:1.3 }}
+                    >
+                      {loadingPlan === `${plan.id}-${type}` ? (
+                        <><RefreshCw size={12} style={{ animation:"spin 1s linear infinite" }} /> Aguarde…</>
+                      ) : (
+                        <>
+                          <span>{line1}</span>
+                          <span style={{ fontSize:10, fontWeight:400, color:T.mutedLight }}>{line2}</span>
+                        </>
+                      )}
+                    </button>
+                  ))}
                 </div>
 
               </div>
