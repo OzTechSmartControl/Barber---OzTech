@@ -5265,6 +5265,17 @@ export default function App() {
     }
   }, []);
 
+  // Detecta ?view=xxx vindo de e-mails (ex: "Renovar Agora" → ?view=meuPlano)
+  useEffect(() => {
+    if (!dataLoaded || showPlans) return;
+    const params = new URLSearchParams(window.location.search);
+    const v = params.get("view");
+    if (v) {
+      setView(v);
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+  }, [dataLoaded, showPlans]);
+
   const loadData = useCallback(async (tok, profile) => {
     setLoading(true);
     setDataLoaded(false);

@@ -1,10 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import nodemailer from "npm:nodemailer";
 
-const GMAIL_USER  = Deno.env.get("GMAIL_USER")         ?? "";
-const GMAIL_PASS  = Deno.env.get("GMAIL_APP_PASSWORD") ?? "";
-const SUPA_URL    = Deno.env.get("SUPABASE_URL")       ?? "";
-const SUPA_KEY    = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")              ?? "";
+const FROM_EMAIL     = "contato@oztechsmartcontrol.com.br";
+const SUPA_URL       = Deno.env.get("SUPABASE_URL")                ?? "";
+const SUPA_KEY       = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")   ?? "";
 const APP_URL     = "https://ozbarber.vercel.app";
 
 const CORS = {
@@ -80,16 +79,7 @@ serve(async (req) => {
       .map(n => `<a href="${feedbackUrl}&rating=${n}" style="display:inline-block;margin:0 3px;text-decoration:none;font-size:38px;">⭐</a>`)
       .join("");
 
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: { user: GMAIL_USER, pass: GMAIL_PASS },
-    });
-
-    await transporter.sendMail({
-      from:    `"${shop.name}" <${GMAIL_USER}>`,
-      to:      client_email,
-      subject: `⭐ Como foi seu atendimento na ${shop.name}?`,
-      html: `
+    const emailHtml = `
 <!DOCTYPE html>
 <html lang="pt-BR">
 <body style="margin:0;padding:0;background:#0f0f0f;font-family:'Helvetica Neue',Arial,sans-serif;">
@@ -123,8 +113,24 @@ serve(async (req) => {
     </p>
   </div>
 </body>
-</html>`,
+</html>`;
+
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${RESEND_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from:    `${shop.name} <${FROM_EMAIL}>`,
+        to:      [client_email],
+        subject: `⭐ Como foi seu atendimento na ${shop.name}?`,
+        html:    emailHtml,
+      }),
     });
+
+    const resData = await res.json();
+    if (!res.ok) throw new Error(resData?.message ?? "Erro Resend");
 
     console.log(`[send-feedback-request] E-mail enviado para ${client_email}, token: ${token}`);
     return new Response(

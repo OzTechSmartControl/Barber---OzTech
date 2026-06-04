@@ -1,10 +1,24 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import nodemailer from "npm:nodemailer";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const GMAIL_USER   = Deno.env.get("GMAIL_USER") ?? "";
-const GMAIL_PASS   = Deno.env.get("GMAIL_APP_PASSWORD") ?? "";
+const RESEND_KEY   = Deno.env.get("RESEND_API_KEY") ?? "";
+const FROM_EMAIL   = "contato@oztechsmartcontrol.com.br";
+
+async function sendEmail(to: string, subject: string, html: string, fromName: string) {
+  if (!RESEND_KEY || !to) return;
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${RESEND_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ from: `${fromName} <${FROM_EMAIL}>`, to: [to], subject, html }),
+    });
+    const data = await res.json();
+    console.log("[sendEmail] Resend response:", JSON.stringify(data));
+  } catch (e) {
+    console.error("[sendEmail] Erro:", e);
+  }
+}
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -65,7 +79,7 @@ async function notifyBarber(opts: {
   scheduled_time: string;
   confirm_url?:   string;
 }) {
-  if (!GMAIL_USER || !GMAIL_PASS || !opts.barber_email) return;
+  if (!opts.barber_email) return;
 
   const color = opts.accent_color || "#4db8ff";
   const dateFormatted = new Date(`${opts.scheduled_date}T12:00:00`)
@@ -147,21 +161,13 @@ async function notifyBarber(opts: {
 </body>
 </html>`;
 
-  try {
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: { user: GMAIL_USER, pass: GMAIL_PASS },
-    });
-    await transporter.sendMail({
-      from:    `"${opts.barbershop_name}" <${GMAIL_USER}>`,
-      to:      opts.barber_email,
-      subject: `📅 Nova solicitação — ${opts.client_name} (${opts.scheduled_time})`,
-      html,
-    });
-    console.log("[notify-barber] Enviado para:", opts.barber_email);
-  } catch (e) {
-    console.error("[notify-barber]", e);
-  }
+  await sendEmail(
+    opts.barber_email,
+    `📅 Nova solicitação — ${opts.client_name} (${opts.scheduled_time})`,
+    html,
+    opts.barbershop_name,
+  );
+  console.log("[notify-barber] Enviado para:", opts.barber_email);
 }
 
 // ── Notificação e-mail para o cliente (confirmação) ─────────────
@@ -177,7 +183,7 @@ async function notifyClient(opts: {
   scheduled_date:  string;
   scheduled_time:  string;
 }) {
-  if (!GMAIL_USER || !GMAIL_PASS || !opts.client_email) return;
+  if (!opts.client_email) return;
 
   const color    = opts.accent_color || "#4db8ff";
   const colorDim = `${color}22`;
@@ -251,21 +257,13 @@ async function notifyClient(opts: {
 </body>
 </html>`;
 
-  try {
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: { user: GMAIL_USER, pass: GMAIL_PASS },
-    });
-    await transporter.sendMail({
-      from:    `"${opts.barbershop_name}" <${GMAIL_USER}>`,
-      to:      opts.client_email,
-      subject: `✂️ Agendamento confirmado — ${opts.barbershop_name}`,
-      html,
-    });
-    console.log("[notify-client] Enviado para:", opts.client_email);
-  } catch (e) {
-    console.error("[notify-client]", e);
-  }
+  await sendEmail(
+    opts.client_email,
+    `✂️ Agendamento confirmado — ${opts.barbershop_name}`,
+    html,
+    opts.barbershop_name,
+  );
+  console.log("[notify-client] Enviado para:", opts.client_email);
 }
 
 // ── action: get_shop ─────────────────────────────────────────────
