@@ -464,7 +464,7 @@ export default function PlansView({
                       <><RefreshCw size={12} style={{ animation:"spin 1s linear infinite" }} /> Aguarde…</>
                     ) : (
                       <div style={{display:"flex", flexDirection:"column", alignItems:"center", gap:2}}>
-                        <span style={{display:"flex", alignItems:"center", gap:4}}><CreditCard size={12}/> Assinar com cartão de crédito <ChevronRight size={12}/></span>
+                        <span>Assinar com cartão de crédito</span>
                         <span style={{fontSize:10, fontWeight:400, opacity:0.75}}>(Renovação automática)</span>
                       </div>
                     )}
