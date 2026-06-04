@@ -28,7 +28,6 @@ const PLANS = [
     price: 79.9,
     priceLabel: "R$ 79,90",
     period: "/mês",
-    sub: "Renovação automática a cada 30 dias",
     highlight: false,
   },
   {
@@ -466,11 +465,6 @@ export default function PlansView({
                   </button>
                 </div>
 
-                <div style={{ fontSize:10.5, color:T.muted, marginTop:6, textAlign:"center" }}>
-                  {plan.id === "monthly"
-                    ? "Pagamento Único sem renovação automática · Renovação Automática com cartão de crédito"
-                    : "Pagamento único sem renovação automática"}
-                </div>
               </div>
             ))}
 
