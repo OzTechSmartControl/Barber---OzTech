@@ -54,7 +54,7 @@ serve(async (req) => {
       throw new Error("MP_ACCESS_TOKEN não configurado.");
 
     const body = await req.json().catch(() => ({}));
-    const { plan_id, plan_label, price, payer_email, success_url, failure_url, pending_url } = body;
+    const { plan_id, plan_label, price, payer_email, success_url, failure_url, pending_url, payment_type } = body;
 
     if (!plan_id || !price)
       throw new Error("plan_id e price são obrigatórios.");
@@ -71,9 +71,12 @@ serve(async (req) => {
     const failureUrl = failure_url ?? `${origin}/?payment=failure&plan=${plan_id}`;
     const pendingUrl = pending_url ?? `${origin}/?payment=pending&plan=${plan_id}`;
 
+    // Usa assinatura recorrente apenas para plano mensal com cartão
+    const useSubscription = plan_id === "monthly" && payment_type !== "pix";
+
     let checkoutUrl: string;
 
-    if (plan_id === "monthly") {
+    if (useSubscription) {
       const mpRes = await fetch("https://api.mercadopago.com/preapproval", {
         method:  "POST",
         headers: { Authorization: `Bearer ${MP_ACCESS_TOKEN}`, "Content-Type": "application/json" },

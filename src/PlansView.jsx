@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { RefreshCw, Check, ChevronRight, ArrowLeft, Gift, CreditCard, Mail, AlertCircle } from "lucide-react";
+import { RefreshCw, Check, ChevronRight, ArrowLeft, Gift, CreditCard, Mail, AlertCircle, Zap } from "lucide-react";
 import ozTechLogo from "./assets/ozbarber-logo.png.png";
 
 const SUPABASE_URL  = "https://kqjzontxfwlwmvbddbnv.supabase.co";
@@ -120,7 +120,7 @@ export default function PlansView({
   authData,
   session,
 }) {
-  const [loadingPlan, setLoadingPlan] = useState(null);
+  const [loadingPlan, setLoadingPlan] = useState(null); // "planId-pix" | "planId-subscription"
   const [payerEmail, setPayerEmail] = useState("");
   const [courtEmail, setCourtEmail] = useState("");
   const [courtLoading, setCourtLoading] = useState(false);
@@ -185,14 +185,14 @@ export default function PlansView({
     );
   };
 
-  const handlePlanSelect = async (plan) => {
+  const handlePlanSelect = async (plan, paymentType = "subscription") => {
     const email = payerEmail.trim().toLowerCase();
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setErr("Informe um e-mail válido antes de assinar. Você usará esse mesmo e-mail para criar sua conta.");
       return;
     }
 
-    setLoadingPlan(plan.id);
+    setLoadingPlan(`${plan.id}-${paymentType}`);
     setErr("");
     setSuccessMsg("");
 
@@ -206,6 +206,7 @@ export default function PlansView({
         price: Number(plan.price),
         currency: "BRL",
         payer_email: email,
+        payment_type: paymentType,
         return_url: window.location.origin,
         success_url: `${window.location.origin}/?payment=success&plan=${plan.id}`,
         failure_url: `${window.location.origin}/?payment=failure&plan=${plan.id}`,
@@ -401,117 +402,75 @@ export default function PlansView({
             {PLANS.map((plan) => (
               <div
                 key={plan.id}
-                onClick={() => !loadingPlan && handlePlanSelect(plan)}
                 style={{
                   width: "100%",
                   background: "linear-gradient(180deg, rgba(26,26,36,.94), rgba(14,16,24,.96))",
                   border: `1px solid ${plan.highlight ? `${T.accent}aa` : T.border}`,
                   borderRadius: 16,
                   padding: "1rem 1.15rem",
-                  cursor: loadingPlan ? "wait" : "pointer",
                   position: "relative",
                   boxShadow: plan.highlight
                     ? "0 18px 42px rgba(0,0,0,.34), 0 0 24px rgba(77,184,255,.08)"
                     : "0 16px 34px rgba(0,0,0,.22)",
                   backdropFilter: "blur(8px)",
-                  transition: "transform .18s ease, border-color .18s ease, box-shadow .18s ease",
                 }}
               >
                 {plan.highlight && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: -10,
-                      left: "50%",
-                      transform: "translateX(-50%)",
-                      background: T.accent,
-                      color: "#0a0c10",
-                      borderRadius: 999,
-                      padding: "3px 13px",
-                      fontSize: 10,
-                      fontWeight: 800,
-                      letterSpacing: 0.4,
-                      whiteSpace: "nowrap",
-                    }}
-                  >
+                  <div style={{ position:"absolute", top:-10, left:"50%", transform:"translateX(-50%)", background:T.accent, color:"#0a0c10", borderRadius:999, padding:"3px 13px", fontSize:10, fontWeight:800, letterSpacing:0.4, whiteSpace:"nowrap" }}>
                     MELHOR OFERTA
                   </div>
                 )}
 
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, fontSize: 15, color: T.text, marginBottom: 4 }}>
-                      {plan.label}
-                    </div>
-                    <div style={{ fontSize: 12, color: T.mutedLight, lineHeight: 1.45 }}>{plan.sub}</div>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:12 }}>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontWeight:700, fontSize:15, color:T.text, marginBottom:4 }}>{plan.label}</div>
+                    <div style={{ fontSize:12, color:T.mutedLight, lineHeight:1.45 }}>{plan.sub}</div>
                     {plan.economy && (
-                      <div
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: 4,
-                          marginTop: 8,
-                          background: T.successBg,
-                          color: T.success,
-                          borderRadius: 999,
-                          padding: "3px 8px",
-                          fontSize: 10.5,
-                          fontWeight: 700,
-                        }}
-                      >
-                        <Check size={10} />
-                        {plan.economy}
+                      <div style={{ display:"inline-flex", alignItems:"center", gap:4, marginTop:8, background:T.successBg, color:T.success, borderRadius:999, padding:"3px 8px", fontSize:10.5, fontWeight:700 }}>
+                        <Check size={10} />{plan.economy}
                       </div>
                     )}
                   </div>
-
-                  <div style={{ textAlign: "right", flexShrink: 0 }}>
-                    <div
-                      style={{
-                        fontFamily: "'Bebas Neue', sans-serif",
-                        fontSize: 26,
-                        letterSpacing: 0.8,
-                        color: plan.highlight ? T.accent : T.text,
-                        lineHeight: 1,
-                      }}
-                    >
-                      {plan.priceLabel}
-                    </div>
-                    <div style={{ fontSize: 10.5, color: T.mutedLight, marginTop: 2 }}>{plan.period}</div>
+                  <div style={{ textAlign:"right", flexShrink:0 }}>
+                    <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:26, letterSpacing:0.8, color:plan.highlight?T.accent:T.text, lineHeight:1 }}>{plan.priceLabel}</div>
+                    <div style={{ fontSize:10.5, color:T.mutedLight, marginTop:2 }}>{plan.period}</div>
                   </div>
                 </div>
 
-                <div
-                  style={{
-                    marginTop: "0.9rem",
-                    background: plan.highlight ? T.accent : "#0d0e14",
-                    border: `1px solid ${plan.highlight ? T.accent : T.border}`,
-                    borderRadius: 10,
-                    padding: "0.68rem 0.8rem",
-                    textAlign: "center",
-                    fontSize: 13,
-                    fontWeight: 700,
-                    color: plan.highlight ? "#0a0c10" : T.text,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 6,
-                    boxShadow: plan.highlight ? "0 10px 24px rgba(77,184,255,.18)" : "none",
-                  }}
-                >
-                  {loadingPlan === plan.id ? (
-                    <>
-                      <RefreshCw size={13} style={{ animation: "spin 1s linear infinite" }} />
-                      Aguarde…
-                    </>
-                  ) : (
-                    <>
-                      <CreditCard size={13} />
-                      Assinar agora
-                      <ChevronRight size={13} />
-                    </>
-                  )}
+                {/* Dois botões: PIX e Cartão */}
+                <div style={{ display:"flex", gap:8, marginTop:"0.9rem" }}>
+                  {/* Botão PIX */}
+                  <button
+                    disabled={!!loadingPlan}
+                    onClick={() => !loadingPlan && handlePlanSelect(plan, "pix")}
+                    style={{ flex:1, background:"#00b37422", border:`1px solid #00b37466`, borderRadius:10, padding:"0.65rem 0.5rem", textAlign:"center", fontSize:12, fontWeight:700, color:"#00b374", display:"flex", alignItems:"center", justifyContent:"center", gap:5, cursor:loadingPlan?"wait":"pointer", opacity:loadingPlan&&loadingPlan!==`${plan.id}-pix`?0.5:1, fontFamily:"'DM Sans',sans-serif" }}
+                  >
+                    {loadingPlan === `${plan.id}-pix` ? (
+                      <><RefreshCw size={12} style={{ animation:"spin 1s linear infinite" }} /> Aguarde…</>
+                    ) : (
+                      <><Zap size={12} /> PIX</>
+                    )}
+                  </button>
+
+                  {/* Botão Cartão */}
+                  <button
+                    disabled={!!loadingPlan}
+                    onClick={() => !loadingPlan && handlePlanSelect(plan, "subscription")}
+                    style={{ flex:2, background:plan.highlight?T.accent:"#0d0e14", border:`1px solid ${plan.highlight?T.accent:T.border}`, borderRadius:10, padding:"0.65rem 0.8rem", textAlign:"center", fontSize:12, fontWeight:700, color:plan.highlight?"#0a0c10":T.text, display:"flex", alignItems:"center", justifyContent:"center", gap:5, cursor:loadingPlan?"wait":"pointer", opacity:loadingPlan&&loadingPlan!==`${plan.id}-subscription`?0.5:1, fontFamily:"'DM Sans',sans-serif", boxShadow:plan.highlight?"0 10px 24px rgba(77,184,255,.18)":"none" }}
+                  >
+                    {loadingPlan === `${plan.id}-subscription` ? (
+                      <><RefreshCw size={12} style={{ animation:"spin 1s linear infinite" }} /> Aguarde…</>
+                    ) : (
+                      <><CreditCard size={12} /> Cartão{plan.id==="monthly"?" · Auto-renovável":""}<ChevronRight size={12} /></>
+                    )}
+                  </button>
                 </div>
+
+                {plan.id === "monthly" && (
+                  <div style={{ fontSize:10.5, color:T.muted, marginTop:6, textAlign:"center" }}>
+                    PIX = pagamento único (30 dias) · Cartão = renovação automática
+                  </div>
+                )}
               </div>
             ))}
 
