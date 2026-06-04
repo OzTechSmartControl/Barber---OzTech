@@ -448,7 +448,7 @@ export default function PlansView({
                     {loadingPlan === `${plan.id}-pix` ? (
                       <><RefreshCw size={12} style={{ animation:"spin 1s linear infinite" }} /> Aguarde…</>
                     ) : (
-                      <><Zap size={12} /> PIX</>
+                      <>Pagamento Único</>
                     )}
                   </button>
 
@@ -461,16 +461,16 @@ export default function PlansView({
                     {loadingPlan === `${plan.id}-subscription` ? (
                       <><RefreshCw size={12} style={{ animation:"spin 1s linear infinite" }} /> Aguarde…</>
                     ) : (
-                      <><CreditCard size={12} /> Cartão{plan.id==="monthly"?" · Auto-renovável":""}<ChevronRight size={12} /></>
+                      <><CreditCard size={12} /> Renovação Automática<ChevronRight size={12} /></>
                     )}
                   </button>
                 </div>
 
-                {plan.id === "monthly" && (
-                  <div style={{ fontSize:10.5, color:T.muted, marginTop:6, textAlign:"center" }}>
-                    PIX = pagamento único (30 dias) · Cartão = renovação automática
-                  </div>
-                )}
+                <div style={{ fontSize:10.5, color:T.muted, marginTop:6, textAlign:"center" }}>
+                  {plan.id === "monthly"
+                    ? "Pagamento Único sem renovação automática · Renovação Automática com cartão de crédito"
+                    : "Pagamento único sem renovação automática"}
+                </div>
               </div>
             ))}
 
