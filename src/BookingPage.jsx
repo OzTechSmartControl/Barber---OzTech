@@ -285,9 +285,17 @@ export default function BookingPage({ slug }) {
                   onMouseEnter={e => { e.currentTarget.style.borderColor = accent; }}
                   onMouseLeave={e => { e.currentTarget.style.borderColor = selectedBarber?.id === barber.id ? accent : BT.border; }}
                 >
-                  <div style={{ width:44, height:44, borderRadius:99, background:`${accent}22`, border:`1px solid ${accent}33`, display:"flex", alignItems:"center", justifyContent:"center", color:accent, fontWeight:700, fontSize:18, flexShrink:0, fontFamily:"'Bebas Neue',sans-serif" }}>
-                    {(barber.name||"B")[0].toUpperCase()}
-                  </div>
+                  {barber.photo_url ? (
+                    <img
+                      src={barber.photo_url}
+                      alt={barber.name}
+                      style={{ width:48, height:48, borderRadius:"50%", objectFit:"cover", border:`2px solid ${accent}55`, flexShrink:0 }}
+                    />
+                  ) : (
+                    <div style={{ width:48, height:48, borderRadius:99, background:`${accent}22`, border:`1px solid ${accent}33`, display:"flex", alignItems:"center", justifyContent:"center", color:accent, fontWeight:700, fontSize:20, flexShrink:0, fontFamily:"'Bebas Neue',sans-serif" }}>
+                      {(barber.name||"B")[0].toUpperCase()}
+                    </div>
+                  )}
                   <div style={{ fontSize:15, fontWeight:600 }}>{barber.name}</div>
                 </div>
               ))}

@@ -278,7 +278,7 @@ async function getShop(slug: string) {
   const shop = shops[0];
 
   const [barbersRes, servicesRes] = await Promise.all([
-    db(`barbers?barbershop_id=eq.${shop.id}&status=eq.active&select=id,name`),
+    db(`barbers?barbershop_id=eq.${shop.id}&status=eq.active&select=id,name,photo_url`),
     db(`services?barbershop_id=eq.${shop.id}&active=eq.true&select=id,name,price,duration&order=name.asc`),
   ]);
 

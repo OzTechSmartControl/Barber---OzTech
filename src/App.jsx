@@ -16,7 +16,7 @@ import {
   Phone, LogOut, Lock, Mail, CreditCard, Banknote, Smartphone,
   BadgePercent, AlertCircle, RefreshCw, FileText, Download, Calendar, Bell, Gift,
   Settings, Upload, Palette, Image, Shield, Clock, Layers,
-  ShoppingCart, Package, Sun, Moon, Zap, ChevronLeft, ChevronRight, Star, MessageSquare,
+  ShoppingCart, Package, Sun, Moon, Zap, ChevronLeft, ChevronRight, Star, MessageSquare, Camera,
 } from "lucide-react";
 
 (() => {
@@ -139,7 +139,7 @@ const accessDeniedMessage = (reason) => {
 const toAtt  = a => ({ id: a.id, clientId: a.client_id, barberId: a.barber_id, serviceId: a.service_id, price: +a.price, servicesPrice: +(a.services_price ?? a.price), payment: a.payment, date: a.date, time: a.time || "", notes: a.notes || "", extraServices: Array.isArray(a.extra_services) ? a.extra_services : [], productsSold: Array.isArray(a.products_sold) ? a.products_sold : [], appointmentId: a.appointment_id || null, source: a.source || "manual", barberCommissionPct: a.barber_commission_pct != null ? +a.barber_commission_pct : null });
 const fromAtt = a => ({ client_id: +a.clientId||0, barber_id: +a.barberId||0, service_id: +a.serviceId||0, price: +a.price, payment: a.payment, date: a.date, time: a.time, notes: a.notes, extra_services: a.extraServices||[] });
 const toClient = c => ({ id: c.id, name: c.name, phone: c.phone || "", whatsapp: c.whatsapp || "", birthdate: c.birthdate || "", notes: c.notes || "", points: +c.points, email: c.email || "" });
-const toBarber = b => ({ id: b.id, name: b.name, phone: b.phone || "", commission: +b.commission, status: b.status, userId: b.user_id, notificationEmail: b.notification_email || "" });
+const toBarber = b => ({ id: b.id, name: b.name, phone: b.phone || "", commission: +b.commission, status: b.status, userId: b.user_id, notificationEmail: b.notification_email || "", photoUrl: b.photo_url || "" });
 const toService = s => ({ id: s.id, name: s.name, price: +s.price, duration: +s.duration, active: s.active });
 const toExpense     = e => ({ id: e.id, desc: e.description, amount: +e.amount, date: e.date, category: e.category || "" });
 const toProduct     = p => ({ id: p.id, name: p.name, description: p.description || "", price: +(p.price||0), cost: +(p.cost||0), stockCurrent: +(p.stock_current||0), stockMinimum: +(p.stock_minimum||0), unit: p.unit || "un", active: p.active !== false, commissionPct: +(p.commission_pct||0) });
@@ -2036,13 +2036,23 @@ function ClientsView({ clients, setClients, attendances, services, token, isAdmi
 
 // ── BARBERS ───────────────────────────────────────────────────
 function BarbersView({ barbers, setBarbers, attendances, token, barbershopId, onRefresh, isMobile }) {
-  const [showModal,  setShowModal]  = useState(false);
-  const [editing,    setEditing]    = useState(null);
-  const [saving,     setSaving]     = useState(false);
-  const [err,        setErr]        = useState("");
-  const [form,       setForm]       = useState({ name:"", phone:"", commission:40, status:"active", email:"", password:"", notificationEmail:"" });
-  const [availBarber,setAvailBarber]= useState(null);
+  const [showModal,    setShowModal]    = useState(false);
+  const [editing,      setEditing]      = useState(null);
+  const [saving,       setSaving]       = useState(false);
+  const [err,          setErr]          = useState("");
+  const [form,         setForm]         = useState({ name:"", phone:"", commission:40, status:"active", email:"", password:"", notificationEmail:"", photoUrl:"" });
+  const [availBarber,  setAvailBarber]  = useState(null);
+  const [photoFile,    setPhotoFile]    = useState(null);
+  const [photoPreview, setPhotoPreview] = useState("");
   const setF = k => e => setForm(f=>({...f,[k]:e.target.value}));
+
+  // Gera preview local do arquivo de foto selecionado
+  useEffect(() => {
+    if (!photoFile) { setPhotoPreview(""); return; }
+    const url = URL.createObjectURL(photoFile);
+    setPhotoPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [photoFile]);
 
   const save = async () => {
     if (!form.name) return setErr("Nome é obrigatório.");
@@ -2069,7 +2079,14 @@ function BarbersView({ barbers, setBarbers, attendances, token, barbershopId, on
         userId = data.user?.id;
       }
 
-      const body = { name:form.name, phone:form.phone, commission:+form.commission, status:form.status, user_id: userId, barbershop_id: barbershopId, notification_email: form.notificationEmail.trim() || null };
+      // Upload de foto (se um novo arquivo foi selecionado)
+      let photoUrl = form.photoUrl || null;
+      if (photoFile) {
+        const barberIdForPath = editing || "new";
+        photoUrl = await uploadBarberPhoto(token, photoFile, barbershopId, barberIdForPath);
+      }
+
+      const body = { name:form.name, phone:form.phone, commission:+form.commission, status:form.status, user_id: userId, barbershop_id: barbershopId, notification_email: form.notificationEmail.trim() || null, photo_url: photoUrl };
 
       if (editing) {
         await api.update("barbers", editing, body, token);
@@ -2093,6 +2110,8 @@ function BarbersView({ barbers, setBarbers, attendances, token, barbershopId, on
         }
       }
       setShowModal(false);
+      setPhotoFile(null);
+      setPhotoPreview("");
     } catch(e){ setErr(e.message); }
     setSaving(false);
   };
@@ -2104,7 +2123,7 @@ function BarbersView({ barbers, setBarbers, attendances, token, barbershopId, on
     <div>
       <PageHeader title="Barbeiros" sub={`${barbers.filter(b=>b.status==="active").length} ativos`}
         onRefresh={onRefresh}
-        right={<Btn onClick={()=>{setEditing(null);setForm({name:"",phone:"",commission:40,status:"active",email:"",password:"",notificationEmail:""});setShowModal(true);}}><Plus size={15}/>Novo Barbeiro</Btn>}
+        right={<Btn onClick={()=>{setEditing(null);setForm({name:"",phone:"",commission:40,status:"active",email:"",password:"",notificationEmail:"",photoUrl:""});setPhotoFile(null);setPhotoPreview("");setShowModal(true);}}><Plus size={15}/>Novo Barbeiro</Btn>}
       />
       <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap:"1rem" }}>
         {barbers.map(b=>{
@@ -2116,11 +2135,15 @@ function BarbersView({ barbers, setBarbers, attendances, token, barbershopId, on
           return (
             <Card key={b.id} style={{ opacity:b.status==="inactive"?0.55:1 }}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:"1rem" }}>
-                <div style={{ width:52, height:52, borderRadius:"50%", background:T.accentGlow, border:`1px solid ${T.accent}44`, display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Bebas Neue', sans-serif", fontSize:24, color:T.accent }}>{b.name.charAt(0)}</div>
+                {b.photoUrl ? (
+                  <img src={b.photoUrl} alt={b.name} style={{ width:52, height:52, borderRadius:"50%", objectFit:"cover", border:`1px solid ${T.accent}44`, flexShrink:0 }}/>
+                ) : (
+                  <div style={{ width:52, height:52, borderRadius:"50%", background:T.accentGlow, border:`1px solid ${T.accent}44`, display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Bebas Neue', sans-serif", fontSize:24, color:T.accent, flexShrink:0 }}>{b.name.charAt(0)}</div>
+                )}
                 <div style={{ display:"flex", gap:6, alignItems:"center" }}>
                   <Badge color={b.status==="active"?T.success:T.muted}>{b.status==="active"?"Ativo":"Inativo"}</Badge>
                   <button onClick={()=>setAvailBarber(b)} title="Configurar disponibilidade" style={{ background:"none", border:"none", color:T.muted, cursor:"pointer", display:"inline-flex" }}><Clock size={14}/></button>
-                  <button onClick={()=>{setEditing(b.id);setForm({...b, notificationEmail: b.notificationEmail||""});setShowModal(true);}} style={{ background:"none", border:"none", color:T.muted, cursor:"pointer", display:"inline-flex" }}><Edit2 size={14}/></button>
+                  <button onClick={()=>{setEditing(b.id);setForm({...b, notificationEmail: b.notificationEmail||"", photoUrl: b.photoUrl||""});setPhotoFile(null);setPhotoPreview("");setShowModal(true);}} style={{ background:"none", border:"none", color:T.muted, cursor:"pointer", display:"inline-flex" }}><Edit2 size={14}/></button>
                 </div>
               </div>
               <div style={{ fontWeight:600, color:T.text, marginBottom:3 }}>{b.name}</div>
@@ -2142,8 +2165,49 @@ function BarbersView({ barbers, setBarbers, attendances, token, barbershopId, on
       </div>
 
       {showModal&&(
-        <Modal title={editing?"Editar Barbeiro":"Novo Barbeiro"} onClose={()=>setShowModal(false)}>
+        <Modal title={editing?"Editar Barbeiro":"Novo Barbeiro"} onClose={()=>{setShowModal(false);setPhotoFile(null);setPhotoPreview("");}}>
           <ErrorBar msg={err}/>
+
+          {/* ── Foto do barbeiro ───────────────────────────── */}
+          <div style={{ textAlign:"center", marginBottom:"1.25rem" }}>
+            <div style={{ position:"relative", display:"inline-block" }}>
+              {(photoPreview || form.photoUrl) ? (
+                <img
+                  src={photoPreview || form.photoUrl}
+                  alt="Foto do barbeiro"
+                  style={{ width:84, height:84, borderRadius:"50%", objectFit:"cover", border:`2px solid ${T.accent}66`, display:"block" }}
+                />
+              ) : (
+                <div style={{ width:84, height:84, borderRadius:"50%", background:T.accentGlow, border:`2px dashed ${T.accent}55`, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center" }}>
+                  <Camera size={22} style={{ color:T.accent, opacity:0.7 }}/>
+                  <span style={{ fontSize:9, color:T.muted, marginTop:4, fontFamily:"'DM Sans',sans-serif" }}>Adicionar foto</span>
+                </div>
+              )}
+              {(photoPreview || form.photoUrl) && (
+                <button
+                  type="button"
+                  onClick={() => { setPhotoFile(null); setPhotoPreview(""); setForm(f=>({...f, photoUrl:""})); }}
+                  style={{ position:"absolute", top:-3, right:-3, background:T.danger, border:"none", borderRadius:"50%", width:22, height:22, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}
+                >
+                  <X size={11} style={{ color:"#fff" }}/>
+                </button>
+              )}
+            </div>
+            <div style={{ marginTop:9 }}>
+              <label style={{ cursor:"pointer" }}>
+                <input
+                  type="file"
+                  accept="image/*"
+                  style={{ display:"none" }}
+                  onChange={e => { const f = e.target.files?.[0]; if (f) setPhotoFile(f); e.target.value = ""; }}
+                />
+                <span style={{ fontSize:12, color:T.accent, textDecoration:"underline" }}>
+                  {(photoPreview || form.photoUrl) ? "Trocar foto" : "Tirar foto / Fazer upload"}
+                </span>
+              </label>
+            </div>
+          </div>
+
           <FInput label="Nome" value={form.name} onChange={setF("name")}/>
           <FInput label="Telefone" value={form.phone} onChange={setF("phone")}/>
           <FInput label="E-mail para notificações" type="email" value={form.notificationEmail} onChange={setF("notificationEmail")} placeholder="barbeiro@email.com"/>
@@ -3422,6 +3486,29 @@ const uploadBrandLogo = async (tok, file, shopId) => {
     throw new Error(text || "Erro no upload da logo.");
   }
 
+  return `${SUPABASE_URL}/storage/v1/object/public/logos/${path}?v=${Date.now()}`;
+};
+
+const uploadBarberPhoto = async (tok, file, shopId, barberId) => {
+  if (!file) return null;
+  const rawExt = file.name.split(".").pop() || "jpg";
+  const ext    = rawExt.toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+  const path   = `${shopId}/barber-${barberId || "new"}-${Date.now()}.${ext}`;
+  const r = await fetch(`${SUPABASE_URL}/storage/v1/object/logos/${path}`, {
+    method: "POST",
+    headers: {
+      apikey:           SUPABASE_ANON,
+      Authorization:    `Bearer ${tok}`,
+      "Content-Type":   file.type || "image/jpeg",
+      "x-upsert":       "true",
+      "cache-control":  "3600",
+    },
+    body: file,
+  });
+  if (!r.ok) {
+    const text = await r.text().catch(() => "");
+    throw new Error(text || "Erro no upload da foto.");
+  }
   return `${SUPABASE_URL}/storage/v1/object/public/logos/${path}?v=${Date.now()}`;
 };
 
