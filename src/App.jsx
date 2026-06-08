@@ -5409,8 +5409,8 @@ export default function App() {
     }[bookingStatus] || { icon:"?", baseColor:"#6b7280", title:"Status Desconhecido", msg:"" };
 
     // Usa cor da barbearia em status positivos; vermelho/cinza para erros
-    const accent = (shopColor && (bookingStatus === "confirmed" || bookingStatus === "already"))
-      ? shopColor : cfg.baseColor;
+    const isPositive = ["confirmed","already","confirmed_me","already_confirmed","completed"].includes(bookingStatus);
+    const accent = (shopColor && isPositive) ? shopColor : cfg.baseColor;
 
     // Cobre body branco sem CSS externo
     if (typeof document !== "undefined") {
