@@ -126,7 +126,8 @@ Deno.serve(async (req) => {
   const name    = appt.client_name || "";
   const shopN   = shop.name;
 
-  const logo = shop.logo_url || "";
+  // Remove ?v=... do final da URL para evitar conflito com query params do redirect
+  const logo = (shop.logo_url || "").split("?")[0];
 
   // Ação já processada
   if (appt.status === "confirmed" && action === "confirm") {
