@@ -1,13 +1,12 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-// Esta Edge Function processa os cliques nos botões do e-mail de lembrete.
-// Aceita GET com ?token=<uuid>&action=confirm|cancel
-// Retorna uma página HTML com o resultado da ação.
+// Edge Function: appointment-action
+// Processa confirm/cancel dos botões do e-mail de lembrete.
+// Após processar, redireciona para o app React com ?booking=<resultado>
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")              ?? "";
 const SUPABASE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const RESEND_KEY   = Deno.env.get("RESEND_API_KEY")            ?? "";
 const FROM_EMAIL   = "contato@oztechsmartcontrol.com.br";
+const APP_URL      = "https://ozbarber.oztechsmartcontrol.com.br";
 
 const db = (path: string, opts: RequestInit = {}) =>
   fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
@@ -26,45 +25,10 @@ function fDate(dateStr: string): string {
   return `${d}/${m}/${y}`;
 }
 
-// Página HTML de resposta (sem React — retornada direto pelo Edge Function)
-function htmlPage(opts: {
-  title:   string;
-  emoji:   string;
-  message: string;
-  color:   string;
-  sub?:    string;
-}): Response {
-  const html = `<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <title>${opts.title}</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700;900&display=swap" rel="stylesheet">
-  <style>
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{background:#08090c;font-family:'DM Sans',Arial,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1.5rem}
-  </style>
-</head>
-<body>
-  <div style="max-width:420px;width:100%;text-align:center;">
-    <div style="width:80px;height:80px;border-radius:50%;background:${opts.color}22;border:2px solid ${opts.color}55;display:flex;align-items:center;justify-content:center;font-size:36px;margin:0 auto 1.5rem;">
-      ${opts.emoji}
-    </div>
-    <h1 style="color:#fff;font-size:22px;font-weight:700;margin-bottom:12px;">${opts.title}</h1>
-    <p style="color:#9ca3af;font-size:15px;line-height:1.7;">${opts.message}</p>
-    ${opts.sub ? `<p style="color:#6b7280;font-size:13px;line-height:1.6;margin-top:8px;">${opts.sub}</p>` : ""}
-    <div style="margin-top:2.5rem;padding-top:1.5rem;border-top:1px solid #1e2030;">
-      <span style="color:#374151;font-size:12px;">Oz.Barber · <strong style="color:${opts.color};">OzTech SmartControl</strong></span>
-    </div>
-  </div>
-</body>
-</html>`;
-  return new Response(html, {
-    status: 200,
-    headers: { "Content-Type": "text/html; charset=utf-8" },
-  });
+// Redireciona para o app React — usa o handler ?booking= já existente
+function toApp(booking: string, extra: Record<string, string> = {}): Response {
+  const qs = new URLSearchParams({ booking, ...extra }).toString();
+  return Response.redirect(`${APP_URL}/?${qs}`, 302);
 }
 
 // E-mail de cancelamento enviado ao barbeiro
@@ -131,8 +95,7 @@ async function notifyBarberCancellation(opts: {
   }
 }
 
-serve(async (req) => {
-  // OPTIONS (CORS preflight)
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, {
       headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET, OPTIONS" },
@@ -141,84 +104,58 @@ serve(async (req) => {
 
   const url    = new URL(req.url);
   const token  = url.searchParams.get("token")?.trim();
-  const action = url.searchParams.get("action")?.trim(); // "confirm" | "cancel"
+  const action = url.searchParams.get("action")?.trim();
 
   if (!token || (action !== "confirm" && action !== "cancel")) {
-    return htmlPage({ title: "Link Inválido", emoji: "⚠️", message: "Este link não é válido ou já expirou.", color: "#f59e0b" });
+    return toApp("invalid");
   }
 
-  // Busca agendamento pelo action_token
   const apptRes  = await db(`appointments?action_token=eq.${token}&select=*&limit=1`);
   const apptData = await apptRes.json();
   const appt     = Array.isArray(apptData) ? apptData[0] : null;
 
   if (!appt) {
-    return htmlPage({ title: "Não encontrado", emoji: "🔍", message: "Agendamento não encontrado ou link expirado.", color: "#6b7280" });
+    return toApp("notfound");
   }
 
-  // Dados da barbearia (para exibir na página e no e-mail)
-  const shopRes  = await db(`barbershops?id=eq.${appt.barbershop_id}&select=name,logo_url,accent_color&limit=1`);
-  const shop     = (await shopRes.json())[0] ?? { name: "Barbearia", logo_url: null, accent_color: "#4db8ff" };
-  const color    = shop.accent_color || "#4db8ff";
-  const timeStr  = (appt.scheduled_time || "").slice(0, 5);
-  const dateStr  = fDate(appt.scheduled_date);
+  const shopRes = await db(`barbershops?id=eq.${appt.barbershop_id}&select=name,logo_url,accent_color&limit=1`);
+  const shop    = (await shopRes.json())[0] ?? { name: "Barbearia", logo_url: null, accent_color: "#4db8ff" };
+  const color   = shop.accent_color || "#4db8ff";
+  const timeStr = (appt.scheduled_time || "").slice(0, 5);
+  const dateStr = fDate(appt.scheduled_date);
+  const name    = appt.client_name || "";
+  const shopN   = shop.name;
 
-  // ── Ação já processada ─────────────────────────────────────────
+  // Ação já processada
   if (appt.status === "confirmed" && action === "confirm") {
-    return htmlPage({
-      title:   "Já confirmado!",
-      emoji:   "✅",
-      message: "Este agendamento já havia sido confirmado.",
-      color,
-      sub:     `${dateStr} às ${timeStr} · ${shop.name}`,
-    });
+    return toApp("already_confirmed", { name, shop: shopN, color, date: dateStr, time: timeStr });
   }
-
   if (appt.status === "cancelled") {
-    return htmlPage({
-      title:   "Agendamento cancelado",
-      emoji:   "❌",
-      message: "Este agendamento já havia sido cancelado.",
-      color:   "#ef4444",
-    });
+    return toApp("already_cancelled");
   }
-
   if (appt.status === "completed") {
-    return htmlPage({
-      title:   "Atendimento concluído",
-      emoji:   "✂️",
-      message: "Este atendimento já foi realizado.",
-      color,
-    });
+    return toApp("completed", { shop: shopN, color });
   }
 
-  // ── Confirmar ──────────────────────────────────────────────────
+  // Confirmar
   if (action === "confirm") {
     await db(`appointments?id=eq.${appt.id}`, {
       method: "PATCH",
       body: JSON.stringify({ status: "confirmed", updated_at: new Date().toISOString() }),
     });
     console.log(`[appointment-action] Confirmado: ${appt.id}`);
-
-    return htmlPage({
-      title:   "Presença confirmada! 🎉",
-      emoji:   "✅",
-      message: `Tudo certo, <strong style="color:#fff;">${appt.client_name || "cliente"}</strong>! Seu agendamento está confirmado. Até lá!`,
-      color,
-      sub:     `${dateStr} às ${timeStr} · ${shop.name}`,
-    });
+    return toApp("confirmed_me", { name, shop: shopN, color, date: dateStr, time: timeStr });
   }
 
-  // ── Cancelar ───────────────────────────────────────────────────
+  // Cancelar
   await db(`appointments?id=eq.${appt.id}`, {
     method: "PATCH",
     body: JSON.stringify({ status: "cancelled", updated_at: new Date().toISOString() }),
   });
   console.log(`[appointment-action] Cancelado: ${appt.id}`);
 
-  // Notifica barbeiro por e-mail (se tiver notification_email)
-  const barberRes  = await db(`barbers?id=eq.${appt.barber_id}&select=name,notification_email&limit=1`);
-  const barber     = (await barberRes.json())[0];
+  const barberRes = await db(`barbers?id=eq.${appt.barber_id}&select=name,notification_email&limit=1`);
+  const barber    = (await barberRes.json())[0];
 
   if (barber?.notification_email) {
     const serviceIds: number[] = Array.isArray(appt.service_ids) && appt.service_ids.length > 0
@@ -246,11 +183,5 @@ serve(async (req) => {
     });
   }
 
-  return htmlPage({
-    title:   "Agendamento cancelado",
-    emoji:   "❌",
-    message: "Seu agendamento foi cancelado. O horário está livre novamente.",
-    color:   "#ef4444",
-    sub:     `Se quiser remarcar, acesse o link de agendamento da ${shop.name}.`,
-  });
+  return toApp("cancelled_me", { shop: shopN });
 });
