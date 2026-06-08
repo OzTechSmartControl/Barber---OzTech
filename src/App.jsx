@@ -16,7 +16,7 @@ import {
   Phone, LogOut, Lock, Mail, CreditCard, Banknote, Smartphone,
   BadgePercent, AlertCircle, RefreshCw, FileText, Download, Calendar, Bell, Gift,
   Settings, Upload, Palette, Image, Shield, Clock, Layers,
-  ShoppingCart, Package, Sun, Moon, Zap, ChevronLeft, Star, MessageSquare,
+  ShoppingCart, Package, Sun, Moon, Zap, ChevronLeft, ChevronRight, Star, MessageSquare,
 } from "lucide-react";
 
 (() => {
@@ -4159,6 +4159,7 @@ function AppointmentsView({ barbers, services, token, isAdmin, myBarberId, barbe
   const [filterBarber,setFilterBarber]= useState("all");
   const [saving,      setSaving]      = useState(false);
   const [confirmModal,setConfirmModal]= useState(null); // {id, action, label}
+  const [selectedAppt, setSelectedAppt] = useState(null);
 
   const loadAppts = useCallback(async () => {
     setLoading(true);
@@ -4272,6 +4273,33 @@ function AppointmentsView({ barbers, services, token, isAdmin, myBarberId, barbe
       .catch(() => alert(`Link: ${link}`));
   };
 
+  // ── Helpers do calendário visual ─────────────────────────────
+  const HOUR_H     = 64;
+  const HOUR_START = 8;
+  const HOUR_END   = 20;
+  const HOURS      = Array.from({ length: HOUR_END - HOUR_START }, (_, i) => HOUR_START + i);
+  const TIME_W     = 52;
+
+  const getTop    = t => {
+    const [h, m] = (t || "00:00").split(":").map(Number);
+    return Math.max(0, (h - HOUR_START) * 60 + m) * (HOUR_H / 60);
+  };
+  const getHeight = mins => Math.max((mins || 30) * (HOUR_H / 60), 24);
+
+  const goDay = delta => {
+    const d = new Date(filterDate + "T12:00:00");
+    d.setDate(d.getDate() + delta);
+    setFilterDate(d.toISOString().split("T")[0]);
+  };
+
+  const activeBarbers = isAdmin
+    ? barbers.filter(b => b.status === "active")
+    : barbers.filter(b => String(b.id) === String(myBarberId));
+
+  const apptsByBarber = {};
+  activeBarbers.forEach(b => { apptsByBarber[b.id] = []; });
+  appts.forEach(a => { if (apptsByBarber[a.barber_id] !== undefined) apptsByBarber[a.barber_id].push(a); });
+
   return (
     <div>
       <PageHeader
@@ -4283,14 +4311,29 @@ function AppointmentsView({ barbers, services, token, isAdmin, myBarberId, barbe
         ) : null}
       />
 
-      {/* Filters */}
-      <div style={{ display:"flex", flexWrap:"wrap", gap:"0.75rem", marginBottom:"1.25rem" }}>
-        <input
-          type="date"
-          value={filterDate}
-          onChange={e => setFilterDate(e.target.value)}
-          style={{ ...inputSt, width:"auto", minWidth:150 }}
-        />
+      {/* ── Navegação de data + filtros ───────────────────────── */}
+      <div style={{ display:"flex", alignItems:"center", gap:"0.75rem", marginBottom:"1.25rem", flexWrap:"wrap" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:4 }}>
+          <button
+            onClick={() => goDay(-1)}
+            style={{ background:T.surface, border:`1px solid ${T.border}`, color:T.text, borderRadius:8, width:32, height:32, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}
+          >
+            <ChevronLeft size={16}/>
+          </button>
+          <input
+            type="date"
+            value={filterDate}
+            onChange={e => setFilterDate(e.target.value)}
+            style={{ ...inputSt, width:"auto", minWidth:150, textAlign:"center" }}
+          />
+          <button
+            onClick={() => goDay(1)}
+            style={{ background:T.surface, border:`1px solid ${T.border}`, color:T.text, borderRadius:8, width:32, height:32, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}
+          >
+            <ChevronRight size={16}/>
+          </button>
+          <Btn variant="ghost" sm onClick={() => setFilterDate(today())} style={{ marginLeft:2 }}>Hoje</Btn>
+        </div>
         <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={{ ...inputSt, width:"auto" }}>
           <option value="all">Todos os status</option>
           <option value="pending">Pendente</option>
@@ -4298,7 +4341,7 @@ function AppointmentsView({ barbers, services, token, isAdmin, myBarberId, barbe
           <option value="completed">Concluído</option>
           <option value="cancelled">Cancelado</option>
         </select>
-        {isAdmin && (
+        {isMobile && isAdmin && (
           <select value={filterBarber} onChange={e => setFilterBarber(e.target.value)} style={{ ...inputSt, width:"auto" }}>
             <option value="all">Todos os barbeiros</option>
             {barbers.filter(b => b.status === "active").map(b => (
@@ -4308,73 +4351,231 @@ function AppointmentsView({ barbers, services, token, isAdmin, myBarberId, barbe
         )}
       </div>
 
-      {/* List */}
       {loading ? (
         <div style={{ color:T.muted, textAlign:"center", padding:"3rem" }}>Carregando...</div>
-      ) : appts.length === 0 ? (
-        <Card style={{ textAlign:"center", padding:"3rem" }}>
-          <Calendar size={38} style={{ color:T.muted, marginBottom:12, opacity:0.35 }}/>
-          <div style={{ fontSize:15, color:T.muted, marginBottom: isAdmin && shop?.slug ? "1.25rem" : 0 }}>
-            Nenhum agendamento{filterDate ? ` para ${fDate(filterDate)}` : ""}
+      ) : isMobile ? (
+        /* ═══════════ MOBILE: lista ══════════════════════════════ */
+        appts.length === 0 ? (
+          <Card style={{ textAlign:"center", padding:"3rem" }}>
+            <Calendar size={38} style={{ color:T.muted, marginBottom:12, opacity:0.35 }}/>
+            <div style={{ fontSize:15, color:T.muted, marginBottom: isAdmin && shop?.slug ? "1.25rem" : 0 }}>
+              Nenhum agendamento{filterDate ? ` para ${fDate(filterDate)}` : ""}
+            </div>
+            {isAdmin && shop?.slug && (
+              <Btn variant="ghost" onClick={copyLink}><Calendar size={13}/> Copiar link de agendamento</Btn>
+            )}
+          </Card>
+        ) : (
+          <div style={{ display:"flex", flexDirection:"column", gap:"0.75rem" }}>
+            {appts.map(a => {
+              const st  = STATUS_CFG[a.status] || STATUS_CFG.pending;
+              const svc = Array.isArray(a.service_ids) && a.service_ids.length > 0
+                ? a.service_ids.map(id => getServiceName(id)).join(" + ")
+                : getServiceName(a.service_id);
+              return (
+                <Card
+                  key={a.id}
+                  style={{ padding:"1rem 1.25rem", borderLeft:`3px solid ${st.color}`, cursor:"pointer" }}
+                  onClick={() => setSelectedAppt(a)}
+                >
+                  <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4, flexWrap:"wrap" }}>
+                    <span style={{ fontWeight:700, fontSize:15 }}>{a.client_name || "—"}</span>
+                    <span style={{ background:st.bg, color:st.color, borderRadius:6, fontSize:11, fontWeight:700, padding:"2px 8px" }}>{st.label}</span>
+                    {a.booked_via === "public" && (
+                      <span style={{ background:T.accentGlow, color:T.accent, borderRadius:6, fontSize:10, fontWeight:600, padding:"2px 6px" }}>Online</span>
+                    )}
+                  </div>
+                  <div style={{ fontSize:13, color:T.muted, marginBottom:2 }}>
+                    {a.client_phone && <span>{a.client_phone} · </span>}
+                    {svc}{isAdmin ? ` · ${getBarberName(a.barber_id)}` : ""}
+                  </div>
+                  <div style={{ fontSize:13, fontWeight:600 }}>
+                    {(a.scheduled_time||"").slice(0,5)}
+                    <span style={{ color:T.muted, fontWeight:400 }}> · {a.duration_minutes} min</span>
+                  </div>
+                  {a.notes && <div style={{ fontSize:12, color:T.muted, marginTop:4, fontStyle:"italic" }}>"{a.notes}"</div>}
+                </Card>
+              );
+            })}
           </div>
-          {isAdmin && shop?.slug && (
-            <Btn variant="ghost" onClick={copyLink}><Calendar size={13}/> Copiar link de agendamento</Btn>
-          )}
-        </Card>
+        )
       ) : (
-        <div style={{ display:"flex", flexDirection:"column", gap:"0.75rem" }}>
-          {appts.map(a => {
-            const st = STATUS_CFG[a.status] || STATUS_CFG.pending;
-            return (
-              <Card key={a.id} style={{ padding:"1rem 1.25rem" }}>
-                <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", flexWrap:"wrap", gap:"0.5rem" }}>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4, flexWrap:"wrap" }}>
-                      <span style={{ fontWeight:700, fontSize:15 }}>{a.client_name || "—"}</span>
-                      <span style={{ background:st.bg, color:st.color, borderRadius:6, fontSize:11, fontWeight:700, padding:"2px 8px", flexShrink:0 }}>{st.label}</span>
-                      {a.booked_via === "public" && (
-                        <span style={{ background:T.accentGlow, color:T.accent, borderRadius:6, fontSize:10, fontWeight:600, padding:"2px 6px", flexShrink:0 }}>Online</span>
-                      )}
-                    </div>
-                    <div style={{ fontSize:13, color:T.muted, marginBottom:4 }}>
-                      {a.client_phone && <span>{a.client_phone} · </span>}
-                      <span>
-                        {Array.isArray(a.service_ids) && a.service_ids.length > 0
-                          ? a.service_ids.map(id => getServiceName(id)).join(" + ")
-                          : getServiceName(a.service_id)}
-                      </span>
-                      {isAdmin && <span> · {getBarberName(a.barber_id)}</span>}
-                    </div>
-                    <div style={{ fontSize:13, fontWeight:600 }}>
-                      {fDate(a.scheduled_date)} às {(a.scheduled_time||"").slice(0,5)}
-                      <span style={{ color:T.muted, fontWeight:400 }}> · {a.duration_minutes} min</span>
-                    </div>
-                    {a.notes && <div style={{ fontSize:12, color:T.muted, marginTop:4, fontStyle:"italic" }}>"{a.notes}"</div>}
+        /* ═══════════ DESKTOP: grade calendário ══════════════════ */
+        <div style={{ background:T.card, border:`1px solid ${T.border}`, borderRadius:14, overflow:"hidden" }}>
+
+          {/* Cabeçalho: avatar + nome de cada barbeiro */}
+          {activeBarbers.length > 0 && (
+            <div style={{ display:"flex", borderBottom:`1px solid ${T.border}`, background:T.surface }}>
+              <div style={{ width:TIME_W, flexShrink:0, borderRight:`1px solid ${T.border}`, minHeight:66 }}/>
+              {activeBarbers.map(b => (
+                <div
+                  key={b.id}
+                  style={{ flex:1, minWidth:90, padding:"10px 8px", textAlign:"center", borderRight:`1px solid ${T.border}` }}
+                >
+                  <div style={{ width:36, height:36, borderRadius:"50%", background:`${T.accent}20`, border:`2px solid ${T.accent}44`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 5px", fontSize:16, fontWeight:800, color:T.accent }}>
+                    {(b.name || "?")[0].toUpperCase()}
                   </div>
-                  <div style={{ display:"flex", gap:6, flexShrink:0, flexWrap:"wrap" }}>
-                    {a.status === "pending" && (
-                      <Btn sm onClick={() => setConfirmModal({ id:a.id, action:"confirmed", label:"Confirmar agendamento" })}>
-                        <Check size={12}/> Confirmar
-                      </Btn>
-                    )}
-                    {(a.status === "pending" || a.status === "confirmed") && (
-                      <Btn sm variant="ghost" onClick={() => setConfirmModal({ id:a.id, action:"completed", label:"Marcar como Concluído" })}>
-                        Concluído
-                      </Btn>
-                    )}
-                    {(a.status === "pending" || a.status === "confirmed") && (
-                      <Btn sm variant="danger" onClick={() => setConfirmModal({ id:a.id, action:"cancelled", label:"Cancelar agendamento" })}>
-                        Cancelar
-                      </Btn>
-                    )}
-                  </div>
+                  <div style={{ fontSize:12, fontWeight:600, color:T.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{b.name}</div>
                 </div>
-              </Card>
-            );
-          })}
+              ))}
+            </div>
+          )}
+
+          {/* Grade com eixo de tempo */}
+          <div style={{ overflowY:"auto", maxHeight:"calc(100vh - 320px)", minHeight:200 }}>
+            {activeBarbers.length === 0 ? (
+              <div style={{ textAlign:"center", padding:"3rem", color:T.muted }}>
+                <Calendar size={36} style={{ marginBottom:12, opacity:0.3 }}/>
+                <div style={{ fontSize:14 }}>Nenhum barbeiro ativo cadastrado</div>
+              </div>
+            ) : (
+              <div style={{ display:"flex", position:"relative" }}>
+
+                {/* Coluna de horários */}
+                <div style={{ width:TIME_W, flexShrink:0, borderRight:`1px solid ${T.border}` }}>
+                  {HOURS.map(h => (
+                    <div
+                      key={h}
+                      style={{ height:HOUR_H, borderBottom:`1px solid ${T.border}22`, display:"flex", alignItems:"flex-start", justifyContent:"flex-end", paddingRight:8, paddingTop:6, fontSize:11, color:T.muted, fontWeight:600, userSelect:"none" }}
+                    >
+                      {String(h).padStart(2,"0")}:00
+                    </div>
+                  ))}
+                </div>
+
+                {/* Colunas dos barbeiros */}
+                {activeBarbers.map(b => (
+                  <div
+                    key={b.id}
+                    style={{ flex:1, minWidth:90, position:"relative", borderRight:`1px solid ${T.border}` }}
+                  >
+                    {/* Linhas de hora */}
+                    {HOURS.map(h => (
+                      <div key={h} style={{ height:HOUR_H, borderBottom:`1px solid ${T.border}22` }}/>
+                    ))}
+                    {/* Blocos de agendamento */}
+                    {(apptsByBarber[b.id] || []).map(a => {
+                      const st  = STATUS_CFG[a.status] || STATUS_CFG.pending;
+                      const top = getTop(a.scheduled_time);
+                      const hgt = getHeight(a.duration_minutes);
+                      const svc = Array.isArray(a.service_ids) && a.service_ids.length > 0
+                        ? a.service_ids.map(id => getServiceName(id)).join(" + ")
+                        : getServiceName(a.service_id);
+                      return (
+                        <div
+                          key={a.id}
+                          onClick={() => setSelectedAppt(a)}
+                          style={{
+                            position:     "absolute",
+                            top:          top + 1,
+                            left:         3,
+                            right:        3,
+                            height:       Math.max(hgt - 2, 22),
+                            background:   st.bg,
+                            border:       `1px solid ${st.color}55`,
+                            borderLeft:   `3px solid ${st.color}`,
+                            borderRadius: 7,
+                            padding:      "3px 6px",
+                            cursor:       "pointer",
+                            overflow:     "hidden",
+                            zIndex:       1,
+                            transition:   "filter 0.12s",
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.filter = "brightness(1.25)"}
+                          onMouseLeave={e => e.currentTarget.style.filter = ""}
+                        >
+                          <div style={{ fontSize:11, fontWeight:700, color:st.color, lineHeight:1.25, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+                            {(a.scheduled_time||"").slice(0,5)} {a.client_name || "—"}
+                          </div>
+                          {hgt > 30 && (
+                            <div style={{ fontSize:10, color:T.muted, lineHeight:1.2, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", marginTop:1 }}>
+                              {svc}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+
+                {/* Estado vazio dentro da grade */}
+                {appts.length === 0 && (
+                  <div style={{ position:"absolute", top:0, left:TIME_W, right:0, bottom:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", pointerEvents:"none" }}>
+                    <Calendar size={32} style={{ opacity:0.18, marginBottom:8 }}/>
+                    <div style={{ color:T.muted, fontSize:13, opacity:0.7 }}>
+                      Sem agendamentos para {fDate(filterDate)}
+                    </div>
+                    {isAdmin && shop?.slug && (
+                      <div style={{ pointerEvents:"auto", marginTop:"0.75rem" }}>
+                        <Btn variant="ghost" sm onClick={copyLink}><Calendar size={12}/> Copiar link</Btn>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+              </div>
+            )}
+          </div>
         </div>
       )}
 
+      {/* ── Modal de detalhes do agendamento ─────────────────────── */}
+      {selectedAppt && (() => {
+        const a  = selectedAppt;
+        const st = STATUS_CFG[a.status] || STATUS_CFG.pending;
+        const svc = Array.isArray(a.service_ids) && a.service_ids.length > 0
+          ? a.service_ids.map(id => getServiceName(id)).join(" + ")
+          : getServiceName(a.service_id);
+        return (
+          <Modal title="Detalhes do Agendamento" onClose={() => setSelectedAppt(null)}>
+            <div style={{ marginBottom:"1rem" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:14, flexWrap:"wrap" }}>
+                <span style={{ fontWeight:700, fontSize:17 }}>{a.client_name || "—"}</span>
+                <span style={{ background:st.bg, color:st.color, borderRadius:6, fontSize:11, fontWeight:700, padding:"2px 8px" }}>{st.label}</span>
+                {a.booked_via === "public" && (
+                  <span style={{ background:T.accentGlow, color:T.accent, borderRadius:6, fontSize:10, fontWeight:600, padding:"2px 6px" }}>Online</span>
+                )}
+              </div>
+              {[
+                ["📅", "Data",         `${fDate(a.scheduled_date)} às ${(a.scheduled_time||"").slice(0,5)}`],
+                ["⏱️", "Duração",      `${a.duration_minutes} min`],
+                ["✂️", "Serviço",      svc],
+                isAdmin ? ["👤", "Barbeiro",     getBarberName(a.barber_id)] : null,
+                a.client_phone ? ["📱", "Telefone",    a.client_phone]       : null,
+                a.notes        ? ["📝", "Observações", a.notes]              : null,
+              ].filter(Boolean).map(([icon, label, value]) => (
+                <div key={label} style={{ display:"flex", gap:10, marginBottom:8, fontSize:14 }}>
+                  <span style={{ fontSize:15, lineHeight:1.1, flexShrink:0 }}>{icon}</span>
+                  <div>
+                    <span style={{ color:T.muted, fontSize:12 }}>{label}: </span>
+                    <span style={{ color:T.text, fontWeight:600 }}>{value}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <Row g="0.5rem" style={{ justifyContent:"flex-end", flexWrap:"wrap" }}>
+              <Btn variant="ghost" sm onClick={() => setSelectedAppt(null)}>Fechar</Btn>
+              {a.status === "pending" && (
+                <Btn sm onClick={() => { setConfirmModal({ id:a.id, action:"confirmed", label:"Confirmar agendamento" }); setSelectedAppt(null); }}>
+                  <Check size={12}/> Confirmar
+                </Btn>
+              )}
+              {(a.status === "pending" || a.status === "confirmed") && (
+                <Btn sm variant="ghost" onClick={() => { setConfirmModal({ id:a.id, action:"completed", label:"Marcar como Concluído" }); setSelectedAppt(null); }}>
+                  Concluído
+                </Btn>
+              )}
+              {(a.status === "pending" || a.status === "confirmed") && (
+                <Btn sm variant="danger" onClick={() => { setConfirmModal({ id:a.id, action:"cancelled", label:"Cancelar agendamento" }); setSelectedAppt(null); }}>
+                  Cancelar
+                </Btn>
+              )}
+            </Row>
+          </Modal>
+        );
+      })()}
+
+      {/* ── Modal de confirmação de ação ─────────────────────────── */}
       {confirmModal && (
         <Modal title={confirmModal.label} onClose={() => setConfirmModal(null)}>
           <p style={{ color:T.muted, fontSize:14, marginBottom:"1.25rem" }}>
