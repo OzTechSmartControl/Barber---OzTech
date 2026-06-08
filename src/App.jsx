@@ -4499,9 +4499,13 @@ function AppointmentsView({ barbers, services, token, isAdmin, myBarberId, barbe
                   key={b.id}
                   style={{ flex:1, minWidth:90, padding:"10px 8px", textAlign:"center", borderRight:`1px solid ${T.border}` }}
                 >
-                  <div style={{ width:36, height:36, borderRadius:"50%", background:`${T.accent}20`, border:`2px solid ${T.accent}44`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 5px", fontSize:16, fontWeight:800, color:T.accent }}>
-                    {(b.name || "?")[0].toUpperCase()}
-                  </div>
+                  {b.photoUrl ? (
+                    <img src={b.photoUrl} alt={b.name} style={{ width:38, height:38, borderRadius:"50%", objectFit:"cover", border:`2px solid ${T.accent}55`, display:"block", margin:"0 auto 5px" }}/>
+                  ) : (
+                    <div style={{ width:38, height:38, borderRadius:"50%", background:`${T.accent}20`, border:`2px solid ${T.accent}44`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 5px", fontSize:17, fontWeight:800, color:T.accent }}>
+                      {(b.name || "?")[0].toUpperCase()}
+                    </div>
+                  )}
                   <div style={{ fontSize:12, fontWeight:600, color:T.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{b.name}</div>
                 </div>
               ))}
