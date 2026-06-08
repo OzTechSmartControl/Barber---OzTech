@@ -5400,8 +5400,8 @@ export default function App() {
       cancelled:        { icon:"✕", baseColor:"#ef4444", title:"Agendamento Cancelado",   msg:"Este agendamento foi cancelado e não pode ser confirmado." },
       invalid:          { icon:"✕", baseColor:"#ef4444", title:"Link Inválido",           msg:"Este link de confirmação é inválido ou já foi utilizado." },
       // Resultados para o cliente (e-mail de lembrete — confirmar/cancelar)
-      confirmed_me:     { icon:"✓", baseColor:"#22c55e", title:"Presença Confirmada!", msg:`Tudo certo${clientName !== "o cliente" ? `, ${clientName}` : ""}! Seu agendamento está confirmado. Até lá! 🎉` },
-      already_confirmed:{ icon:"✓", baseColor:"#22c55e", title:"Já Confirmado!",        msg:"Seu agendamento já estava confirmado. Até lá!" },
+      confirmed_me:     { icon:"✓", baseColor:"#22c55e", title:"Presença Confirmada!", msg:"Recebemos sua confirmação e seu horário está reservado. Nos vemos em breve!" },
+      already_confirmed:{ icon:"✓", baseColor:"#22c55e", title:"Presença Confirmada!", msg:"Recebemos sua confirmação e seu horário está reservado. Nos vemos em breve!" },
       cancelled_me:     { icon:"✕", baseColor:"#ef4444", title:"Agendamento Cancelado", msg:"Seu agendamento foi cancelado. O horário está livre novamente." },
       already_cancelled:{ icon:"✕", baseColor:"#ef4444", title:"Já Cancelado",          msg:"Este agendamento já havia sido cancelado." },
       completed:        { icon:"✂", baseColor:"#6b7280", title:"Atendimento Realizado", msg:"Este atendimento já foi realizado." },

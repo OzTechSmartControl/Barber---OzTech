@@ -126,15 +126,17 @@ Deno.serve(async (req) => {
   const name    = appt.client_name || "";
   const shopN   = shop.name;
 
+  const logo = shop.logo_url || "";
+
   // Ação já processada
   if (appt.status === "confirmed" && action === "confirm") {
-    return toApp("already_confirmed", { name, shop: shopN, color, date: dateStr, time: timeStr });
+    return toApp("already_confirmed", { name, shop: shopN, color, logo, date: dateStr, time: timeStr });
   }
   if (appt.status === "cancelled") {
-    return toApp("already_cancelled");
+    return toApp("already_cancelled", { shop: shopN, logo });
   }
   if (appt.status === "completed") {
-    return toApp("completed", { shop: shopN, color });
+    return toApp("completed", { shop: shopN, color, logo });
   }
 
   // Confirmar
@@ -144,7 +146,7 @@ Deno.serve(async (req) => {
       body: JSON.stringify({ status: "confirmed", updated_at: new Date().toISOString() }),
     });
     console.log(`[appointment-action] Confirmado: ${appt.id}`);
-    return toApp("confirmed_me", { name, shop: shopN, color, date: dateStr, time: timeStr });
+    return toApp("confirmed_me", { name, shop: shopN, color, logo, date: dateStr, time: timeStr });
   }
 
   // Cancelar
@@ -183,5 +185,5 @@ Deno.serve(async (req) => {
     });
   }
 
-  return toApp("cancelled_me", { shop: shopN });
+  return toApp("cancelled_me", { shop: shopN, logo });
 });
