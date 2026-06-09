@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { RefreshCw, User, Mail, Lock, Scissors, Phone, ChevronLeft, AlertCircle, Check } from "lucide-react";
+import { RefreshCw, User, Mail, Lock, Scissors, Phone, ChevronLeft, AlertCircle, Check, ExternalLink } from "lucide-react";
 
 const SUPABASE_URL  = "https://kqjzontxfwlwmvbddbnv.supabase.co";
 const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtxanpvbnR4Zndsd212YmRkYm52Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxOTU5NjIsImV4cCI6MjA5Mzc3MTk2Mn0.SiH3q7fQRoVDern1SnroZolD0rc_wttj5G-Me4wffVw";
@@ -77,6 +77,7 @@ export default function TrialSignup({ onComplete, onBack }) {
   const [loading,        setLoading]        = useState(false);
   const [err,            setErr]            = useState("");
   const [done,           setDone]           = useState(false);
+  const [agreedToTerms,  setAgreedToTerms]  = useState(false);
 
   const validate = () => {
     if (!ownerName.trim())      return "Informe seu nome completo.";
@@ -85,6 +86,7 @@ export default function TrialSignup({ onComplete, onBack }) {
     if (password.length < 6)    return "A senha deve ter no mínimo 6 caracteres.";
     if (!barbershopName.trim()) return "Informe o nome da sua barbearia.";
     if (!phone.trim())          return "Informe seu WhatsApp para contato.";
+    if (!agreedToTerms)         return "Você precisa aceitar os Termos de Uso para continuar.";
     return null;
   };
 
@@ -334,6 +336,58 @@ export default function TrialSignup({ onComplete, onBack }) {
             </div>
           </div>
 
+          {/* Aceite dos Termos de Uso */}
+          <div
+            onClick={() => setAgreedToTerms(v => !v)}
+            style={{
+              display:     "flex",
+              alignItems:  "flex-start",
+              gap:         10,
+              cursor:      "pointer",
+              marginBottom: "1rem",
+              marginTop:   4,
+            }}
+          >
+            <div style={{
+              width:        18,
+              height:       18,
+              borderRadius: 5,
+              border:       `2px solid ${agreedToTerms ? T.accent : T.border}`,
+              background:   agreedToTerms ? T.accent : "transparent",
+              display:      "flex",
+              alignItems:   "center",
+              justifyContent: "center",
+              flexShrink:   0,
+              marginTop:    1,
+              transition:   "all .15s",
+            }}>
+              {agreedToTerms && <Check size={11} color="#061018" strokeWidth={3} />}
+            </div>
+            <span style={{ fontSize: 12, color: T.mutedLight, lineHeight: 1.55, userSelect: "none" }}>
+              Li e concordo com os{" "}
+              <a
+                href="https://ozbarber.oztechsmartcontrol.com.br/termos"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={e => e.stopPropagation()}
+                style={{ color: T.accent, fontWeight: 700, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 3 }}
+              >
+                Termos de Uso <ExternalLink size={10} />
+              </a>
+              {" "}e a{" "}
+              <a
+                href="https://ozbarber.oztechsmartcontrol.com.br/privacidade"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={e => e.stopPropagation()}
+                style={{ color: T.accent, fontWeight: 700, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 3 }}
+              >
+                Política de Privacidade <ExternalLink size={10} />
+              </a>
+              . Sem cobrança automática após o teste.
+            </span>
+          </div>
+
           {/* Botão de envio */}
           <button
             onClick={submit}
@@ -353,7 +407,6 @@ export default function TrialSignup({ onComplete, onBack }) {
               justifyContent: "center",
               gap:            8,
               fontFamily:     "'DM Sans', sans-serif",
-              marginTop:      4,
               boxShadow:      `0 0 28px ${T.accent}28`,
               transition:     "all .2s",
             }}
@@ -364,12 +417,6 @@ export default function TrialSignup({ onComplete, onBack }) {
               "Começar teste grátis →"
             )}
           </button>
-
-          {/* Termos */}
-          <p style={{ textAlign: "center", color: T.muted, fontSize: 11, margin: "1rem 0 0", lineHeight: 1.5 }}>
-            Ao criar a conta você concorda com nossos Termos de Uso.<br />
-            Sem cobrança automática após o teste.
-          </p>
         </div>
 
         {/* Voltar ao login */}
