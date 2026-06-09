@@ -1,8 +1,9 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { LineChart, Line, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine, ReferenceArea } from "recharts";
 import { supabase } from "./supabase";
-import Onboarding from "./Onboarding";
-import PlansView   from "./PlansView";
+import Onboarding   from "./Onboarding";
+import PlansView    from "./PlansView";
+import TrialSignup  from "./TrialSignup";
 import SuperAdminView from "./SuperAdminView";
 import ResetPassword from "./ResetPassword";
 import LandingPage from "./LandingPage";
@@ -125,6 +126,9 @@ const checkCurrentUserAccess = async (tok, profile) => {
 };
 
 const accessDeniedMessage = (reason) => {
+  if (reason === "trial_expired") {
+    return "Seu período de teste de 7 dias chegou ao fim. Assine um plano para continuar usando o Oz.Barber!";
+  }
   if (reason === "courtesy_revoked") {
     return "Seu acesso cortesia foi revogado. Entre em contato com o suporte ou assine um plano para continuar usando o sistema.";
   }
@@ -540,7 +544,7 @@ function DateRangePicker({ from, to, onChange }) {
 }
 
 // ── LOGIN VIEW ────────────────────────────────────────────────
-const LoginView = ({ onLogin, onShowPlans }) => {
+const LoginView = ({ onLogin, onShowPlans, onShowTrialSignup }) => {
   const [email, setEmail] = useState("");
   const [pass, setPass]   = useState("");
   const [showPass, setShowPass] = useState(false);
@@ -983,28 +987,39 @@ const LoginView = ({ onLogin, onShowPlans }) => {
             <div style={{ height: 1, flex: 1, background: T.border }} />
           </div>
 
-          <div
-            style={{
-              textAlign: "center",
-              fontSize: 14,
-              color: T.mutedLight,
-            }}
-          >
-            Não tem uma conta?{" "}
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, textAlign: "center" }}>
+            <div style={{ fontSize: 13, color: T.mutedLight }}>
+              Não tem uma conta?{" "}
+              <button
+                onClick={onShowPlans}
+                style={{ background: "transparent", border: "none", color: T.accent, cursor: "pointer", fontSize: 13, fontWeight: 900, fontFamily: "'DM Sans', sans-serif", padding: 0 }}
+              >
+                Assinar Plano
+              </button>
+            </div>
             <button
-              onClick={onShowPlans}
+              onClick={onShowTrialSignup}
               style={{
-                background: "transparent",
-                border: "none",
-                color: T.accent,
-                cursor: "pointer",
-                fontSize: 14,
-                fontWeight: 900,
-                fontFamily: "'DM Sans', sans-serif",
-                padding: 0,
+                width:          "100%",
+                minHeight:      40,
+                background:     "transparent",
+                color:          T.accent,
+                border:         `1px solid ${T.accent}55`,
+                borderRadius:   10,
+                fontSize:       13,
+                fontWeight:     800,
+                cursor:         "pointer",
+                fontFamily:     "'DM Sans', sans-serif",
+                display:        "inline-flex",
+                alignItems:     "center",
+                justifyContent: "center",
+                gap:            6,
+                transition:     "background .2s",
               }}
+              onMouseEnter={e => e.currentTarget.style.background = `${T.accent}12`}
+              onMouseLeave={e => e.currentTarget.style.background = "transparent"}
             >
-              Assinar Plano
+              ✦ Testar grátis por 7 dias
             </button>
           </div>
         </div>
@@ -1021,6 +1036,62 @@ const LoginView = ({ onLogin, onShowPlans }) => {
           Desenvolvido por OzTech SmartControl
         </div>
       </div>
+    </div>
+  );
+};
+
+// ── TRIAL BANNER ──────────────────────────────────────────────
+// Exibido no topo do app quando o usuário está em período de teste.
+// Mensagem progressiva conforme os dias restantes diminuem.
+const TrialBanner = ({ daysLeft, onSubscribe }) => {
+  const days = Math.ceil(daysLeft || 0);
+
+  let bg, text, borderColor;
+  if (days <= 1) {
+    bg = "#f0707018"; text = "#f07070"; borderColor = "#f0707044";
+  } else if (days <= 3) {
+    bg = "#f0a50018"; text = "#f0a500"; borderColor = "#f0a50044";
+  } else {
+    bg = "#4db8ff12"; text = "#4db8ff"; borderColor = "#4db8ff33";
+  }
+
+  const msg =
+    days <= 0  ? "Seu teste gratuito expirou." :
+    days === 1 ? "⚠️ Último dia de teste! Assine agora para não perder acesso." :
+    days <= 3  ? `⏳ Restam apenas ${days} dias do seu teste gratuito.` :
+                 `✦ Teste grátis: ${days} dia${days !== 1 ? "s" : ""} restante${days !== 1 ? "s" : ""}.`;
+
+  return (
+    <div style={{
+      display:        "flex",
+      alignItems:     "center",
+      justifyContent: "space-between",
+      gap:            12,
+      padding:        "0.55rem 1.25rem",
+      background:     bg,
+      borderBottom:   `1px solid ${borderColor}`,
+      flexShrink:     0,
+      flexWrap:       "wrap",
+    }}>
+      <span style={{ fontSize: 12, fontWeight: 700, color: text, lineHeight: 1.4 }}>{msg}</span>
+      <button
+        onClick={onSubscribe}
+        style={{
+          background:  text,
+          color:       "#061018",
+          border:      "none",
+          borderRadius: 7,
+          padding:     "0.32rem 0.75rem",
+          fontSize:    11,
+          fontWeight:  900,
+          cursor:      "pointer",
+          fontFamily:  "'DM Sans', sans-serif",
+          whiteSpace:  "nowrap",
+          flexShrink:  0,
+        }}
+      >
+        Assinar Plano
+      </button>
     </div>
   );
 };
@@ -5354,9 +5425,14 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     return params.get('plans') === 'true';
   });
+  const [showTrialSignup, setShowTrialSignup] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('trial') === 'true';
+  });
   // Landing page removida do app — acesse ozbarber-oztech.vercel.app
   const [showLanding,    setShowLanding]    = useState(false);
   const [expiredMsg,     setExpiredMsg]     = useState("");
+  const [trialInfo,      setTrialInfo]      = useState(null); // { daysLeft, expiresAt }
   const [postPaymentPlan, setPostPaymentPlan] = useState(null);
   const [courtesyEmail,setCourtesyEmail]= useState(null);
   const [shop,         setShop]         = useState(null);
@@ -5620,6 +5696,15 @@ export default function App() {
         setDataLoaded(true);
         return;
       }
+      // Captura info do trial para exibir o banner durante o período de teste
+      if (accessStatus?.reason === "trial_active") {
+        setTrialInfo({
+          daysLeft:  accessStatus.trial_days_left ?? 7,
+          expiresAt: accessStatus.expires_at,
+        });
+      } else {
+        setTrialInfo(null);
+      }
 
       const ensureArray = (value) => Array.isArray(value) ? value : [];
 
@@ -5684,6 +5769,15 @@ export default function App() {
         setLoading(false);
         return;
       }
+      // Captura info do trial para exibir o banner
+      if (accessStatus?.reason === "trial_active") {
+        setTrialInfo({
+          daysLeft:  accessStatus.trial_days_left ?? 7,
+          expiresAt: accessStatus.expires_at,
+        });
+      } else {
+        setTrialInfo(null);
+      }
     }
     await loadData(normalizedAuth.token, normalizedAuth.profile);
   }, [loadData]);
@@ -5727,6 +5821,7 @@ export default function App() {
     setView("dashboard");
     setShowPlans(false);
     setExpiredMsg("");
+    setTrialInfo(null);
   };
 
   const checkoutAuth = auth || safeLoadAuth() || (session?.access_token ? {
@@ -5746,6 +5841,7 @@ export default function App() {
       profile={checkoutAuth?.profile}
       authData={checkoutAuth}
       session={{ access_token: checkoutAuth?.token || checkoutAuth?.access_token, user: checkoutAuth?.user, profile: checkoutAuth?.profile }}
+      onTrial={!expiredMsg ? () => { setShowPlans(false); setShowTrialSignup(true); } : undefined}
     />
   );
 
@@ -5767,6 +5863,19 @@ export default function App() {
     </>
   );
 
+  if (!auth && showTrialSignup) return (
+    <><style>{CSS}</style>
+      <TrialSignup
+        onComplete={(authData) => {
+          setShowTrialSignup(false);
+          window.history.replaceState(null, "", window.location.pathname);
+          onLogin(authData);
+        }}
+        onBack={() => { setShowTrialSignup(false); window.history.replaceState(null, "", window.location.pathname); }}
+      />
+    </>
+  );
+
   if (!auth) {
     if (showLanding) return (
       <LandingPage
@@ -5774,7 +5883,7 @@ export default function App() {
         onSubscribe={() => { setShowLanding(false); setShowPlans(true); }}
       />
     );
-    return <><style>{CSS}</style><LoginView onLogin={onLogin} onShowPlans={() => setShowPlans(true)} /></>;
+    return <><style>{CSS}</style><LoginView onLogin={onLogin} onShowPlans={() => setShowPlans(true)} onShowTrialSignup={() => setShowTrialSignup(true)} /></>;
   }
 
   const isSuperAdmin =
@@ -5907,6 +6016,14 @@ export default function App() {
               <LogOut size={18}/>
             </button>
           </div>
+        )}
+
+        {/* Banner de trial ativo */}
+        {trialInfo && !isSuperAdmin && (
+          <TrialBanner
+            daysLeft={trialInfo.daysLeft}
+            onSubscribe={() => { setShowPlans(true); }}
+          />
         )}
 
         <main style={{ flex:1, overflow:"auto", padding: isMobile ? "1rem" : "2rem 2.25rem" }}>

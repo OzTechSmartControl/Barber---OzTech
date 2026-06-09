@@ -118,6 +118,7 @@ export default function PlansView({
   user,
   authData,
   session,
+  onTrial,
 }) {
   const [loadingPlan, setLoadingPlan] = useState(null); // "planId-pix" | "planId-subscription"
   const [payerEmail, setPayerEmail] = useState("");
@@ -396,6 +397,51 @@ export default function PlansView({
 
           <ErrMsg msg={err} />
           <SuccessMsg msg={successMsg} />
+
+          {/* Trial CTA — só aparece quando não há assinatura expirada (novo usuário) */}
+          {!expiredMessage && onTrial && (
+            <div
+              style={{
+                marginBottom: "0.75rem",
+                background:   "linear-gradient(135deg, rgba(77,184,255,.12), rgba(125,211,252,.06))",
+                border:       `1px solid ${T.accent}55`,
+                borderRadius:  14,
+                padding:      "1rem 1.15rem",
+                display:      "flex",
+                alignItems:   "center",
+                justifyContent: "space-between",
+                gap:          12,
+                flexWrap:     "wrap",
+              }}
+            >
+              <div>
+                <div style={{ fontWeight: 800, fontSize: 14, color: T.text, marginBottom: 3 }}>
+                  ✦ 7 dias grátis, sem cartão
+                </div>
+                <div style={{ fontSize: 12, color: T.mutedLight, lineHeight: 1.4 }}>
+                  Explore tudo do Oz.Barber sem compromisso.
+                </div>
+              </div>
+              <button
+                onClick={onTrial}
+                style={{
+                  background:     `linear-gradient(135deg, ${T.accent}, #7dd3fc)`,
+                  color:          "#061018",
+                  border:         "none",
+                  borderRadius:   10,
+                  padding:        "0.6rem 1.1rem",
+                  fontSize:       12,
+                  fontWeight:     900,
+                  cursor:         "pointer",
+                  fontFamily:     "'DM Sans', sans-serif",
+                  whiteSpace:     "nowrap",
+                  flexShrink:     0,
+                }}
+              >
+                Começar teste →
+              </button>
+            </div>
+          )}
 
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {PLANS.map((plan) => (
