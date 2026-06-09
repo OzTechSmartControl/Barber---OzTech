@@ -438,7 +438,7 @@ export default function PlansView({
                   flexShrink:     0,
                 }}
               >
-                Começar teste →
+                Começar teste
               </button>
             </div>
           )}

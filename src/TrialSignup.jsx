@@ -423,7 +423,7 @@ export default function TrialSignup({ onComplete, onBack }) {
             {loading ? (
               <><RefreshCw size={15} style={{ animation: "spin 1s linear infinite" }} /> Criando conta…</>
             ) : (
-              "Começar teste grátis →"
+              "Começar teste grátis"
             )}
           </button>
         </div>
