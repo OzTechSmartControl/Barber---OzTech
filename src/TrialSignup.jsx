@@ -364,7 +364,7 @@ export default function TrialSignup({ onComplete, onBack }) {
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={e => e.stopPropagation()}
-                  style={{ color: T.text, textDecoration: "underline", textUnderlineOffset: 2 }}
+                  style={{ color: T.text, textDecoration: "underline", textUnderlineOffset: 2, whiteSpace: "nowrap" }}
                 >
                   Termos de Uso
                 </a>
@@ -374,7 +374,7 @@ export default function TrialSignup({ onComplete, onBack }) {
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={e => e.stopPropagation()}
-                  style={{ color: T.text, textDecoration: "underline", textUnderlineOffset: 2 }}
+                  style={{ color: T.text, textDecoration: "underline", textUnderlineOffset: 2, whiteSpace: "nowrap" }}
                 >
                   Política de Privacidade
                 </a>
