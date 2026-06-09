@@ -49,6 +49,15 @@
     .btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
     .btn-primary.lg { padding: .9rem 2rem; font-size: 15px; border-radius: 13px; box-shadow: 0 8px 28px rgba(77,184,255,.32); }
     a.btn-primary, a.btn-ghost, a.plan-btn { text-decoration: none; }
+    .btn-trial {
+      background: #43d18a; border: none; border-radius: 10px;
+      padding: .5rem 1.2rem; color: #061a0d; font-size: 13px; font-weight: 700;
+      cursor: pointer; font-family: 'DM Sans', sans-serif;
+      box-shadow: 0 4px 18px rgba(67,209,138,.3); transition: filter .18s, transform .18s;
+      display: inline-flex; align-items: center; gap: 7px; text-decoration: none;
+    }
+    .btn-trial:hover { filter: brightness(1.08); transform: translateY(-1px); }
+    .btn-trial.lg { padding: .9rem 2rem; font-size: 15px; border-radius: 13px; box-shadow: 0 8px 28px rgba(67,209,138,.35); }
 
     /* CONTAINER */
     .container { max-width: 1520px; margin: 0 auto; padding: 0 4%; }
@@ -443,6 +452,9 @@
     <a href="#benefits">Benefícios</a>
   </div>
   <div class="actions">
+    <a href="https://ozbarber.oztechsmartcontrol.com.br/termos" class="btn-trial">
+      🎁 7 dias grátis
+    </a>
     <a href="https://ozbarber.oztechsmartcontrol.com.br/?plans=true" class="btn-primary">
       Assinar Plano
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
@@ -481,11 +493,17 @@
 
         <!-- CTAs -->
         <div class="hero-cta">
-          <a href="https://ozbarber.oztechsmartcontrol.com.br/?plans=true" class="btn-primary lg">
-            Começar agora
+          <a href="https://ozbarber.oztechsmartcontrol.com.br/termos" class="btn-trial lg">
+            🎁 Experimentar 7 dias grátis
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
           </a>
           <a href="https://ozbarber.oztechsmartcontrol.com.br/" class="btn-ghost" style="padding:.9rem 1.6rem;font-size:15px;border-radius:13px">Já tenho conta</a>
+        </div>
+        <div style="margin-top:-.4rem">
+          <a href="https://ozbarber.oztechsmartcontrol.com.br/?plans=true" style="font-size:13px;color:#706b63;text-decoration:none;display:inline-flex;align-items:center;gap:5px;transition:color .18s" onmouseover="this.style.color='#4db8ff'" onmouseout="this.style.color='#706b63'">
+            Prefiro assinar agora
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </a>
         </div>
 
         <!-- Badges com ícones -->
@@ -714,6 +732,12 @@
     </div>
 
     <div class="plans-note">Pagamento seguro via Mercado Pago · Pix, cartão de crédito e boleto</div>
+    <div style="text-align:center;margin-top:1.2rem">
+      <a href="https://ozbarber.oztechsmartcontrol.com.br/termos" class="btn-trial" style="margin:0 auto">
+        🎁 Ou experimente grátis por 7 dias — sem cartão de crédito
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </a>
+    </div>
   </div>
 </section>
 
