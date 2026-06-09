@@ -84,6 +84,7 @@ export default function TrialSignup({ onComplete, onBack }) {
                                 return "Informe um e-mail válido.";
     if (password.length < 6)    return "A senha deve ter no mínimo 6 caracteres.";
     if (!barbershopName.trim()) return "Informe o nome da sua barbearia.";
+    if (!phone.trim())          return "Informe seu WhatsApp para contato.";
     return null;
   };
 
@@ -302,7 +303,7 @@ export default function TrialSignup({ onComplete, onBack }) {
 
           <div style={{ display: "flex", gap: 12 }}>
             <div style={{ flex: 1 }}>
-              <FieldWrap label="WhatsApp (opcional)">
+              <FieldWrap label="WhatsApp">
                 <FieldIcon icon={Phone} />
                 <input
                   style={inputSt}
