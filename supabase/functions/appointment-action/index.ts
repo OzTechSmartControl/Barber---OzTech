@@ -126,8 +126,11 @@ Deno.serve(async (req) => {
   const name    = appt.client_name || "";
   const shopN   = shop.name;
 
-  // Remove ?v=... do final da URL para evitar conflito com query params do redirect
-  const logo = (shop.logo_url || "").split("?")[0];
+  // Passa só o path da logo (ex: "shopId/file.jpg") para evitar problemas de encoding
+  // A URL completa é reconstruída no React com SUPABASE_URL fixo
+  const LOGO_BASE = `${SUPABASE_URL}/storage/v1/object/public/logos/`;
+  const rawLogo   = (shop.logo_url || "").split("?")[0];
+  const logo      = rawLogo.startsWith(LOGO_BASE) ? rawLogo.slice(LOGO_BASE.length) : "";
 
   // Ação já processada
   if (appt.status === "confirmed" && action === "confirm") {

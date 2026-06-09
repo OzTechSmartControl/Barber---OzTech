@@ -5390,7 +5390,10 @@ export default function App() {
     const params     = new URLSearchParams(window.location.search);
     const clientName = params.get("name")  || "o cliente";
     const shopName   = params.get("shop")  || "";
-    const shopLogo   = params.get("logo")  || "";
+    const logoPath   = params.get("logo")  || "";
+    const shopLogo   = logoPath
+      ? `${SUPABASE_URL}/storage/v1/object/public/logos/${logoPath}`
+      : "";
     const shopColor  = params.get("color") || "";
 
     const cfg = {
