@@ -337,55 +337,64 @@ export default function TrialSignup({ onComplete, onBack }) {
           </div>
 
           {/* Aceite dos Termos de Uso */}
-          <div
-            onClick={() => setAgreedToTerms(v => !v)}
-            style={{
-              display:     "flex",
-              alignItems:  "flex-start",
-              gap:         10,
-              cursor:      "pointer",
-              marginBottom: "1rem",
-              marginTop:   4,
-            }}
-          >
+          <div style={{ marginTop: 4, marginBottom: "1rem" }}>
+            <div
+              onClick={() => setAgreedToTerms(v => !v)}
+              style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer" }}
+            >
+              <div style={{
+                width:          18,
+                height:         18,
+                borderRadius:   5,
+                border:         `2px solid ${agreedToTerms ? T.accent : T.border}`,
+                background:     agreedToTerms ? T.accent : "transparent",
+                display:        "flex",
+                alignItems:     "center",
+                justifyContent: "center",
+                flexShrink:     0,
+                marginTop:      2,
+                transition:     "all .15s",
+              }}>
+                {agreedToTerms && <Check size={11} color="#061018" strokeWidth={3} />}
+              </div>
+              <span style={{ fontSize: 12, color: T.mutedLight, lineHeight: 1.6, userSelect: "none" }}>
+                Li e concordo com os{" "}
+                <a
+                  href="/termos"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={e => e.stopPropagation()}
+                  style={{ color: T.text, textDecoration: "underline", textUnderlineOffset: 2 }}
+                >
+                  Termos de Uso
+                </a>
+                {" "}e a{" "}
+                <a
+                  href="/privacidade"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={e => e.stopPropagation()}
+                  style={{ color: T.text, textDecoration: "underline", textUnderlineOffset: 2 }}
+                >
+                  Política de Privacidade
+                </a>
+                .
+              </span>
+            </div>
+
+            {/* Garantia sem cobrança */}
             <div style={{
-              width:        18,
-              height:       18,
-              borderRadius: 5,
-              border:       `2px solid ${agreedToTerms ? T.accent : T.border}`,
-              background:   agreedToTerms ? T.accent : "transparent",
               display:      "flex",
               alignItems:   "center",
-              justifyContent: "center",
-              flexShrink:   0,
-              marginTop:    1,
-              transition:   "all .15s",
+              gap:          6,
+              marginTop:    8,
+              marginLeft:   28,
+              fontSize:     12,
+              color:        T.success,
+              fontWeight:   600,
             }}>
-              {agreedToTerms && <Check size={11} color="#061018" strokeWidth={3} />}
+              ✅ Sem cobrança automática após os 7 dias de teste.
             </div>
-            <span style={{ fontSize: 12, color: T.mutedLight, lineHeight: 1.55, userSelect: "none" }}>
-              Li e concordo com os{" "}
-              <a
-                href="https://ozbarber.oztechsmartcontrol.com.br/termos"
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={e => e.stopPropagation()}
-                style={{ color: T.accent, fontWeight: 700, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 3 }}
-              >
-                Termos de Uso <ExternalLink size={10} />
-              </a>
-              {" "}e a{" "}
-              <a
-                href="https://ozbarber.oztechsmartcontrol.com.br/privacidade"
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={e => e.stopPropagation()}
-                style={{ color: T.accent, fontWeight: 700, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 3 }}
-              >
-                Política de Privacidade <ExternalLink size={10} />
-              </a>
-              . Sem cobrança automática após o teste.
-            </span>
           </div>
 
           {/* Botão de envio */}
