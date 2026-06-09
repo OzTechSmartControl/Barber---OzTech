@@ -5405,7 +5405,7 @@ export default function App() {
       // Resultados para o cliente (e-mail de lembrete — confirmar/cancelar)
       confirmed_me:     { icon:"✓", baseColor:"#22c55e", title:"Presença Confirmada!", msg:"Recebemos sua confirmação e seu horário está reservado. Nos vemos em breve!" },
       already_confirmed:{ icon:"✓", baseColor:"#22c55e", title:"Presença Confirmada!", msg:"Recebemos sua confirmação e seu horário está reservado. Nos vemos em breve!" },
-      cancelled_me:     { icon:"✕", baseColor:"#ef4444", title:"Agendamento Cancelado", msg:"Seu agendamento foi cancelado. O horário está livre novamente." },
+      cancelled_me:     { icon:"✕", baseColor:"#ef4444", title:"Agendamento Cancelado", msg:"Seu agendamento foi cancelado com sucesso. O estabelecimento será informado e o horário será liberado para atendimento de outro cliente." },
       already_cancelled:{ icon:"✕", baseColor:"#ef4444", title:"Já Cancelado",          msg:"Este agendamento já havia sido cancelado." },
       completed:        { icon:"✂", baseColor:"#6b7280", title:"Atendimento Realizado", msg:"Este atendimento já foi realizado." },
       notfound:         { icon:"?", baseColor:"#6b7280", title:"Não Encontrado",        msg:"Agendamento não encontrado ou link expirado." },
