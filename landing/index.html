@@ -426,6 +426,22 @@
       .footer-right { justify-content: center; }
     }
 
+    @media (max-width: 640px) {
+      /* Nav mobile: esconde "Já tenho conta", reduz gap */
+      nav { padding: 0 1rem; }
+      nav .actions .btn-ghost { display: none; }
+      nav .actions { gap: 7px; }
+
+      /* Botões de planos: largura total, texto centralizado */
+      .plans-cta-btn {
+        width: 100%; justify-content: center; text-align: center;
+        font-size: 14px; padding: .85rem 1.2rem;
+      }
+      .plans-trial-wrap .btn-trial {
+        width: 100%; justify-content: center; text-align: center;
+      }
+    }
+
     @media (max-width: 540px) {
       section { padding: 40px 0; }
       .container { padding: 0 5%; }
@@ -437,6 +453,9 @@
       .mobile-slider { max-width: 260px; }
       .plans-grid { max-width: 100%; }
       h2.section-title { font-size: clamp(26px, 8vw, 44px); }
+
+      /* Botões nav ainda menores em telas muito pequenas */
+      .btn-trial, .btn-primary { padding: .44rem .85rem; font-size: 12px; }
     }
 
     /* SVG icons inline */
@@ -760,7 +779,7 @@
     </div>
 
     <div class="plans-note">Pagamento seguro via Mercado Pago · Pix, cartão de crédito e boleto</div>
-    <div style="text-align:center;margin-top:1.2rem">
+    <div class="plans-trial-wrap" style="text-align:center;margin-top:1.2rem">
       <a href="https://ozbarber.oztechsmartcontrol.com.br/?trial=true" class="btn-trial" style="margin:0 auto">
         🎁 Ou experimente grátis por 7 dias, sem cartão de crédito
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
