@@ -303,37 +303,32 @@ export default function TrialSignup({ onComplete, onBack }) {
             />
           </FieldWrap>
 
-          <div style={{ display: "flex", gap: 12 }}>
-            <div style={{ flex: 1 }}>
-              <FieldWrap label="WhatsApp">
-                <FieldIcon icon={Phone} />
-                <input
-                  style={inputSt}
-                  type="tel"
-                  placeholder="(11) 99999-9999"
-                  value={phone}
-                  onChange={e => setPhone(e.target.value)}
-                  onKeyDown={onKey}
-                />
-              </FieldWrap>
+          <FieldWrap label="WhatsApp">
+            <FieldIcon icon={Phone} />
+            <input
+              style={inputSt}
+              type="tel"
+              placeholder="(11) 99999-9999"
+              value={phone}
+              onChange={e => setPhone(e.target.value)}
+              onKeyDown={onKey}
+            />
+          </FieldWrap>
+
+          <div style={{ marginBottom: ".65rem" }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: T.mutedLight, marginBottom: 6, textTransform: "uppercase", letterSpacing: 1.2 }}>
+              Como nos encontrou?
             </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ marginBottom: "1rem" }}>
-                <div style={{ fontSize: 11, fontWeight: 800, color: T.mutedLight, marginBottom: 6, textTransform: "uppercase", letterSpacing: 1.2 }}>
-                  Como nos encontrou?
-                </div>
-                <select
-                  value={source}
-                  onChange={e => setSource(e.target.value)}
-                  style={{ ...inputSt, paddingLeft: "0.85rem", cursor: "pointer" }}
-                >
-                  <option value="">Selecionar...</option>
-                  {SOURCE_OPTIONS.map(opt => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
+            <select
+              value={source}
+              onChange={e => setSource(e.target.value)}
+              style={{ ...inputSt, paddingLeft: "0.85rem", cursor: "pointer" }}
+            >
+              <option value="">Selecionar...</option>
+              {SOURCE_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
           </div>
 
           {/* Aceite dos Termos de Uso */}
