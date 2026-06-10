@@ -1,7 +1,8 @@
 {
   "rewrites": [
-    { "source": "/termos",      "destination": "/termos.html"      },
-    { "source": "/privacidade", "destination": "/privacidade.html" },
-    { "source": "/(.*)",        "destination": "/"                 }
+    { "source": "/.well-known/assetlinks.json", "destination": "/.well-known/assetlinks.json" },
+    { "source": "/termos",                      "destination": "/termos.html"                 },
+    { "source": "/privacidade",                 "destination": "/privacidade.html"            },
+    { "source": "/(.*)",                        "destination": "/"                            }
   ]
 }

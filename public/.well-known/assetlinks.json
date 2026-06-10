@@ -1,0 +1,8 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.oztechsmartcontrol.ozbarber",
+    "sha256_cert_fingerprints": ["D9:88:8D:0D:60:B6:87:A7:32:28:AD:85:BC:BA:B5:67:A4:BC:7D:1F:EF:53:1C:D5:FA:CC:7F:A7:97:2C:C2:1D"]
+  }
+}]
