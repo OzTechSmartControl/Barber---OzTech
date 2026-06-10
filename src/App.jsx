@@ -671,7 +671,7 @@ const LoginView = ({ onLogin, onShowPlans, onShowTrialSignup }) => {
         background:
           "radial-gradient(circle at 50% 10%, rgba(77,184,255,.10), transparent 27%), radial-gradient(circle at 50% 55%, rgba(77,184,255,.055), transparent 34%), #08090c",
         fontFamily: "'DM Sans', sans-serif",
-        padding: "2rem 1rem",
+        padding: "clamp(.5rem, 2vh, 1.25rem) 1rem",
         overflowX: "hidden",
       }}
     >
@@ -691,12 +691,12 @@ const LoginView = ({ onLogin, onShowPlans, onShowTrialSignup }) => {
           alignItems: "center",
         }}
       >
-        <div style={{ textAlign: "center", marginBottom: "1rem" }}>
+        <div style={{ textAlign: "center", marginBottom: ".5rem" }}>
           <img
             src="/ozbarber-logo.png"
             alt="Oz.Barber"
             style={{
-              width: 230,
+              width: "clamp(140px, 48vw, 200px)",
               maxWidth: "72vw",
               height: "auto",
               display: "block",
@@ -712,7 +712,7 @@ const LoginView = ({ onLogin, onShowPlans, onShowTrialSignup }) => {
             background: "linear-gradient(180deg, rgba(26,26,36,.94), rgba(14,16,24,.96))",
             border: `1px solid ${T.accent}66`,
             borderRadius: 16,
-            padding: "1.75rem 1.8rem",
+            padding: "1.25rem 1.5rem",
             boxShadow: "0 28px 90px rgba(0,0,0,.48), 0 0 42px rgba(77,184,255,.08)",
             backdropFilter: "blur(8px)",
           }}
@@ -732,7 +732,7 @@ const LoginView = ({ onLogin, onShowPlans, onShowTrialSignup }) => {
 
           <p
             style={{
-              margin: ".75rem 0 1.55rem",
+              margin: ".35rem 0 1rem",
               color: T.mutedLight,
               fontSize: 13,
               lineHeight: 1.55,
@@ -977,7 +977,7 @@ const LoginView = ({ onLogin, onShowPlans, onShowTrialSignup }) => {
               display: "flex",
               alignItems: "center",
               gap: 14,
-              margin: "1.25rem 0 .9rem",
+              margin: ".85rem 0 .6rem",
               color: T.muted,
               fontSize: 12,
             }}
