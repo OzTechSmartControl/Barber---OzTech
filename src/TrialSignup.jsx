@@ -58,7 +58,7 @@ const FieldIcon = ({ icon: Icon }) => (
 );
 
 const FieldWrap = ({ label, children }) => (
-  <div style={{ marginBottom: "1rem" }}>
+  <div style={{ marginBottom: ".65rem" }}>
     <div style={{ fontSize: 11, fontWeight: 800, color: T.mutedLight, marginBottom: 6, textTransform: "uppercase", letterSpacing: 1.2 }}>
       {label}
     </div>
@@ -183,7 +183,7 @@ export default function TrialSignup({ onComplete, onBack }) {
         background:
           "radial-gradient(circle at 50% 8%, rgba(77,184,255,.10), transparent 26%), radial-gradient(circle at 80% 80%, rgba(77,184,255,.04), transparent 30%), #08090c",
         fontFamily: "'DM Sans', sans-serif",
-        padding: "2rem 1rem",
+        padding: "clamp(.5rem, 2vh, 1rem) 1rem",
         overflowX: "hidden",
       }}
     >
@@ -198,11 +198,11 @@ export default function TrialSignup({ onComplete, onBack }) {
       <div style={{ width: "100%", maxWidth: 440 }}>
 
         {/* Logo */}
-        <div style={{ textAlign: "center", marginBottom: "1.25rem" }}>
+        <div style={{ textAlign: "center", marginBottom: ".5rem" }}>
           <img
             src="/ozbarber-logo.png"
             alt="Oz.Barber"
-            style={{ width: 200, maxWidth: "70vw", height: "auto", display: "block", margin: "0 auto", filter: "drop-shadow(0 0 22px rgba(77,184,255,.22))" }}
+            style={{ width: "clamp(110px, 36vw, 165px)", maxWidth: "70vw", height: "auto", display: "block", margin: "0 auto", filter: "drop-shadow(0 0 22px rgba(77,184,255,.22))" }}
           />
         </div>
 
@@ -212,13 +212,13 @@ export default function TrialSignup({ onComplete, onBack }) {
             background:    "linear-gradient(180deg, rgba(26,26,36,.96), rgba(14,16,24,.97))",
             border:        `1px solid ${T.accent}55`,
             borderRadius:  16,
-            padding:       "1.75rem 1.8rem",
+            padding:       "1rem 1.35rem",
             boxShadow:     "0 28px 90px rgba(0,0,0,.5), 0 0 42px rgba(77,184,255,.07)",
             backdropFilter:"blur(8px)",
           }}
         >
           {/* Trial badge */}
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: "1rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: ".5rem" }}>
             <div style={{ background: `${T.accent}18`, border: `1px solid ${T.accent}44`, borderRadius: 8, padding: "4px 10px", fontSize: 11, fontWeight: 800, color: T.accent, letterSpacing: 0.5 }}>
               7 DIAS GRÁTIS
             </div>
@@ -228,7 +228,7 @@ export default function TrialSignup({ onComplete, onBack }) {
           <h1 style={{ margin: "0 0 4px", color: T.text, fontSize: 22, fontWeight: 900, letterSpacing: -.3 }}>
             Criar conta de teste
           </h1>
-          <p style={{ margin: "0 0 1.5rem", color: T.mutedLight, fontSize: 13, lineHeight: 1.55 }}>
+          <p style={{ margin: "0 0 .75rem", color: T.mutedLight, fontSize: 13, lineHeight: 1.45 }}>
             Configure sua barbearia em minutos e explore tudo por 7 dias.
           </p>
 
@@ -337,7 +337,7 @@ export default function TrialSignup({ onComplete, onBack }) {
           </div>
 
           {/* Aceite dos Termos de Uso */}
-          <div style={{ marginTop: 4, marginBottom: "1rem" }}>
+          <div style={{ marginTop: 2, marginBottom: ".65rem" }}>
             <div
               onClick={() => setAgreedToTerms(v => !v)}
               style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer" }}
