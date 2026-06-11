@@ -2844,8 +2844,8 @@ function FinancialView({ attendances, expenses, setExpenses, token, barbershopId
       {/* ── Filtro de período ── */}
       <div style={{ marginBottom:"1.5rem" }}>
 
-        {/* Dropdowns Ano / Mês */}
-        <div style={{ display:"flex", gap:12, flexWrap:"wrap", marginBottom:"0.75rem" }}>
+        {/* Dropdowns Ano / Mês + DateRangePicker na mesma linha */}
+        <div style={{ display:"flex", gap:12, flexWrap:"wrap", alignItems:"flex-end" }}>
           <div style={{ display:"flex", flexDirection:"column", gap:4, minWidth:120 }}>
             <span style={{ fontSize:11, color:T.muted, fontWeight:600, letterSpacing:.5 }}>ANO</span>
             <select style={selSt} value={dropYear}
@@ -2862,9 +2862,6 @@ function FinancialView({ attendances, expenses, setExpenses, token, barbershopId
               {MONTHS_PT.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
           </div>
-        </div>
-        {/* Seletor de data personalizado */}
-        <div style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap", flexDirection: isMobile ? "column" : "row" }}>
           <DateRangePicker
             from={filterFrom}
             to={filterTo}
