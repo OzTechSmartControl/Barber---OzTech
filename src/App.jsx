@@ -3583,12 +3583,30 @@ const uploadBarberPhoto = async (tok, file, shopId, barberId) => {
   return `${SUPABASE_URL}/storage/v1/object/public/logos/${path}?v=${Date.now()}`;
 };
 
+const DAYS_CFG = [
+  { key: "sunday",    label: "Domingo"   },
+  { key: "monday",    label: "Segunda"   },
+  { key: "tuesday",   label: "Terça"     },
+  { key: "wednesday", label: "Quarta"    },
+  { key: "thursday",  label: "Quinta"    },
+  { key: "friday",    label: "Sexta"     },
+  { key: "saturday",  label: "Sábado"    },
+];
+const DEFAULT_HOURS = Object.fromEntries(
+  DAYS_CFG.map(({ key }) => [key, { open: "09:00", close: "18:00", enabled: key !== "sunday" }])
+);
+const parseBusinessHours = (raw) => {
+  if (!raw) return { ...DEFAULT_HOURS };
+  if (typeof raw === "object" && !Array.isArray(raw)) return raw;
+  try { return JSON.parse(raw); } catch { return { ...DEFAULT_HOURS }; }
+};
+
 function SettingsView({ token, shop, onShopUpdated, themeMode = "dark", onToggleTheme }) {
   const [name, setName] = useState(shop?.name || "");
   const [phone, setPhone] = useState(shop?.phone || "");
   const [address, setAddress] = useState(shop?.address || "");
   const [whatsapp, setWhatsapp] = useState(shop?.whatsapp || "");
-  const [businessHours, setBusinessHours] = useState(shop?.business_hours || "");
+  const [businessHours, setBusinessHours] = useState(() => parseBusinessHours(shop?.business_hours));
   const [accent, setAccent] = useState(() => normalizeHex(shop?.accent_color));
   const [logoFile, setLogoFile] = useState(null);
   const [logoPreview, setLogoPreview] = useState("");
@@ -3601,7 +3619,7 @@ function SettingsView({ token, shop, onShopUpdated, themeMode = "dark", onToggle
     setPhone(shop?.phone || "");
     setAddress(shop?.address || "");
     setWhatsapp(shop?.whatsapp || "");
-    setBusinessHours(shop?.business_hours || "");
+    setBusinessHours(parseBusinessHours(shop?.business_hours));
     setAccent(normalizeHex(shop?.accent_color));
     setLogoFile(null);
     setLogoPreview("");
@@ -3656,7 +3674,7 @@ function SettingsView({ token, shop, onShopUpdated, themeMode = "dark", onToggle
           p_whatsapp: whatsapp.trim() || null,
           p_accent_color: normalizeHex(accent),
           p_logo_url: logoUrl || null,
-          p_business_hours: businessHours.trim() || null,
+          p_business_hours: businessHours || null,
         }),
       });
 
@@ -3744,17 +3762,55 @@ function SettingsView({ token, shop, onShopUpdated, themeMode = "dark", onToggle
             />
           </FG>
 
-          <FG label="Horário de Funcionamento" style={{ gridColumn: "1 / -1" }}>
-            <input
-              value={businessHours}
-              onChange={(e) => setBusinessHours(e.target.value)}
-              placeholder="Ex: Seg-Sex: 9h-19h | Sáb: 8h-18h | Dom: Fechado"
-              style={inputSt}
-            />
-          </FG>
         </div>
         <div style={{ marginTop: "0.75rem", fontSize: 12, color: T.muted }}>
           💡 Essas informações aparecem na sua página de agendamento online para os clientes.
+        </div>
+      </Card>
+
+      {/* ── Card Horário de Funcionamento ── */}
+      <Card style={{ marginBottom: "1.25rem" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:"1.25rem" }}>
+          <div style={{ background:T.accentGlow, borderRadius:12, padding:10, display:"flex" }}>
+            <Clock size={19} color={T.accent} />
+          </div>
+          <div>
+            <div style={{ color:T.text, fontWeight:800, fontSize:15 }}>Horário de Funcionamento</div>
+            <div style={{ color:T.muted, fontSize:12, marginTop:2 }}>Exibido na página de agendamento online para os clientes.</div>
+          </div>
+        </div>
+
+        <div>
+          {DAYS_CFG.map(({ key, label }) => {
+            const day = businessHours?.[key] ?? { open:"09:00", close:"18:00", enabled: key !== "sunday" };
+            const setDay = (field, value) =>
+              setBusinessHours(prev => ({ ...prev, [key]: { ...day, [field]: value } }));
+            return (
+              <div key={key} style={{ display:"flex", alignItems:"center", gap:14, padding:"0.6rem 0", borderBottom:`1px solid ${T.border}` }}>
+                {/* Toggle */}
+                <div
+                  onClick={() => setDay("enabled", !day.enabled)}
+                  style={{ width:40, height:22, borderRadius:99, background: day.enabled ? T.accent : T.border, cursor:"pointer", flexShrink:0, position:"relative", transition:"background .2s" }}
+                >
+                  <div style={{ position:"absolute", top:3, left: day.enabled ? 20 : 3, width:16, height:16, borderRadius:"50%", background:"#fff", transition:"left .2s", boxShadow:"0 1px 3px rgba(0,0,0,.3)" }}/>
+                </div>
+                {/* Day label */}
+                <span style={{ fontSize:14, fontWeight:600, color: day.enabled ? T.text : T.muted, width:72, flexShrink:0 }}>
+                  {label}
+                </span>
+                {/* Time pickers or "Fechado" */}
+                {day.enabled ? (
+                  <div style={{ display:"flex", alignItems:"center", gap:8, flex:1 }}>
+                    <input type="time" value={day.open}  onChange={e => setDay("open",  e.target.value)} style={{ ...inputSt, flex:"1 1 100px", colorScheme:"dark" }}/>
+                    <span style={{ color:T.muted, fontSize:13, flexShrink:0 }}>até</span>
+                    <input type="time" value={day.close} onChange={e => setDay("close", e.target.value)} style={{ ...inputSt, flex:"1 1 100px", colorScheme:"dark" }}/>
+                  </div>
+                ) : (
+                  <span style={{ fontSize:13, color:T.muted, fontStyle:"italic" }}>Fechado</span>
+                )}
+              </div>
+            );
+          })}
         </div>
       </Card>
 

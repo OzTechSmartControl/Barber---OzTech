@@ -29,6 +29,42 @@ const inputSt = {
   MozAppearance: "none",
 };
 
+const WEEK = [
+  { key:"sunday",    s:"Dom" },
+  { key:"monday",    s:"Seg" },
+  { key:"tuesday",   s:"Ter" },
+  { key:"wednesday", s:"Qua" },
+  { key:"thursday",  s:"Qui" },
+  { key:"friday",    s:"Sex" },
+  { key:"saturday",  s:"Sáb" },
+];
+
+const formatBusinessHours = (raw) => {
+  if (!raw) return null;
+  const h = typeof raw === "string" ? (() => { try { return JSON.parse(raw); } catch { return null; } })() : raw;
+  if (!h) return null;
+  const lines = [];
+  let i = 0;
+  while (i < WEEK.length) {
+    const d = WEEK[i];
+    const cur = h[d.key];
+    if (!cur?.enabled) {
+      let j = i + 1;
+      while (j < WEEK.length && !h[WEEK[j].key]?.enabled) j++;
+      lines.push(`${d.s}${j - i > 1 ? `-${WEEK[j-1].s}` : ""}: Fechado`);
+      i = j;
+    } else {
+      let j = i + 1;
+      while (j < WEEK.length && h[WEEK[j].key]?.enabled &&
+             h[WEEK[j].key].open === cur.open && h[WEEK[j].key].close === cur.close) j++;
+      const range = j - i > 1 ? `${d.s}-${WEEK[j-1].s}` : d.s;
+      lines.push(`${range}: ${cur.open} às ${cur.close}`);
+      i = j;
+    }
+  }
+  return lines.join("  |  ");
+};
+
 const todayISO = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -243,7 +279,9 @@ export default function BookingPage({ slug }) {
       </div>
 
       {/* Info bar: endereço, horário, contato */}
-      {(shop?.address || shop?.business_hours || shop?.phone || shop?.whatsapp) && (
+      {(shop?.address || shop?.business_hours || shop?.phone || shop?.whatsapp) && (() => {
+        const hoursText = formatBusinessHours(shop.business_hours);
+        return (
         <div style={{ background:BT.surface, borderBottom:`1px solid ${BT.border}`, padding:"0.75rem 1.5rem", display:"flex", flexWrap:"wrap", gap:"0.75rem 1.5rem" }}>
           {shop?.address && (
             <div style={{ display:"flex", alignItems:"flex-start", gap:7, fontSize:13, color:BT.muted, flex:"1 1 200px", minWidth:0 }}>
@@ -253,12 +291,12 @@ export default function BookingPage({ slug }) {
               <span style={{ lineHeight:1.4 }}>{shop.address}</span>
             </div>
           )}
-          {shop?.business_hours && (
+          {hoursText && (
             <div style={{ display:"flex", alignItems:"flex-start", gap:7, fontSize:13, color:BT.muted, flex:"1 1 200px", minWidth:0 }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink:0, marginTop:1 }}>
                 <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
               </svg>
-              <span style={{ lineHeight:1.4 }}>{shop.business_hours}</span>
+              <span style={{ lineHeight:1.4 }}>{hoursText}</span>
             </div>
           )}
           {(shop?.whatsapp || shop?.phone) && (() => {
@@ -284,7 +322,8 @@ export default function BookingPage({ slug }) {
             );
           })()}
         </div>
-      )}
+        );
+      })()}
 
       {step < 5 && (
         <div style={{ maxWidth:540, margin:"0 auto", padding:"1.5rem 1rem 4rem" }}>
