@@ -4420,7 +4420,7 @@ function ProductsView({ products, setProducts, productSales, setProductSales, ba
                 {UNIT_OPTS.map(u => <option key={u}>{u}</option>)}
               </select>
             </FG>
-            <FG label="Comissão barbeiro (%)" half><input style={inputSt} type="number" min="0" max="100" step="0.5" value={form.commissionPct} onChange={setF("commissionPct")} placeholder="0"/></FG>
+            <FG label="Comissão barb. (%)" half><input style={inputSt} type="number" min="0" max="100" step="0.5" value={form.commissionPct} onChange={setF("commissionPct")} placeholder="0"/></FG>
           </Row>
           <Row>
             <FG label="Status" half>
