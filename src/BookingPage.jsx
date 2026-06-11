@@ -283,7 +283,7 @@ export default function BookingPage({ slug }) {
       {shop?.business_hours && (() => {
         const hoursText = formatBusinessHours(shop.business_hours);
         return hoursText ? (
-          <div style={{ background:BT.surface, borderBottom:`1px solid ${BT.border}`, padding:"0.5rem 1rem", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+          <div style={{ background:BT.surface, padding:"0.5rem 1rem", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink:0 }}>
               <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
             </svg>
@@ -673,7 +673,7 @@ export default function BookingPage({ slug }) {
       {/* ── Info bar + Pagamento + Facilidades (rodapé da página) ── */}
       {(shop?.address || shop?.phone || shop?.whatsapp || shop?.payment_methods?.length > 0 || shop?.amenities?.length > 0) && (() => {
         return (
-          <div style={{ borderTop:`1px solid ${BT.border}`, marginTop:"1rem" }}>
+          <div style={{ marginTop:"1rem" }}>
             {shop?.address && (
               <div style={{ background:BT.surface, padding:"0.5rem 1.5rem", display:"flex", alignItems:"center", justifyContent:"center", gap:6, fontSize:12, color:BT.muted }}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink:0 }}>
