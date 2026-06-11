@@ -1503,8 +1503,8 @@ function AttendancesView({ attendances, setAttendances, clients, setClients, ser
     newClientName: "", newClientPhone: "",
   });
 
-  const [filterFrom,   setFilterFrom]   = useState(() => { const d = new Date(); d.setDate(d.getDate() - 6); return d.toISOString().slice(0,10); });
-  const [filterTo,     setFilterTo]     = useState(today);
+  const [filterFrom,   setFilterFrom]   = useState(() => { const d = new Date(); d.setDate(d.getDate() - d.getDay()); return d.toISOString().slice(0,10); });
+  const [filterTo,     setFilterTo]     = useState(() => { const d = new Date(); d.setDate(d.getDate() + (6 - d.getDay())); return d.toISOString().slice(0,10); });
   const [filterBarber, setFilterBarber] = useState("");
   const [showModal,    setShowModal]    = useState(false);
   const [saving,       setSaving]       = useState(false);
