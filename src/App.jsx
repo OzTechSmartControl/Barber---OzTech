@@ -1503,8 +1503,8 @@ function AttendancesView({ attendances, setAttendances, clients, setClients, ser
     newClientName: "", newClientPhone: "",
   });
 
-  const [filterFrom,   setFilterFrom]   = useState(() => { const t = today(); return t.substring(0,7) + "-01"; });
-  const [filterTo,     setFilterTo]     = useState(() => { const d = new Date(); d.setMonth(d.getMonth() + 1); return d.toISOString().slice(0, 10); });
+  const [filterFrom,   setFilterFrom]   = useState(() => { const d = new Date(); d.setDate(d.getDate() - 6); return d.toISOString().slice(0,10); });
+  const [filterTo,     setFilterTo]     = useState(today);
   const [filterBarber, setFilterBarber] = useState("");
   const [showModal,    setShowModal]    = useState(false);
   const [saving,       setSaving]       = useState(false);
@@ -1814,41 +1814,21 @@ function AttendancesView({ attendances, setAttendances, clients, setClients, ser
       </div>
 
       {/* ── Filter bar ── */}
-      <div style={{ display:"flex", gap:8, marginBottom:"1rem", flexWrap:"wrap", alignItems:"center" }}>
-        {/* Date nav */}
-        <div style={{ display:"flex", alignItems:"center", gap:4 }}>
-          <button onClick={() => shiftRange(-1)} style={{ background:T.card, border:`1px solid ${T.border}`, borderRadius:8, width:30, height:32, cursor:"pointer", color:T.text, display:"flex", alignItems:"center", justifyContent:"center" }}><ChevronLeft size={15}/></button>
-          <DateRangePicker from={filterFrom} to={filterTo} onChange={({ from, to }) => { setFilterFrom(from); setFilterTo(to); }} compact={isMobile}/>
-          <button onClick={() => shiftRange(1)} style={{ background:T.card, border:`1px solid ${T.border}`, borderRadius:8, width:30, height:32, cursor:"pointer", color:T.text, display:"flex", alignItems:"center", justifyContent:"center" }}><ChevronRight size={15}/></button>
-        </div>
-        <Btn variant="ghost" sm onClick={() => { const t=today(); setFilterFrom(t); setFilterTo(t); }}>Hoje</Btn>
-        <Btn variant="ghost" sm onClick={() => { const t=today(); setFilterFrom(t.substring(0,7)+"-01"); const d=new Date(); d.setMonth(d.getMonth()+1,0); setFilterTo(d.toISOString().slice(0,10)); }}>Mês atual</Btn>
-
-        {isAdmin && (
-          <select value={filterBarber} onChange={e => setFilterBarber(e.target.value)}
-            style={{ background:T.card, border:`1px solid ${T.border}`, borderRadius:8, padding:"5px 10px", color:filterBarber?T.text:T.muted, fontSize:12, outline:"none", fontFamily:"'DM Sans',sans-serif" }}>
-            <option value="">Todos os barbeiros</option>
-            {barbers.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-          </select>
-        )}
-
-        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-          style={{ background:T.card, border:`1px solid ${T.border}`, borderRadius:8, padding:"5px 10px", color:filterStatus?T.text:T.muted, fontSize:12, outline:"none", fontFamily:"'DM Sans',sans-serif" }}>
-          <option value="">Todos os status</option>
-          <option value="Concluído">Concluído</option>
-          <option value="Pendente">Pendente</option>
-        </select>
-
-        {/* Sort order */}
-        <div ref={sortRef} style={{ position:"relative" }}>
-          <button onClick={() => setSortOpen(o => !o)}
-            style={{ display:"flex", alignItems:"center", gap:5, background:T.card, border:`1px solid ${T.border}`, borderRadius:8, padding:"5px 10px", cursor:"pointer", color:T.text, fontSize:12, fontWeight:600, fontFamily:"'DM Sans',sans-serif", whiteSpace:"nowrap" }}>
-            <span style={{ fontSize:13 }}>↕</span>
-            {sortOrder === "desc" ? "Mais recente" : "Mais antigo"}
+      {(() => {
+        const navBtn = (dir) => (
+          <button onClick={() => shiftRange(dir)} style={{ background:T.card, border:`1px solid ${T.border}`, borderRadius:8, width:30, height:32, cursor:"pointer", color:T.text, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+            {dir < 0 ? <ChevronLeft size={15}/> : <ChevronRight size={15}/>}
           </button>
-          {sortOpen && (() => {
-            // click-outside inline via useEffect não funciona aqui; usamos onBlur no container
-            return (
+        );
+        const selSt2 = { background:T.card, border:`1px solid ${T.border}`, borderRadius:8, padding:"5px 10px", fontSize:12, outline:"none", fontFamily:"'DM Sans',sans-serif" };
+        const sortBtn = (
+          <div ref={sortRef} style={{ position:"relative" }}>
+            <button onClick={() => setSortOpen(o => !o)}
+              style={{ display:"flex", alignItems:"center", gap:5, background:T.card, border:`1px solid ${T.border}`, borderRadius:8, padding:"5px 10px", cursor:"pointer", color:T.text, fontSize:12, fontWeight:600, fontFamily:"'DM Sans',sans-serif", whiteSpace:"nowrap", height:32 }}>
+              <span style={{ fontSize:13 }}>↕</span>
+              {sortOrder === "desc" ? "Mais recente" : "Mais antigo"}
+            </button>
+            {sortOpen && (
               <div onMouseLeave={() => setSortOpen(false)}
                 style={{ position:"absolute", top:"calc(100% + 4px)", left:0, background:T.card, border:`1px solid ${T.border}`, borderRadius:10, zIndex:200, minWidth:150, boxShadow:"0 8px 24px #0006", overflow:"hidden" }}>
                 {[["desc","Mais recente"],["asc","Mais antigo"]].map(([val, label]) => (
@@ -1861,21 +1841,76 @@ function AttendancesView({ attendances, setAttendances, clients, setClients, ser
                   </button>
                 ))}
               </div>
-            );
-          })()}
-        </div>
+            )}
+          </div>
+        );
+        const viewToggle = (
+          <div style={{ display:"flex", background:T.card, border:`1px solid ${T.border}`, borderRadius:8, overflow:"hidden" }}>
+            {[["day","Por dia"],["barber","Por barbeiro"],["list","Lista"]].map(([mode, label]) => (
+              <button key={mode} onClick={() => setViewMode(mode)}
+                style={{ padding:"5px 12px", fontSize:12, fontWeight:600, cursor:"pointer", border:"none", fontFamily:"'DM Sans',sans-serif",
+                  background: viewMode===mode ? T.accent : "transparent",
+                  color: viewMode===mode ? "#fff" : T.muted,
+                }}>{label}</button>
+            ))}
+          </div>
+        );
 
-        {/* View toggle */}
-        <div style={{ marginLeft:"auto", display:"flex", background:T.card, border:`1px solid ${T.border}`, borderRadius:8, overflow:"hidden" }}>
-          {[["day","Por dia"],["barber","Por barbeiro"],["list","Lista"]].map(([mode, label]) => (
-            <button key={mode} onClick={() => setViewMode(mode)}
-              style={{ padding:"5px 12px", fontSize:12, fontWeight:600, cursor:"pointer", border:"none", fontFamily:"'DM Sans',sans-serif",
-                background: viewMode===mode ? T.accent : "transparent",
-                color: viewMode===mode ? "#fff" : T.muted,
-              }}>{label}</button>
-          ))}
-        </div>
-      </div>
+        if (isMobile) return (
+          <div style={{ marginBottom:"1rem", display:"flex", flexDirection:"column", gap:8 }}>
+            {/* Linha 1: navegação de datas */}
+            <div style={{ display:"flex", alignItems:"center", gap:4, flexWrap:"wrap" }}>
+              {navBtn(-1)}
+              <DateRangePicker from={filterFrom} to={filterTo} onChange={({ from, to }) => { setFilterFrom(from); setFilterTo(to); }} compact/>
+              {navBtn(1)}
+              <Btn variant="ghost" sm onClick={() => { const t=today(); setFilterFrom(t); setFilterTo(t); }}>Hoje</Btn>
+              <Btn variant="ghost" sm onClick={() => { const t=today(); setFilterFrom(t.substring(0,7)+"-01"); const d=new Date(); d.setMonth(d.getMonth()+1,0); setFilterTo(d.toISOString().slice(0,10)); }}>Mês atual</Btn>
+            </div>
+            {/* Linha 2: filtros */}
+            <div style={{ display:"flex", gap:6, flexWrap:"wrap", alignItems:"center" }}>
+              {isAdmin && (
+                <select value={filterBarber} onChange={e => setFilterBarber(e.target.value)} style={{ ...selSt2, color:filterBarber?T.text:T.muted, flex:1, minWidth:0 }}>
+                  <option value="">Todos os barbeiros</option>
+                  {barbers.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                </select>
+              )}
+              <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={{ ...selSt2, color:filterStatus?T.text:T.muted, flex:1, minWidth:0 }}>
+                <option value="">Todos os status</option>
+                <option value="Concluído">Concluído</option>
+                <option value="Pendente">Pendente</option>
+              </select>
+              {sortBtn}
+            </div>
+            {/* Linha 3: visualização */}
+            <div style={{ display:"flex", justifyContent:"center" }}>{viewToggle}</div>
+          </div>
+        );
+
+        return (
+          <div style={{ display:"flex", gap:8, marginBottom:"1rem", flexWrap:"wrap", alignItems:"center" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:4 }}>
+              {navBtn(-1)}
+              <DateRangePicker from={filterFrom} to={filterTo} onChange={({ from, to }) => { setFilterFrom(from); setFilterTo(to); }}/>
+              {navBtn(1)}
+            </div>
+            <Btn variant="ghost" sm onClick={() => { const t=today(); setFilterFrom(t); setFilterTo(t); }}>Hoje</Btn>
+            <Btn variant="ghost" sm onClick={() => { const t=today(); setFilterFrom(t.substring(0,7)+"-01"); const d=new Date(); d.setMonth(d.getMonth()+1,0); setFilterTo(d.toISOString().slice(0,10)); }}>Mês atual</Btn>
+            {isAdmin && (
+              <select value={filterBarber} onChange={e => setFilterBarber(e.target.value)} style={{ ...selSt2, color:filterBarber?T.text:T.muted }}>
+                <option value="">Todos os barbeiros</option>
+                {barbers.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+              </select>
+            )}
+            <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={{ ...selSt2, color:filterStatus?T.text:T.muted }}>
+              <option value="">Todos os status</option>
+              <option value="Concluído">Concluído</option>
+              <option value="Pendente">Pendente</option>
+            </select>
+            {sortBtn}
+            <div style={{ marginLeft:"auto" }}>{viewToggle}</div>
+          </div>
+        );
+      })()}
 
       {/* ── POR DIA ── */}
       {viewMode === "day" && (
