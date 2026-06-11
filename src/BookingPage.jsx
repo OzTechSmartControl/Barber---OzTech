@@ -703,7 +703,7 @@ export default function BookingPage({ slug }) {
               <div style={{ background:BT.surface, borderTop:`1px solid ${BT.border}`, padding:"0.75rem 1.5rem", display:"flex", flexDirection:"column", alignItems:"center", gap:"0.6rem" }}>
                 {shop?.payment_methods?.length > 0 && (
                   <div style={{ display:"flex", flexWrap:"wrap", alignItems:"center", justifyContent:"center", gap:"0.4rem 0.6rem" }}>
-                    <span style={{ fontSize:11, color:BT.muted, fontWeight:600, textTransform:"uppercase", letterSpacing:0.7, marginRight:4 }}>Pagamento:</span>
+                    <span style={{ fontSize:11, color:BT.muted, fontWeight:600, textTransform:"uppercase", letterSpacing:0.7, marginRight:4 }}>Formas de Pagamentos Aceitas:</span>
                     {shop.payment_methods.map((label, i) => (
                       <span key={i} style={{ fontSize:11, padding:"2px 9px", borderRadius:99, background:`${accent}18`, color:accent, border:`1px solid ${accent}33` }}>{label}</span>
                     ))}
