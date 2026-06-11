@@ -361,7 +361,7 @@ function ThemeToggleSwitch({ isDark, onToggle }) {
 const DRP_MONTHS = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 const DRP_WDAYS  = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
 
-function DateRangePicker({ from, to, onChange }) {
+function DateRangePicker({ from, to, onChange, compact = false }) {
   const [open,      setOpen]      = useState(false);
   const [step,      setStep]      = useState("from");
   const [hover,     setHover]     = useState(null);
@@ -433,10 +433,10 @@ function DateRangePicker({ from, to, onChange }) {
       <button
         onClick={() => open ? setOpen(false) : openPicker()}
         style={{
-          display: "flex", alignItems: "center", gap: 6,
+          display: "flex", alignItems: "center", gap: compact ? 6 : 8,
           background: T.card, border: `1px solid ${open ? T.accent : T.border}`,
-          borderRadius: 10, padding: "7px 10px", cursor: "pointer",
-          color: T.text, fontSize: 12, fontWeight: 600,
+          borderRadius: 10, padding: compact ? "7px 10px" : "8px 14px", cursor: "pointer",
+          color: T.text, fontSize: compact ? 12 : 13, fontWeight: 600,
           fontFamily: "'DM Sans', sans-serif", whiteSpace: "nowrap",
         }}
       >
@@ -2845,15 +2845,16 @@ function FinancialView({ attendances, expenses, setExpenses, token, barbershopId
       <div style={{ marginBottom:"1.5rem" }}>
 
         {/* DateRangePicker + Dropdowns Ano / Mês na mesma linha */}
-        <div style={{ display:"flex", gap:8, alignItems:"flex-end", justifyContent:"center" }}>
+        <div style={{ display:"flex", gap:8, alignItems:"flex-end", justifyContent: isMobile ? "center" : "flex-start" }}>
           <DateRangePicker
             from={filterFrom}
             to={filterTo}
             onChange={({ from, to }) => { setFilterFrom(from); setFilterTo(to); }}
+            compact={isMobile}
           />
           <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
             <span style={{ fontSize:11, color:T.muted, fontWeight:600, letterSpacing:.5 }}>ANO</span>
-            <select style={{ ...selSt, minWidth:0, fontSize:12, padding:"6px 8px" }} value={dropYear}
+            <select style={{ ...selSt, minWidth:0, ...(isMobile ? { fontSize:12, padding:"6px 8px" } : {}) }} value={dropYear}
               onChange={e => { setDropYear(e.target.value); applyDropFilter(e.target.value, dropMonth); }}>
               <option value="Tudo">Tudo</option>
               {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
@@ -2861,7 +2862,7 @@ function FinancialView({ attendances, expenses, setExpenses, token, barbershopId
           </div>
           <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
             <span style={{ fontSize:11, color:T.muted, fontWeight:600, letterSpacing:.5 }}>MÊS</span>
-            <select style={{ ...selSt, minWidth:0, fontSize:12, padding:"6px 8px" }} value={dropMonth}
+            <select style={{ ...selSt, minWidth:0, ...(isMobile ? { fontSize:12, padding:"6px 8px" } : {}) }} value={dropMonth}
               onChange={e => { setDropMonth(e.target.value); applyDropFilter(dropYear, e.target.value); }}>
               <option value="Tudo">Tudo</option>
               {MONTHS_PT.map(m => <option key={m} value={m}>{m}</option>)}
