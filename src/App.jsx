@@ -1735,8 +1735,8 @@ function AttendancesView({ attendances, setAttendances, clients, setClients, ser
   const byDay = useMemo(() => {
     const map = {};
     filtered.forEach(a => { if (!map[a.date]) map[a.date] = []; map[a.date].push(a); });
-    return Object.entries(map).sort((a,b) => b[0].localeCompare(a[0]));
-  }, [filtered]);
+    return Object.entries(map).sort((a,b) => sortOrder === "desc" ? b[0].localeCompare(a[0]) : a[0].localeCompare(b[0]));
+  }, [filtered, sortOrder]);
 
   // ── Group by barber ───────────────────────────────────────────
   const byBarber = useMemo(() => {
@@ -1844,14 +1844,14 @@ function AttendancesView({ attendances, setAttendances, clients, setClients, ser
           <button onClick={() => setSortOpen(o => !o)}
             style={{ display:"flex", alignItems:"center", gap:5, background:T.card, border:`1px solid ${T.border}`, borderRadius:8, padding:"5px 10px", cursor:"pointer", color:T.text, fontSize:12, fontWeight:600, fontFamily:"'DM Sans',sans-serif", whiteSpace:"nowrap" }}>
             <span style={{ fontSize:13 }}>↕</span>
-            {sortOrder === "desc" ? "Mais novo" : "Mais antigo"}
+            {sortOrder === "desc" ? "Mais recente" : "Mais antigo"}
           </button>
           {sortOpen && (() => {
             // click-outside inline via useEffect não funciona aqui; usamos onBlur no container
             return (
               <div onMouseLeave={() => setSortOpen(false)}
                 style={{ position:"absolute", top:"calc(100% + 4px)", left:0, background:T.card, border:`1px solid ${T.border}`, borderRadius:10, zIndex:200, minWidth:150, boxShadow:"0 8px 24px #0006", overflow:"hidden" }}>
-                {[["desc","Mais novo"],["asc","Mais antigo"]].map(([val, label]) => (
+                {[["desc","Mais recente"],["asc","Mais antigo"]].map(([val, label]) => (
                   <button key={val} onClick={() => { setSortOrder(val); setSortOpen(false); }}
                     style={{ width:"100%", display:"flex", alignItems:"center", gap:10, padding:"10px 14px", background:"none", border:"none", cursor:"pointer", color:T.text, fontSize:13, fontFamily:"'DM Sans',sans-serif", textAlign:"left" }}>
                     <span style={{ width:16, height:16, borderRadius:"50%", border:`2px solid ${sortOrder===val ? T.accent : T.muted}`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
