@@ -1518,6 +1518,9 @@ function AttendancesView({ attendances, setAttendances, clients, setClients, ser
   const [viewMode,     setViewMode]     = useState("day"); // "day" | "barber" | "list"
   const [filterStatus, setFilterStatus] = useState("");
   const [collapsedDays, setCollapsedDays] = useState({});
+  const [sortOrder,    setSortOrder]    = useState("desc"); // "desc" = mais novo | "asc" = mais antigo
+  const [sortOpen,     setSortOpen]     = useState(false);
+  const sortRef = useRef(null);
   const isMobile = useIsMobile();
 
   const totalServices = form.selectedServices.reduce((s, sv) => s + sv.price, 0);
@@ -1582,8 +1585,10 @@ function AttendancesView({ attendances, setAttendances, clients, setClients, ser
         (!filterBarber || a.barberId === +filterBarber) &&
         (!filterStatus || (filterStatus === "Pendente" ? a.payment === "Pendente" : a.payment !== "Pendente"))
       )
-      .sort((a, b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time)),
-    [attendances, filterFrom, filterTo, filterBarber, filterStatus]
+      .sort((a, b) => sortOrder === "desc"
+        ? (b.date.localeCompare(a.date) || b.time.localeCompare(a.time))
+        : (a.date.localeCompare(b.date) || a.time.localeCompare(b.time))),
+    [attendances, filterFrom, filterTo, filterBarber, filterStatus, sortOrder]
   );
 
   // ── Save ──────────────────────────────────────────────────────
@@ -1833,6 +1838,32 @@ function AttendancesView({ attendances, setAttendances, clients, setClients, ser
           <option value="Concluído">Concluído</option>
           <option value="Pendente">Pendente</option>
         </select>
+
+        {/* Sort order */}
+        <div ref={sortRef} style={{ position:"relative" }}>
+          <button onClick={() => setSortOpen(o => !o)}
+            style={{ display:"flex", alignItems:"center", gap:5, background:T.card, border:`1px solid ${T.border}`, borderRadius:8, padding:"5px 10px", cursor:"pointer", color:T.text, fontSize:12, fontWeight:600, fontFamily:"'DM Sans',sans-serif", whiteSpace:"nowrap" }}>
+            <span style={{ fontSize:13 }}>↕</span>
+            {sortOrder === "desc" ? "Mais novo" : "Mais antigo"}
+          </button>
+          {sortOpen && (() => {
+            // click-outside inline via useEffect não funciona aqui; usamos onBlur no container
+            return (
+              <div onMouseLeave={() => setSortOpen(false)}
+                style={{ position:"absolute", top:"calc(100% + 4px)", left:0, background:T.card, border:`1px solid ${T.border}`, borderRadius:10, zIndex:200, minWidth:150, boxShadow:"0 8px 24px #0006", overflow:"hidden" }}>
+                {[["desc","Mais novo"],["asc","Mais antigo"]].map(([val, label]) => (
+                  <button key={val} onClick={() => { setSortOrder(val); setSortOpen(false); }}
+                    style={{ width:"100%", display:"flex", alignItems:"center", gap:10, padding:"10px 14px", background:"none", border:"none", cursor:"pointer", color:T.text, fontSize:13, fontFamily:"'DM Sans',sans-serif", textAlign:"left" }}>
+                    <span style={{ width:16, height:16, borderRadius:"50%", border:`2px solid ${sortOrder===val ? T.accent : T.muted}`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                      {sortOrder===val && <span style={{ width:8, height:8, borderRadius:"50%", background:T.accent, display:"block" }}/>}
+                    </span>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            );
+          })()}
+        </div>
 
         {/* View toggle */}
         <div style={{ marginLeft:"auto", display:"flex", background:T.card, border:`1px solid ${T.border}`, borderRadius:8, overflow:"hidden" }}>
