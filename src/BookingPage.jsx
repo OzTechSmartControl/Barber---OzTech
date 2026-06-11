@@ -283,11 +283,11 @@ export default function BookingPage({ slug }) {
       {shop?.business_hours && (() => {
         const hoursText = formatBusinessHours(shop.business_hours);
         return hoursText ? (
-          <div style={{ background:BT.surface, borderBottom:`1px solid ${BT.border}`, padding:"0.5rem 1.5rem", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+          <div style={{ background:BT.surface, borderBottom:`1px solid ${BT.border}`, padding:"0.5rem 1rem", display:"flex", alignItems:"center", justifyContent:"center", gap:6, overflowX:"auto", whiteSpace:"nowrap" }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink:0 }}>
               <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
             </svg>
-            <span style={{ fontSize:12, color:BT.muted }}>{hoursText}</span>
+            <span style={{ fontSize:12, color:BT.muted, whiteSpace:"nowrap" }}>{hoursText}</span>
           </div>
         ) : null;
       })()}
