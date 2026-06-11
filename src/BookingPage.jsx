@@ -279,7 +279,19 @@ export default function BookingPage({ slug }) {
         </div>
       </div>
 
-      {/* Info bar: endereço, horário, contato */}
+      {/* Horário de funcionamento — abaixo do header */}
+      {shop?.business_hours && (() => {
+        const hoursText = formatBusinessHours(shop.business_hours);
+        return hoursText ? (
+          <div style={{ background:BT.surface, borderBottom:`1px solid ${BT.border}`, padding:"0.5rem 1.5rem", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink:0 }}>
+              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+            </svg>
+            <span style={{ fontSize:12, color:BT.muted }}>{hoursText}</span>
+          </div>
+        ) : null;
+      })()}
+
       {step < 5 && (
         <div style={{ maxWidth:540, margin:"0 auto", padding:"1.5rem 1rem 4rem" }}>
 
@@ -659,11 +671,10 @@ export default function BookingPage({ slug }) {
       )}
 
       {/* ── Info bar + Pagamento + Facilidades (rodapé da página) ── */}
-      {(shop?.address || shop?.business_hours || shop?.phone || shop?.whatsapp || shop?.payment_methods?.length > 0 || shop?.amenities?.length > 0) && (() => {
-        const hoursText = formatBusinessHours(shop.business_hours);
+      {(shop?.address || shop?.phone || shop?.whatsapp || shop?.payment_methods?.length > 0 || shop?.amenities?.length > 0) && (() => {
         return (
           <div style={{ borderTop:`1px solid ${BT.border}`, marginTop:"1rem" }}>
-            {(shop?.address || shop?.business_hours || shop?.phone || shop?.whatsapp) && (
+            {(shop?.address || shop?.phone || shop?.whatsapp) && (
               <div style={{ background:BT.surface, padding:"0.6rem 1.5rem", display:"flex", flexWrap:"wrap", alignItems:"center", justifyContent:"center", gap:"0.5rem 2rem" }}>
                 {shop?.address && (
                   <div style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, color:BT.muted }}>
@@ -671,14 +682,6 @@ export default function BookingPage({ slug }) {
                       <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
                     </svg>
                     <span>{shop.address}</span>
-                  </div>
-                )}
-                {hoursText && (
-                  <div style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, color:BT.muted }}>
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink:0 }}>
-                      <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-                    </svg>
-                    <span>{hoursText}</span>
                   </div>
                 )}
                 {shop?.phone && (
