@@ -3588,6 +3588,7 @@ function SettingsView({ token, shop, onShopUpdated, themeMode = "dark", onToggle
   const [phone, setPhone] = useState(shop?.phone || "");
   const [address, setAddress] = useState(shop?.address || "");
   const [whatsapp, setWhatsapp] = useState(shop?.whatsapp || "");
+  const [businessHours, setBusinessHours] = useState(shop?.business_hours || "");
   const [accent, setAccent] = useState(() => normalizeHex(shop?.accent_color));
   const [logoFile, setLogoFile] = useState(null);
   const [logoPreview, setLogoPreview] = useState("");
@@ -3600,12 +3601,13 @@ function SettingsView({ token, shop, onShopUpdated, themeMode = "dark", onToggle
     setPhone(shop?.phone || "");
     setAddress(shop?.address || "");
     setWhatsapp(shop?.whatsapp || "");
+    setBusinessHours(shop?.business_hours || "");
     setAccent(normalizeHex(shop?.accent_color));
     setLogoFile(null);
     setLogoPreview("");
     setErr("");
     setOk("");
-  }, [shop?.id, shop?.name, shop?.phone, shop?.address, shop?.whatsapp, shop?.accent_color]);
+  }, [shop?.id, shop?.name, shop?.phone, shop?.address, shop?.whatsapp, shop?.business_hours, shop?.accent_color]);
 
   useEffect(() => {
     if (!logoFile) {
@@ -3654,6 +3656,7 @@ function SettingsView({ token, shop, onShopUpdated, themeMode = "dark", onToggle
           p_whatsapp: whatsapp.trim() || null,
           p_accent_color: normalizeHex(accent),
           p_logo_url: logoUrl || null,
+          p_business_hours: businessHours.trim() || null,
         }),
       });
 
@@ -3740,6 +3743,18 @@ function SettingsView({ token, shop, onShopUpdated, themeMode = "dark", onToggle
               style={inputSt}
             />
           </FG>
+
+          <FG label="Horário de Funcionamento" style={{ gridColumn: "1 / -1" }}>
+            <input
+              value={businessHours}
+              onChange={(e) => setBusinessHours(e.target.value)}
+              placeholder="Ex: Seg-Sex: 9h-19h | Sáb: 8h-18h | Dom: Fechado"
+              style={inputSt}
+            />
+          </FG>
+        </div>
+        <div style={{ marginTop: "0.75rem", fontSize: 12, color: T.muted }}>
+          💡 Essas informações aparecem na sua página de agendamento online para os clientes.
         </div>
       </Card>
 

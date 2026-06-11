@@ -271,7 +271,7 @@ async function notifyClient(opts: {
 
 async function getShop(slug: string) {
   const shopRes = await db(
-    `barbershops?slug=eq.${encodeURIComponent(slug)}&select=id,name,slug,logo_url,accent_color&limit=1`
+    `barbershops?slug=eq.${encodeURIComponent(slug)}&select=id,name,slug,logo_url,accent_color,address,phone,whatsapp,business_hours&limit=1`
   );
   const shops = await shopRes.json();
   if (!Array.isArray(shops) || !shops[0]) return err("Barbearia não encontrada.", 404);
