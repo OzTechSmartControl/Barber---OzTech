@@ -3583,6 +3583,24 @@ const uploadBarberPhoto = async (tok, file, shopId, barberId) => {
   return `${SUPABASE_URL}/storage/v1/object/public/logos/${path}?v=${Date.now()}`;
 };
 
+const PAYMENT_METHODS_CFG = [
+  { key: "dinheiro",        label: "Dinheiro" },
+  { key: "pix",             label: "PIX" },
+  { key: "debito",          label: "Cartão de Débito" },
+  { key: "credito",         label: "Cartão de Crédito" },
+  { key: "transferencia",   label: "Transferência/DOC/TED" },
+  { key: "vale_alimentacao",label: "Vale Alimentação" },
+  { key: "vale_refeicao",   label: "Vale Refeição" },
+];
+const AMENITIES_CFG = [
+  { key: "wifi",            label: "Wi-Fi gratuito" },
+  { key: "estacionamento",  label: "Estacionamento" },
+  { key: "acessivel",       label: "Acessível (cadeirante)" },
+  { key: "ar_condicionado", label: "Ar-condicionado" },
+  { key: "criancas",        label: "Atendemos crianças" },
+  { key: "voucher",         label: "Aceita cortesia/voucher" },
+];
+
 const DAYS_CFG = [
   { key: "sunday",    label: "Domingo"   },
   { key: "monday",    label: "Segunda"   },
@@ -3607,6 +3625,8 @@ function SettingsView({ token, shop, onShopUpdated, themeMode = "dark", onToggle
   const [address, setAddress] = useState(shop?.address || "");
   const [whatsapp, setWhatsapp] = useState(shop?.whatsapp || "");
   const [businessHours, setBusinessHours] = useState(() => parseBusinessHours(shop?.business_hours));
+  const [paymentMethods, setPaymentMethods] = useState(() => Array.isArray(shop?.payment_methods) ? shop.payment_methods : []);
+  const [amenities, setAmenities] = useState(() => Array.isArray(shop?.amenities) ? shop.amenities : []);
   const [accent, setAccent] = useState(() => normalizeHex(shop?.accent_color));
   const [logoFile, setLogoFile] = useState(null);
   const [logoPreview, setLogoPreview] = useState("");
@@ -3620,12 +3640,14 @@ function SettingsView({ token, shop, onShopUpdated, themeMode = "dark", onToggle
     setAddress(shop?.address || "");
     setWhatsapp(shop?.whatsapp || "");
     setBusinessHours(parseBusinessHours(shop?.business_hours));
+    setPaymentMethods(Array.isArray(shop?.payment_methods) ? shop.payment_methods : []);
+    setAmenities(Array.isArray(shop?.amenities) ? shop.amenities : []);
     setAccent(normalizeHex(shop?.accent_color));
     setLogoFile(null);
     setLogoPreview("");
     setErr("");
     setOk("");
-  }, [shop?.id, shop?.name, shop?.phone, shop?.address, shop?.whatsapp, shop?.business_hours, shop?.accent_color]);
+  }, [shop?.id, shop?.name, shop?.phone, shop?.address, shop?.whatsapp, shop?.business_hours, shop?.accent_color, shop?.payment_methods, shop?.amenities]);
 
   useEffect(() => {
     if (!logoFile) {
@@ -3675,6 +3697,8 @@ function SettingsView({ token, shop, onShopUpdated, themeMode = "dark", onToggle
           p_accent_color: normalizeHex(accent),
           p_logo_url: logoUrl || null,
           p_business_hours: businessHours || null,
+          p_payment_methods: paymentMethods.length > 0 ? paymentMethods : null,
+          p_amenities: amenities.length > 0 ? amenities : null,
         }),
       });
 
@@ -3809,6 +3833,64 @@ function SettingsView({ token, shop, onShopUpdated, themeMode = "dark", onToggle
                   <span style={{ fontSize:13, color:T.muted, fontStyle:"italic" }}>Fechado</span>
                 )}
               </div>
+            );
+          })}
+        </div>
+      </Card>
+
+      {/* ── Card Formas de Pagamento ── */}
+      <Card style={{ marginBottom:"1.25rem" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:"1.25rem" }}>
+          <div style={{ background:T.accentGlow, borderRadius:12, padding:10, display:"flex" }}>
+            <CreditCard size={19} color={T.accent} />
+          </div>
+          <div>
+            <div style={{ color:T.text, fontWeight:800, fontSize:15 }}>Formas de Pagamento</div>
+            <div style={{ color:T.muted, fontSize:12, marginTop:2 }}>Selecione os métodos aceitos pela sua barbearia.</div>
+          </div>
+        </div>
+        <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
+          {PAYMENT_METHODS_CFG.map(({ key, label }) => {
+            const active = paymentMethods.includes(key);
+            return (
+              <button key={key}
+                onClick={() => setPaymentMethods(prev => active ? prev.filter(k => k !== key) : [...prev, key])}
+                style={{ fontSize:13, padding:"6px 14px", borderRadius:99, cursor:"pointer",
+                  background: active ? T.accent : "transparent",
+                  color: active ? "#fff" : T.muted,
+                  border: `1px solid ${active ? T.accent : T.border}`,
+                  fontFamily:"'DM Sans',sans-serif", transition:"all .15s" }}>
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      </Card>
+
+      {/* ── Card Facilidades ── */}
+      <Card style={{ marginBottom:"1.25rem" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:"1.25rem" }}>
+          <div style={{ background:T.accentGlow, borderRadius:12, padding:10, display:"flex" }}>
+            <Star size={19} color={T.accent} />
+          </div>
+          <div>
+            <div style={{ color:T.text, fontWeight:800, fontSize:15 }}>Facilidades</div>
+            <div style={{ color:T.muted, fontSize:12, marginTop:2 }}>Informe os diferenciais e comodidades da sua barbearia.</div>
+          </div>
+        </div>
+        <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
+          {AMENITIES_CFG.map(({ key, label }) => {
+            const active = amenities.includes(key);
+            return (
+              <button key={key}
+                onClick={() => setAmenities(prev => active ? prev.filter(k => k !== key) : [...prev, key])}
+                style={{ fontSize:13, padding:"6px 14px", borderRadius:99, cursor:"pointer",
+                  background: active ? T.accent : "transparent",
+                  color: active ? "#fff" : T.muted,
+                  border: `1px solid ${active ? T.accent : T.border}`,
+                  fontFamily:"'DM Sans',sans-serif", transition:"all .15s" }}>
+                {label}
+              </button>
             );
           })}
         </div>
