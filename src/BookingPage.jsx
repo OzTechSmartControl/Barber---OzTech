@@ -675,7 +675,7 @@ export default function BookingPage({ slug }) {
         return (
           <div style={{ borderTop:`1px solid ${BT.border}`, marginTop:"1rem" }}>
             {shop?.address && (
-              <div style={{ background:BT.surface, borderBottom:`1px solid ${BT.border}`, padding:"0.5rem 1.5rem", display:"flex", alignItems:"center", justifyContent:"center", gap:6, fontSize:12, color:BT.muted }}>
+              <div style={{ background:BT.surface, padding:"0.5rem 1.5rem", display:"flex", alignItems:"center", justifyContent:"center", gap:6, fontSize:12, color:BT.muted }}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink:0 }}>
                   <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
                 </svg>
@@ -703,7 +703,7 @@ export default function BookingPage({ slug }) {
               </div>
             )}
             {(shop?.payment_methods?.length > 0 || shop?.amenities?.length > 0) && (
-              <div style={{ background:BT.surface, borderTop:`1px solid ${BT.border}`, padding:"0.75rem 1.5rem", display:"flex", flexDirection:"column", alignItems:"center", gap:"0.6rem" }}>
+              <div style={{ background:BT.surface, padding:"0.75rem 1.5rem", display:"flex", flexDirection:"column", alignItems:"center", gap:"0.6rem" }}>
                 {shop?.payment_methods?.length > 0 && (
                   <div style={{ display:"flex", flexWrap:"wrap", alignItems:"center", justifyContent:"center", gap:"0.4rem 0.6rem" }}>
                     <span style={{ fontSize:11, color:BT.muted, fontWeight:600, textTransform:"uppercase", letterSpacing:0.7, marginRight:4 }}>ACEITAMOS AS SEGUINTES FORMAS DE PAGAMENTO:</span>
