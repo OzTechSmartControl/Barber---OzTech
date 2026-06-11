@@ -433,11 +433,11 @@ function DateRangePicker({ from, to, onChange }) {
       <button
         onClick={() => open ? setOpen(false) : openPicker()}
         style={{
-          display: "flex", alignItems: "center", gap: 8,
+          display: "flex", alignItems: "center", gap: 6,
           background: T.card, border: `1px solid ${open ? T.accent : T.border}`,
-          borderRadius: 10, padding: "8px 14px", cursor: "pointer",
-          color: T.text, fontSize: 13, fontWeight: 600,
-          fontFamily: "'DM Sans', sans-serif",
+          borderRadius: 10, padding: "7px 10px", cursor: "pointer",
+          color: T.text, fontSize: 12, fontWeight: 600,
+          fontFamily: "'DM Sans', sans-serif", whiteSpace: "nowrap",
         }}
       >
         <Calendar size={14} style={{ color: open ? T.accent : T.muted, flexShrink: 0 }} />
@@ -2845,7 +2845,7 @@ function FinancialView({ attendances, expenses, setExpenses, token, barbershopId
       <div style={{ marginBottom:"1.5rem" }}>
 
         {/* DateRangePicker + Dropdowns Ano / Mês na mesma linha */}
-        <div style={{ display:"flex", gap:8, alignItems:"flex-end" }}>
+        <div style={{ display:"flex", gap:8, alignItems:"flex-end", justifyContent:"center" }}>
           <DateRangePicker
             from={filterFrom}
             to={filterTo}
@@ -2853,7 +2853,7 @@ function FinancialView({ attendances, expenses, setExpenses, token, barbershopId
           />
           <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
             <span style={{ fontSize:11, color:T.muted, fontWeight:600, letterSpacing:.5 }}>ANO</span>
-            <select style={{ ...selSt, minWidth:0 }} value={dropYear}
+            <select style={{ ...selSt, minWidth:0, fontSize:12, padding:"6px 8px" }} value={dropYear}
               onChange={e => { setDropYear(e.target.value); applyDropFilter(e.target.value, dropMonth); }}>
               <option value="Tudo">Tudo</option>
               {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
@@ -2861,7 +2861,7 @@ function FinancialView({ attendances, expenses, setExpenses, token, barbershopId
           </div>
           <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
             <span style={{ fontSize:11, color:T.muted, fontWeight:600, letterSpacing:.5 }}>MÊS</span>
-            <select style={{ ...selSt, minWidth:0 }} value={dropMonth}
+            <select style={{ ...selSt, minWidth:0, fontSize:12, padding:"6px 8px" }} value={dropMonth}
               onChange={e => { setDropMonth(e.target.value); applyDropFilter(dropYear, e.target.value); }}>
               <option value="Tudo">Tudo</option>
               {MONTHS_PT.map(m => <option key={m} value={m}>{m}</option>)}
