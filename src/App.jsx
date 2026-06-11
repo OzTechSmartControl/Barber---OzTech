@@ -1515,6 +1515,10 @@ function AttendancesView({ attendances, setAttendances, clients, setClients, ser
   const [finalModal,   setFinalModal]   = useState(null); // id do atendimento a finalizar
   const [finPay,       setFinPay]       = useState("PIX");
   const [finSaving,    setFinSaving]    = useState(false);
+  const [viewMode,     setViewMode]     = useState("day"); // "day" | "barber" | "list"
+  const [filterStatus, setFilterStatus] = useState("");
+  const [collapsedDays, setCollapsedDays] = useState({});
+  const isMobile = useIsMobile();
 
   const totalServices = form.selectedServices.reduce((s, sv) => s + sv.price, 0);
   const totalProducts = form.selectedProducts.reduce((s, sp) => s + sp.price * sp.quantity, 0);
@@ -1573,12 +1577,13 @@ function AttendancesView({ attendances, setAttendances, clients, setClients, ser
   const filtered = useMemo(() =>
     attendances
       .filter(a =>
-        (!filterFrom || a.date >= filterFrom) &&
-        (!filterTo   || a.date <= filterTo)   &&
-        (!filterBarber || a.barberId === +filterBarber)
+        (!filterFrom   || a.date >= filterFrom) &&
+        (!filterTo     || a.date <= filterTo)   &&
+        (!filterBarber || a.barberId === +filterBarber) &&
+        (!filterStatus || (filterStatus === "Pendente" ? a.payment === "Pendente" : a.payment !== "Pendente"))
       )
       .sort((a, b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time)),
-    [attendances, filterFrom, filterTo, filterBarber]
+    [attendances, filterFrom, filterTo, filterBarber, filterStatus]
   );
 
   // ── Save ──────────────────────────────────────────────────────
@@ -1707,105 +1712,244 @@ function AttendancesView({ attendances, setAttendances, clients, setClients, ser
   const payColor = { "PIX": T.info, "Dinheiro": T.success, "Cartão Débito": T.accent, "Cartão Crédito": T.accent, "Pendente": "#f59e0b" };
   const stCell   = { padding: "9px 0.75rem" };
 
+  // ── KPIs ──────────────────────────────────────────────────────
+  const totalRevenue  = filtered.reduce((s, a) => s + a.price, 0);
+  const pendingCount  = filtered.filter(a => a.payment === "Pendente").length;
+  const ticketMedio   = filtered.length ? totalRevenue / filtered.length : 0;
+  const pixPct        = filtered.length ? Math.round(filtered.filter(a => a.payment === "PIX").length / filtered.length * 100) : 0;
+
+  // ── Date navigation ───────────────────────────────────────────
+  const shiftRange = (dir) => {
+    const f = new Date(filterFrom + "T00:00"), t = new Date(filterTo + "T00:00");
+    const days = Math.round((t - f) / 86400000) + 1;
+    f.setDate(f.getDate() + dir * days); t.setDate(t.getDate() + dir * days);
+    setFilterFrom(f.toISOString().slice(0,10)); setFilterTo(t.toISOString().slice(0,10));
+  };
+
+  // ── Group by date ─────────────────────────────────────────────
+  const byDay = useMemo(() => {
+    const map = {};
+    filtered.forEach(a => { if (!map[a.date]) map[a.date] = []; map[a.date].push(a); });
+    return Object.entries(map).sort((a,b) => b[0].localeCompare(a[0]));
+  }, [filtered]);
+
+  // ── Group by barber ───────────────────────────────────────────
+  const byBarber = useMemo(() => {
+    const map = {};
+    filtered.forEach(a => { if (!map[a.barberId]) map[a.barberId] = []; map[a.barberId].push(a); });
+    return Object.entries(map).map(([bid, atts]) => ({
+      barber: barbers.find(b => b.id === +bid),
+      atts: atts.sort((a,b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time)),
+    })).sort((a,b) => (a.barber?.name||"").localeCompare(b.barber?.name||""));
+  }, [filtered, barbers]);
+
+  const dayLabel = (iso) => {
+    const d = new Date(iso + "T12:00:00");
+    const s = d.toLocaleDateString("pt-BR", { weekday:"long", day:"2-digit", month:"long" });
+    return s.charAt(0).toUpperCase() + s.slice(1).replace(` de ${d.getFullYear()}`,"");
+  };
+
+  // ── Attendance card ───────────────────────────────────────────
+  const AttCard = ({ a, showDate = false }) => {
+    const cl = clients.find(c => c.id === a.clientId);
+    const br = barbers.find(b => b.id === a.barberId);
+    const prodDisplay = getProductDisplay(a);
+    const isPending   = a.payment === "Pendente";
+    const borderColor = isPending ? "#f59e0b" : T.success;
+    const statusColor = isPending ? "#f59e0b" : T.success;
+    return (
+      <div style={{ background:T.surface, borderRadius:10, padding:"0.65rem 0.875rem", borderLeft:`3px solid ${borderColor}`, display:"flex", alignItems:"center", gap:"0.6rem", marginBottom:6 }}>
+        <div style={{ fontSize:13, fontWeight:700, color:T.muted, minWidth:36, fontVariantNumeric:"tabular-nums", flexShrink:0 }}>{a.time}</div>
+        <div style={{ flex:1, minWidth:0 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:5, flexWrap:"wrap" }}>
+            <span style={{ fontSize:14, fontWeight:700, color:T.text }}>{cl?.name || "—"}</span>
+            {a.source === "appointment" && <span style={{ background:`${T.accent}22`, color:T.accent, borderRadius:4, padding:"1px 5px", fontSize:10, fontWeight:700 }}>Agendado</span>}
+            {showDate && <span style={{ fontSize:11, color:T.muted }}>{fDate(a.date)}</span>}
+          </div>
+          <div style={{ fontSize:12, color:T.muted, marginTop:1 }}>{br?.name || "—"} · {getServiceDisplay(a)}</div>
+          {prodDisplay && <div style={{ fontSize:11, color:T.accent, marginTop:2 }}>Produtos: {prodDisplay}</div>}
+        </div>
+        <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:3, flexShrink:0 }}>
+          <span style={{ fontSize:14, fontWeight:700, color:T.success }}>{R$(a.price)}</span>
+          <div style={{ display:"flex", gap:3 }}>
+            {!isPending && <span style={{ background:(payColor[a.payment]||T.accent)+"18", color:payColor[a.payment]||T.accent, borderRadius:5, padding:"1px 6px", fontSize:10, fontWeight:700 }}>{a.payment}</span>}
+            <span style={{ background:statusColor+"22", color:statusColor, borderRadius:5, padding:"1px 6px", fontSize:10, fontWeight:700 }}>{isPending?"Pendente":"Concluído"}</span>
+          </div>
+        </div>
+        <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4, flexShrink:0 }}>
+          {isPending && <Btn sm onClick={() => { setFinalModal(a.id); setFinPay("PIX"); }}><Check size={11}/> Finalizar</Btn>}
+          <button onClick={() => del(a.id)} style={{ background:"none", border:"none", color:T.muted, cursor:"pointer", display:"inline-flex" }}><Trash2 size={14}/></button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div>
       <PageHeader
         title="Atendimentos"
-        sub={`${filtered.length} atendimento${filtered.length !== 1 ? "s" : ""} · ${R$(filtered.reduce((s, a) => s + a.price, 0))} · ${periodLabel}`}
+        sub={`${filtered.length} atendimento${filtered.length !== 1 ? "s" : ""} no período`}
         onRefresh={onRefresh}
         right={<Btn onClick={() => { setForm(emptyForm()); setShowModal(true); }}><Plus size={15}/>Novo Atendimento</Btn>}
       />
 
-      <div style={{ display: "flex", gap: "0.75rem", marginBottom: "1rem", flexWrap: "wrap", alignItems: "center" }}>
-        {/* Filtro de período */}
-        <DateRangePicker
-          from={filterFrom}
-          to={filterTo}
-          onChange={({ from, to }) => { setFilterFrom(from); setFilterTo(to); }}
-        />
+      {/* ── KPI Cards ── */}
+      <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4,1fr)", gap:"0.75rem", marginBottom:"1rem" }}>
+        {[
+          { label:"Atendimentos",   value: filtered.length,  fmt: v => v },
+          { label:"Faturamento",    value: totalRevenue,     fmt: R$ },
+          { label:"Pendentes",      value: pendingCount,     fmt: v => v },
+          { label:"Ticket médio",   value: ticketMedio,      fmt: R$ },
+        ].map(({ label, value, fmt }) => (
+          <div key={label} style={{ background:T.card, border:`1px solid ${T.border}`, borderRadius:12, padding:"0.75rem 1rem" }}>
+            <div style={{ fontSize:10, color:T.muted, fontWeight:600, letterSpacing:.8, marginBottom:4 }}>{label.toUpperCase()}</div>
+            <div style={{ fontSize:20, fontWeight:800, color:T.text }}>{fmt(value)}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Filter bar ── */}
+      <div style={{ display:"flex", gap:8, marginBottom:"1rem", flexWrap:"wrap", alignItems:"center" }}>
+        {/* Date nav */}
+        <div style={{ display:"flex", alignItems:"center", gap:4 }}>
+          <button onClick={() => shiftRange(-1)} style={{ background:T.card, border:`1px solid ${T.border}`, borderRadius:8, width:30, height:32, cursor:"pointer", color:T.text, display:"flex", alignItems:"center", justifyContent:"center" }}><ChevronLeft size={15}/></button>
+          <DateRangePicker from={filterFrom} to={filterTo} onChange={({ from, to }) => { setFilterFrom(from); setFilterTo(to); }} compact={isMobile}/>
+          <button onClick={() => shiftRange(1)} style={{ background:T.card, border:`1px solid ${T.border}`, borderRadius:8, width:30, height:32, cursor:"pointer", color:T.text, display:"flex", alignItems:"center", justifyContent:"center" }}><ChevronRight size={15}/></button>
+        </div>
+        <Btn variant="ghost" sm onClick={() => { const t=today(); setFilterFrom(t); setFilterTo(t); }}>Hoje</Btn>
+        <Btn variant="ghost" sm onClick={() => { const t=today(); setFilterFrom(t.substring(0,7)+"-01"); const d=new Date(); d.setMonth(d.getMonth()+1,0); setFilterTo(d.toISOString().slice(0,10)); }}>Mês atual</Btn>
 
         {isAdmin && (
           <select value={filterBarber} onChange={e => setFilterBarber(e.target.value)}
-            style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 8, padding: "0.5rem 0.875rem", color: filterBarber ? T.text : T.muted, fontSize: 13, outline: "none", fontFamily: "'DM Sans', sans-serif", flex: "1 1 160px" }}>
+            style={{ background:T.card, border:`1px solid ${T.border}`, borderRadius:8, padding:"5px 10px", color:filterBarber?T.text:T.muted, fontSize:12, outline:"none", fontFamily:"'DM Sans',sans-serif" }}>
             <option value="">Todos os barbeiros</option>
             {barbers.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select>
         )}
 
-        <Btn variant="ghost" sm onClick={() => { const t = today(); setFilterFrom(t.substring(0,7)+"-01"); setFilterTo(t); setFilterBarber(""); }}>
-          Mês atual
-        </Btn>
+        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
+          style={{ background:T.card, border:`1px solid ${T.border}`, borderRadius:8, padding:"5px 10px", color:filterStatus?T.text:T.muted, fontSize:12, outline:"none", fontFamily:"'DM Sans',sans-serif" }}>
+          <option value="">Todos os status</option>
+          <option value="Concluído">Concluído</option>
+          <option value="Pendente">Pendente</option>
+        </select>
 
+        {/* View toggle */}
+        <div style={{ marginLeft:"auto", display:"flex", background:T.card, border:`1px solid ${T.border}`, borderRadius:8, overflow:"hidden" }}>
+          {[["day","Por dia"],["barber","Por barbeiro"],["list","Lista"]].map(([mode, label]) => (
+            <button key={mode} onClick={() => setViewMode(mode)}
+              style={{ padding:"5px 12px", fontSize:12, fontWeight:600, cursor:"pointer", border:"none", fontFamily:"'DM Sans',sans-serif",
+                background: viewMode===mode ? T.accent : "transparent",
+                color: viewMode===mode ? "#fff" : T.muted,
+              }}>{label}</button>
+          ))}
+        </div>
       </div>
 
-      <Card style={{ padding: 0, overflowX: "auto" }}>
-        <table style={{ width: "100%", minWidth: 700, borderCollapse: "collapse", fontSize: 13 }}>
-          <THead cols={["Horário", "Cliente", "Barbeiro", "Serviços", "Produtos", "Valor", "Pagamento", "Data", ""]} />
-          <tbody>
-            {filtered.length === 0 ? (
-              <tr><td colSpan={9} style={{ textAlign: "center", padding: "3rem", color: T.muted }}>Nenhum atendimento encontrado</td></tr>
-            ) : filtered.map(a => {
-              const cl = clients.find(c => c.id === a.clientId), br = barbers.find(b => b.id === a.barberId);
-              const prodDisplay = getProductDisplay(a);
-              return (
-                <tr key={a.id} style={{ borderTop: `1px solid ${T.borderLight}` }}>
-                  <td style={{ ...stCell, color: T.muted, fontVariantNumeric: "tabular-nums" }}>{a.time}</td>
-                  <td style={{ ...stCell, color: T.text, fontWeight: 500 }}>
-                    {cl?.name || "—"}
-                    {a.source === "appointment" && (
-                      <span style={{ marginLeft:6, background:`${T.accent}22`, color:T.accent, borderRadius:4, padding:"1px 5px", fontSize:10, fontWeight:700, whiteSpace:"nowrap" }}>📅 Agendado</span>
-                    )}
-                  </td>
-                  <td style={{ ...stCell, color: T.muted }}>{br?.name || "—"}</td>
+      {/* ── POR DIA ── */}
+      {viewMode === "day" && (
+        <div>
+          {byDay.length === 0 && (
+            <div style={{ textAlign:"center", padding:"3rem", color:T.muted }}>Nenhum atendimento encontrado</div>
+          )}
+          {byDay.map(([date, atts]) => {
+            const dayTotal   = atts.reduce((s,a) => s + a.price, 0);
+            const isCollapsed = collapsedDays[date];
+            return (
+              <div key={date} style={{ marginBottom:"1rem" }}>
+                <button onClick={() => setCollapsedDays(c => ({ ...c, [date]: !c[date] }))}
+                  style={{ width:"100%", background:T.card, border:`1px solid ${T.border}`, borderRadius:10, padding:"0.6rem 1rem", cursor:"pointer", display:"flex", alignItems:"center", gap:"0.75rem", marginBottom: isCollapsed ? 0 : 8 }}>
+                  <Calendar size={14} style={{ color:T.accent, flexShrink:0 }}/>
+                  <span style={{ fontWeight:700, color:T.text, fontSize:13, textAlign:"left", flex:1 }}>{dayLabel(date)}</span>
+                  <span style={{ fontSize:12, color:T.muted }}>{atts.length} atend. · {R$(dayTotal)}</span>
+                  <ChevronRight size={14} style={{ color:T.muted, transform: isCollapsed?"":"rotate(90deg)", transition:"transform .2s" }}/>
+                </button>
+                {!isCollapsed && atts.map(a => <AttCard key={a.id} a={a}/>)}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
-                  {/* Serviços */}
-                  <td style={{ ...stCell, color: T.text }}>
-                    {getServiceDisplay(a)}
-                    {(a.servicesPrice ?? a.price) > 0 && (
-                      <div style={{ color: T.success, fontSize: 11, fontWeight: 600, marginTop: 2 }}>
-                        {R$(a.servicesPrice ?? a.price)}
-                      </div>
-                    )}
-                  </td>
+      {/* ── POR BARBEIRO ── */}
+      {viewMode === "barber" && (
+        <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill,minmax(300px,1fr))", gap:"1rem" }}>
+          {byBarber.length === 0 && (
+            <div style={{ textAlign:"center", padding:"3rem", color:T.muted, gridColumn:"1/-1" }}>Nenhum atendimento encontrado</div>
+          )}
+          {byBarber.map(({ barber, atts }) => {
+            const bTotal    = atts.reduce((s,a) => s + a.price, 0);
+            const bPending  = atts.filter(a => a.payment === "Pendente").length;
+            const bDone     = atts.length - bPending;
+            return (
+              <div key={barber?.id || "unknown"} style={{ background:T.card, border:`1px solid ${T.border}`, borderRadius:12, padding:"1rem" }}>
+                <div style={{ fontWeight:800, fontSize:15, color:T.text, marginBottom:"0.5rem" }}>{barber?.name || "—"}</div>
+                <div style={{ display:"flex", gap:"0.5rem", marginBottom:"0.75rem", flexWrap:"wrap" }}>
+                  <span style={{ background:T.successBg, color:T.success, borderRadius:6, padding:"2px 8px", fontSize:11, fontWeight:700 }}>Concluídos: {bDone}</span>
+                  {bPending > 0 && <span style={{ background:"#f59e0b22", color:"#f59e0b", borderRadius:6, padding:"2px 8px", fontSize:11, fontWeight:700 }}>Pendentes: {bPending}</span>}
+                  <span style={{ background:T.accentGlow, color:T.accent, borderRadius:6, padding:"2px 8px", fontSize:11, fontWeight:700 }}>{R$(bTotal)}</span>
+                </div>
+                {atts.map(a => <AttCard key={a.id} a={a} showDate/>)}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
-                  {/* Produtos */}
-                  <td style={{ ...stCell }}>
-                    {prodDisplay ? (
-                      <div>
-                        <span style={{ color: T.accent, fontWeight: 500 }}>{prodDisplay}</span>
-                        <div style={{ color: T.accent, fontSize: 11, fontWeight: 600, marginTop: 2 }}>
-                          {R$(a.price - (a.servicesPrice ?? a.price))}
-                        </div>
-                      </div>
-                    ) : (
-                      <span style={{ color: T.muted, fontSize: 12 }}>—</span>
-                    )}
-                  </td>
-
-                  <td style={{ ...stCell, color: a.payment === "Pendente" ? T.muted : T.success, fontWeight: 700 }}>
-                    {R$(a.price)}
-                    {a.payment === "Pendente" && <div style={{ fontSize:10, color:T.muted, fontWeight:400 }}>Aguardando</div>}
-                  </td>
-                  <td style={stCell}>
-                    <span style={{ background: (payColor[a.payment] || T.accent) + "18", color: payColor[a.payment] || T.accent, borderRadius: 5, padding: "2px 8px", fontSize: 11, fontWeight: 700 }}>{a.payment}</span>
-                  </td>
-                  <td style={{ ...stCell, color: T.muted, fontSize: 12 }}>{fDate(a.date)}</td>
-                  <td style={{ ...stCell, textAlign: "right" }}>
-                    <div style={{ display:"flex", gap:6, justifyContent:"flex-end", alignItems:"center" }}>
-                      {a.payment === "Pendente" && (
-                        <Btn sm onClick={() => { setFinalModal(a.id); setFinPay("PIX"); }}>
-                          <Check size={12}/> Finalizar
-                        </Btn>
+      {/* ── LISTA ── */}
+      {viewMode === "list" && (
+        <Card style={{ padding: 0, overflowX: "auto" }}>
+          <table style={{ width: "100%", minWidth: 700, borderCollapse: "collapse", fontSize: 13 }}>
+            <THead cols={["Horário", "Cliente", "Barbeiro", "Serviços", "Produtos", "Valor", "Pagamento", "Data", ""]} />
+            <tbody>
+              {filtered.length === 0 ? (
+                <tr><td colSpan={9} style={{ textAlign: "center", padding: "3rem", color: T.muted }}>Nenhum atendimento encontrado</td></tr>
+              ) : filtered.map(a => {
+                const cl = clients.find(c => c.id === a.clientId), br = barbers.find(b => b.id === a.barberId);
+                const prodDisplay = getProductDisplay(a);
+                return (
+                  <tr key={a.id} style={{ borderTop: `1px solid ${T.borderLight}` }}>
+                    <td style={{ ...stCell, color: T.muted, fontVariantNumeric: "tabular-nums" }}>{a.time}</td>
+                    <td style={{ ...stCell, color: T.text, fontWeight: 500 }}>
+                      {cl?.name || "—"}
+                      {a.source === "appointment" && (
+                        <span style={{ marginLeft:6, background:`${T.accent}22`, color:T.accent, borderRadius:4, padding:"1px 5px", fontSize:10, fontWeight:700, whiteSpace:"nowrap" }}>Agendado</span>
                       )}
-                      <button onClick={() => del(a.id)} style={{ background: "none", border: "none", color: T.muted, cursor: "pointer", display: "inline-flex" }}><Trash2 size={14}/></button>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </Card>
+                    </td>
+                    <td style={{ ...stCell, color: T.muted }}>{br?.name || "—"}</td>
+                    <td style={{ ...stCell, color: T.text }}>
+                      {getServiceDisplay(a)}
+                      {(a.servicesPrice ?? a.price) > 0 && <div style={{ color:T.success, fontSize:11, fontWeight:600, marginTop:2 }}>{R$(a.servicesPrice ?? a.price)}</div>}
+                    </td>
+                    <td style={{ ...stCell }}>
+                      {prodDisplay ? (
+                        <div>
+                          <span style={{ color:T.accent, fontWeight:500 }}>{prodDisplay}</span>
+                          <div style={{ color:T.accent, fontSize:11, fontWeight:600, marginTop:2 }}>{R$(a.price - (a.servicesPrice ?? a.price))}</div>
+                        </div>
+                      ) : <span style={{ color:T.muted, fontSize:12 }}>—</span>}
+                    </td>
+                    <td style={{ ...stCell, color: a.payment === "Pendente" ? T.muted : T.success, fontWeight:700 }}>
+                      {R$(a.price)}
+                      {a.payment === "Pendente" && <div style={{ fontSize:10, color:T.muted, fontWeight:400 }}>Aguardando</div>}
+                    </td>
+                    <td style={stCell}>
+                      <span style={{ background:(payColor[a.payment]||T.accent)+"18", color:payColor[a.payment]||T.accent, borderRadius:5, padding:"2px 8px", fontSize:11, fontWeight:700 }}>{a.payment}</span>
+                    </td>
+                    <td style={{ ...stCell, color:T.muted, fontSize:12 }}>{fDate(a.date)}</td>
+                    <td style={{ ...stCell, textAlign:"right" }}>
+                      <div style={{ display:"flex", gap:6, justifyContent:"flex-end", alignItems:"center" }}>
+                        {a.payment === "Pendente" && <Btn sm onClick={() => { setFinalModal(a.id); setFinPay("PIX"); }}><Check size={12}/> Finalizar</Btn>}
+                        <button onClick={() => del(a.id)} style={{ background:"none", border:"none", color:T.muted, cursor:"pointer", display:"inline-flex" }}><Trash2 size={14}/></button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </Card>
+      )}
 
       {finalModal && (
         <Modal title="Finalizar Atendimento" onClose={() => setFinalModal(null)}>
