@@ -276,14 +276,14 @@ const THead = ({ cols }) => (
   <thead><tr>{cols.map(c => <th key={c} style={{ textAlign: "left", padding: "0 0.75rem 10px", fontSize: 10, fontWeight: 700, color: T.muted, textTransform: "uppercase", letterSpacing: 0.8 }}>{c}</th>)}</tr></thead>
 );
 
-const PageHeader = ({ title, sub, right, onRefresh }) => (
+const PageHeader = ({ title, sub, right, onRefresh, centerRight }) => (
   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.75rem", gap: 12, flexWrap: "wrap" }}>
     <div style={{ minWidth: 0 }}>
       <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "clamp(26px, 6vw, 38px)", letterSpacing: 2.5, margin: "0 0 4px", color: T.text }}>{title}</h1>
       {sub && <div style={{ color: T.muted, fontSize: 13 }}>{sub}</div>}
     </div>
     {(right || onRefresh) && (
-      <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", ...(centerRight ? { width:"100%", justifyContent:"center", flexShrink:0 } : { flexShrink:0 }) }}>
         {onRefresh && (
           <Btn variant="ghost" onClick={onRefresh}>
             <RefreshCw size={14}/>Atualizar
@@ -1796,6 +1796,7 @@ function AttendancesView({ attendances, setAttendances, clients, setClients, ser
         sub={`${filtered.length} atendimento${filtered.length !== 1 ? "s" : ""} no período`}
         onRefresh={onRefresh}
         right={<Btn onClick={() => { setForm(emptyForm()); setShowModal(true); }}><Plus size={15}/>Novo Atendimento</Btn>}
+        centerRight={isMobile}
       />
 
       {/* ── KPI Cards ── */}
@@ -1859,10 +1860,13 @@ function AttendancesView({ attendances, setAttendances, clients, setClients, ser
         if (isMobile) return (
           <div style={{ marginBottom:"1rem", display:"flex", flexDirection:"column", gap:8 }}>
             {/* Linha 1: navegação de datas */}
-            <div style={{ display:"flex", alignItems:"center", gap:4, flexWrap:"wrap" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:4, justifyContent:"center" }}>
               {navBtn(-1)}
               <DateRangePicker from={filterFrom} to={filterTo} onChange={({ from, to }) => { setFilterFrom(from); setFilterTo(to); }} compact/>
               {navBtn(1)}
+            </div>
+            {/* Linha 2: atalhos de período */}
+            <div style={{ display:"flex", alignItems:"center", gap:6, justifyContent:"center" }}>
               <Btn variant="ghost" sm onClick={() => { const t=today(); setFilterFrom(t); setFilterTo(t); }}>Hoje</Btn>
               <Btn variant="ghost" sm onClick={() => { const t=today(); setFilterFrom(t.substring(0,7)+"-01"); const d=new Date(); d.setMonth(d.getMonth()+1,0); setFilterTo(d.toISOString().slice(0,10)); }}>Mês atual</Btn>
               <Btn variant="ghost" sm onClick={() => { const y=new Date().getFullYear(); setFilterFrom(`${y}-01-01`); setFilterTo(`${y}-12-31`); }}>Ano atual</Btn>
