@@ -1865,7 +1865,7 @@ function AttendancesView({ attendances, setAttendances, clients, setClients, ser
               {navBtn(1)}
               <Btn variant="ghost" sm onClick={() => { const t=today(); setFilterFrom(t); setFilterTo(t); }}>Hoje</Btn>
               <Btn variant="ghost" sm onClick={() => { const t=today(); setFilterFrom(t.substring(0,7)+"-01"); const d=new Date(); d.setMonth(d.getMonth()+1,0); setFilterTo(d.toISOString().slice(0,10)); }}>Mês atual</Btn>
-              <Btn variant="ghost" sm onClick={() => { const y=new Date().getFullYear(); setFilterFrom(`${y}-01-01`); setFilterTo(`${y}-12-31`); }}>Ano</Btn>
+              <Btn variant="ghost" sm onClick={() => { const y=new Date().getFullYear(); setFilterFrom(`${y}-01-01`); setFilterTo(`${y}-12-31`); }}>Ano atual</Btn>
             </div>
             {/* Linha 2: filtros */}
             <div style={{ display:"flex", gap:6, flexWrap:"wrap", alignItems:"center" }}>
@@ -1896,7 +1896,7 @@ function AttendancesView({ attendances, setAttendances, clients, setClients, ser
             </div>
             <Btn variant="ghost" sm onClick={() => { const t=today(); setFilterFrom(t); setFilterTo(t); }}>Hoje</Btn>
             <Btn variant="ghost" sm onClick={() => { const t=today(); setFilterFrom(t.substring(0,7)+"-01"); const d=new Date(); d.setMonth(d.getMonth()+1,0); setFilterTo(d.toISOString().slice(0,10)); }}>Mês atual</Btn>
-            <Btn variant="ghost" sm onClick={() => { const y=new Date().getFullYear(); setFilterFrom(`${y}-01-01`); setFilterTo(`${y}-12-31`); }}>Ano</Btn>
+            <Btn variant="ghost" sm onClick={() => { const y=new Date().getFullYear(); setFilterFrom(`${y}-01-01`); setFilterTo(`${y}-12-31`); }}>Ano atual</Btn>
             {isAdmin && (
               <select value={filterBarber} onChange={e => setFilterBarber(e.target.value)} style={{ ...selSt2, color:filterBarber?T.text:T.muted }}>
                 <option value="">Todos os barbeiros</option>
