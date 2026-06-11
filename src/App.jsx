@@ -2845,23 +2845,23 @@ function FinancialView({ attendances, expenses, setExpenses, token, barbershopId
       <div style={{ marginBottom:"1.5rem" }}>
 
         {/* DateRangePicker + Dropdowns Ano / Mês na mesma linha */}
-        <div style={{ display:"flex", gap:12, flexWrap:"wrap", alignItems:"flex-end" }}>
+        <div style={{ display:"flex", gap:8, alignItems:"flex-end" }}>
           <DateRangePicker
             from={filterFrom}
             to={filterTo}
             onChange={({ from, to }) => { setFilterFrom(from); setFilterTo(to); }}
           />
-          <div style={{ display:"flex", flexDirection:"column", gap:4, minWidth:120 }}>
+          <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
             <span style={{ fontSize:11, color:T.muted, fontWeight:600, letterSpacing:.5 }}>ANO</span>
-            <select style={selSt} value={dropYear}
+            <select style={{ ...selSt, minWidth:0 }} value={dropYear}
               onChange={e => { setDropYear(e.target.value); applyDropFilter(e.target.value, dropMonth); }}>
               <option value="Tudo">Tudo</option>
               {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
             </select>
           </div>
-          <div style={{ display:"flex", flexDirection:"column", gap:4, minWidth:160 }}>
+          <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
             <span style={{ fontSize:11, color:T.muted, fontWeight:600, letterSpacing:.5 }}>MÊS</span>
-            <select style={selSt} value={dropMonth}
+            <select style={{ ...selSt, minWidth:0 }} value={dropMonth}
               onChange={e => { setDropMonth(e.target.value); applyDropFilter(dropYear, e.target.value); }}>
               <option value="Tudo">Tudo</option>
               {MONTHS_PT.map(m => <option key={m} value={m}>{m}</option>)}
