@@ -293,7 +293,7 @@ export default function BookingPage({ slug }) {
       })()}
 
       {step < 5 && (
-        <div style={{ maxWidth:540, margin:"0 auto", padding:"1.5rem 1rem 4rem" }}>
+        <div style={{ maxWidth:540, margin:"0 auto", padding:"1.5rem 1rem 1.5rem" }}>
 
           {/* Step progress bar */}
           <div style={{ display:"flex", gap:6, marginBottom:"2rem" }}>
