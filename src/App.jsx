@@ -2127,13 +2127,15 @@ function BarbersView({ barbers, setBarbers, attendances, token, barbershopId, on
 
   const save = async () => {
     if (!form.name) return setErr("Nome é obrigatório.");
-    if (!editing && form.email && !form.password) return setErr("Preencha a senha para criar o login.");
-    if (!editing && form.password && form.password.length < 6) return setErr("Senha deve ter no mínimo 6 caracteres.");
+    const editingBarber = editing ? barbers.find(b=>b.id===editing) : null;
+    const needsLogin = !editingBarber?.userId;
+    if (form.email && !form.password) return setErr("Preencha a senha para criar o login.");
+    if (form.password && form.password.length < 6) return setErr("Senha deve ter no mínimo 6 caracteres.");
     setSaving(true); setErr("");
     try {
-      let userId = editing ? (barbers.find(b=>b.id===editing)?.userId || null) : null;
+      let userId = editing ? (editingBarber?.userId || null) : null;
 
-      if (!editing && form.email && form.password) {
+      if ((!editing || (editing && needsLogin)) && form.email && form.password) {
         const res = await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
           method: "POST",
           headers: { apikey: SUPABASE_ANON, "Content-Type": "application/json" },
@@ -2148,6 +2150,13 @@ function BarbersView({ barbers, setBarbers, attendances, token, barbershopId, on
           throw new Error(data.error?.message || data.msg || "Erro ao criar login.");
         }
         userId = data.user?.id;
+        if (editing && userId) {
+          await fetch(`${SUPABASE_URL}/rest/v1/rpc/link_barber_profile`, {
+            method: "POST",
+            headers: hdr(token),
+            body: JSON.stringify({ p_user_id: userId, p_barbershop_id: barbershopId, p_barber_id: editing }),
+          });
+        }
       }
 
       // Upload de foto (se um novo arquivo foi selecionado)
@@ -2286,13 +2295,13 @@ function BarbersView({ barbers, setBarbers, attendances, token, barbershopId, on
             <FG label="Comissão (%)" half><input style={inputSt} type="number" min="0" max="100" value={form.commission} onChange={setF("commission")}/></FG>
             <FSelect label="Status" value={form.status} onChange={setF("status")}><option value="active">Ativo</option><option value="inactive">Inativo</option></FSelect>
           </Row>
-          {!editing && (
+          {(!editing || !barbers.find(b=>b.id===editing)?.userId) && (
             <div style={{ borderTop:`1px solid ${T.borderLight}`, paddingTop:"1rem", marginTop:"0.5rem", marginBottom:"1rem" }}>
               <div style={{ fontSize:11, fontWeight:700, color:T.muted, textTransform:"uppercase", letterSpacing:0.8, marginBottom:"0.75rem" }}>Login de Acesso (opcional)</div>
               <FInput label="E-mail" type="email" value={form.email} onChange={setF("email")} placeholder="barbeiro@email.com"/>
               <FInput label="Senha" type="password" value={form.password} onChange={setF("password")} placeholder="Mínimo 6 caracteres"/>
               <div style={{ background:T.accentGlow, border:`1px solid ${T.accent}33`, borderRadius:8, padding:"0.75rem", fontSize:12, color:T.mutedLight }}>
-                💡 Preencha para criar o acesso do barbeiro ao sistema. Deixe em branco para cadastrar só o perfil agora.
+                💡 {editing ? "Preencha para configurar o acesso deste barbeiro ao sistema." : "Preencha para criar o acesso do barbeiro ao sistema. Deixe em branco para cadastrar só o perfil agora."}
               </div>
             </div>
           )}
