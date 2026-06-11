@@ -674,16 +674,16 @@ export default function BookingPage({ slug }) {
       {(shop?.address || shop?.phone || shop?.whatsapp || shop?.payment_methods?.length > 0 || shop?.amenities?.length > 0) && (() => {
         return (
           <div style={{ borderTop:`1px solid ${BT.border}`, marginTop:"1rem" }}>
-            {(shop?.address || shop?.phone || shop?.whatsapp) && (
-              <div style={{ background:BT.surface, padding:"0.6rem 1.5rem", display:"flex", flexWrap:"wrap", alignItems:"center", justifyContent:"center", gap:"0.5rem 2rem" }}>
-                {shop?.address && (
-                  <div style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, color:BT.muted }}>
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink:0 }}>
-                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
-                    </svg>
-                    <span>{shop.address}</span>
-                  </div>
-                )}
+            {shop?.address && (
+              <div style={{ background:BT.surface, borderBottom:`1px solid ${BT.border}`, padding:"0.5rem 1.5rem", display:"flex", alignItems:"center", justifyContent:"center", gap:6, fontSize:12, color:BT.muted }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink:0 }}>
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+                </svg>
+                <span>{shop.address}</span>
+              </div>
+            )}
+            {(shop?.phone || shop?.whatsapp) && (
+              <div style={{ background:BT.surface, padding:"0.5rem 1.5rem", display:"flex", flexWrap:"wrap", alignItems:"center", justifyContent:"center", gap:"0.5rem 2rem" }}>
                 {shop?.phone && (
                   <a href={`tel:${shop.phone.replace(/\D/g,"")}`} style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, color:accent, textDecoration:"none" }}>
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink:0 }}>
