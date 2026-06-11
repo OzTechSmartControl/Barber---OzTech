@@ -29,23 +29,6 @@ const inputSt = {
   MozAppearance: "none",
 };
 
-const PAYMENT_METHODS_CFG = [
-  { key: "dinheiro",        label: "Dinheiro" },
-  { key: "pix",             label: "PIX" },
-  { key: "debito",          label: "Cartão de Débito" },
-  { key: "credito",         label: "Cartão de Crédito" },
-  { key: "transferencia",   label: "Transferência/DOC/TED" },
-  { key: "vale_alimentacao",label: "Vale Alimentação" },
-  { key: "vale_refeicao",   label: "Vale Refeição" },
-];
-const AMENITIES_CFG = [
-  { key: "wifi",            label: "Wi-Fi gratuito" },
-  { key: "estacionamento",  label: "Estacionamento" },
-  { key: "acessivel",       label: "Acessível (cadeirante)" },
-  { key: "ar_condicionado", label: "Ar-condicionado" },
-  { key: "criancas",        label: "Atendemos crianças" },
-  { key: "voucher",         label: "Aceita cortesia/voucher" },
-];
 
 const WEEK = [
   { key:"sunday",    s:"Dom" },
@@ -345,27 +328,21 @@ export default function BookingPage({ slug }) {
           {shop?.payment_methods?.length > 0 && (
             <div style={{ display:"flex", flexWrap:"wrap", alignItems:"center", justifyContent:"center", gap:"0.4rem 0.6rem" }}>
               <span style={{ fontSize:11, color:BT.muted, fontWeight:600, textTransform:"uppercase", letterSpacing:0.7, marginRight:4 }}>Pagamento:</span>
-              {shop.payment_methods.map(key => {
-                const cfg = PAYMENT_METHODS_CFG.find(p => p.key === key);
-                return cfg ? (
-                  <span key={key} style={{ fontSize:11, padding:"2px 9px", borderRadius:99, background:`${accent}18`, color:accent, border:`1px solid ${accent}33` }}>
-                    {cfg.label}
-                  </span>
-                ) : null;
-              })}
+              {shop.payment_methods.map((label, i) => (
+                <span key={i} style={{ fontSize:11, padding:"2px 9px", borderRadius:99, background:`${accent}18`, color:accent, border:`1px solid ${accent}33` }}>
+                  {label}
+                </span>
+              ))}
             </div>
           )}
           {shop?.amenities?.length > 0 && (
             <div style={{ display:"flex", flexWrap:"wrap", alignItems:"center", justifyContent:"center", gap:"0.4rem 0.6rem" }}>
               <span style={{ fontSize:11, color:BT.muted, fontWeight:600, textTransform:"uppercase", letterSpacing:0.7, marginRight:4 }}>Facilidades:</span>
-              {shop.amenities.map(key => {
-                const cfg = AMENITIES_CFG.find(a => a.key === key);
-                return cfg ? (
-                  <span key={key} style={{ fontSize:11, padding:"2px 9px", borderRadius:99, background:`${BT.border}55`, color:BT.muted, border:`1px solid ${BT.border}` }}>
-                    {cfg.label}
-                  </span>
-                ) : null;
-              })}
+              {shop.amenities.map((label, i) => (
+                <span key={i} style={{ fontSize:11, padding:"2px 9px", borderRadius:99, background:`${BT.border}55`, color:BT.muted, border:`1px solid ${BT.border}` }}>
+                  {label}
+                </span>
+              ))}
             </div>
           )}
         </div>

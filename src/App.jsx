@@ -3584,21 +3584,17 @@ const uploadBarberPhoto = async (tok, file, shopId, barberId) => {
 };
 
 const PAYMENT_METHODS_CFG = [
-  { key: "dinheiro",        label: "Dinheiro" },
-  { key: "pix",             label: "PIX" },
-  { key: "debito",          label: "Cartão de Débito" },
-  { key: "credito",         label: "Cartão de Crédito" },
-  { key: "transferencia",   label: "Transferência/DOC/TED" },
-  { key: "vale_alimentacao",label: "Vale Alimentação" },
-  { key: "vale_refeicao",   label: "Vale Refeição" },
+  "Dinheiro",
+  "PIX",
+  "Cartão de Débito",
+  "Cartão de Crédito",
 ];
 const AMENITIES_CFG = [
-  { key: "wifi",            label: "Wi-Fi gratuito" },
-  { key: "estacionamento",  label: "Estacionamento" },
-  { key: "acessivel",       label: "Acessível (cadeirante)" },
-  { key: "ar_condicionado", label: "Ar-condicionado" },
-  { key: "criancas",        label: "Atendemos crianças" },
-  { key: "voucher",         label: "Aceita cortesia/voucher" },
+  "Wi-Fi gratuito",
+  "Estacionamento",
+  "Acessível (cadeirante)",
+  "Ar-condicionado",
+  "Atendemos crianças",
 ];
 
 const DAYS_CFG = [
@@ -3627,6 +3623,8 @@ function SettingsView({ token, shop, onShopUpdated, themeMode = "dark", onToggle
   const [businessHours, setBusinessHours] = useState(() => parseBusinessHours(shop?.business_hours));
   const [paymentMethods, setPaymentMethods] = useState(() => Array.isArray(shop?.payment_methods) ? shop.payment_methods : []);
   const [amenities, setAmenities] = useState(() => Array.isArray(shop?.amenities) ? shop.amenities : []);
+  const [customPayment, setCustomPayment] = useState("");
+  const [customAmenity, setCustomAmenity] = useState("");
   const [accent, setAccent] = useState(() => normalizeHex(shop?.accent_color));
   const [logoFile, setLogoFile] = useState(null);
   const [logoPreview, setLogoPreview] = useState("");
@@ -3849,21 +3847,36 @@ function SettingsView({ token, shop, onShopUpdated, themeMode = "dark", onToggle
             <div style={{ color:T.muted, fontSize:12, marginTop:2 }}>Selecione os métodos aceitos pela sua barbearia.</div>
           </div>
         </div>
-        <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
-          {PAYMENT_METHODS_CFG.map(({ key, label }) => {
-            const active = paymentMethods.includes(key);
+        <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginBottom:12 }}>
+          {PAYMENT_METHODS_CFG.map(label => {
+            const active = paymentMethods.includes(label);
             return (
-              <button key={key}
-                onClick={() => setPaymentMethods(prev => active ? prev.filter(k => k !== key) : [...prev, key])}
+              <button key={label}
+                onClick={() => setPaymentMethods(prev => active ? prev.filter(l => l !== label) : [...prev, label])}
                 style={{ fontSize:13, padding:"6px 14px", borderRadius:99, cursor:"pointer",
-                  background: active ? T.accent : "transparent",
-                  color: active ? "#fff" : T.muted,
-                  border: `1px solid ${active ? T.accent : T.border}`,
-                  fontFamily:"'DM Sans',sans-serif", transition:"all .15s" }}>
+                  background: active ? T.accent : "transparent", color: active ? "#fff" : T.muted,
+                  border:`1px solid ${active ? T.accent : T.border}`, fontFamily:"'DM Sans',sans-serif", transition:"all .15s" }}>
                 {label}
               </button>
             );
           })}
+          {paymentMethods.filter(l => !PAYMENT_METHODS_CFG.includes(l)).map(label => (
+            <button key={label}
+              onClick={() => setPaymentMethods(prev => prev.filter(l => l !== label))}
+              style={{ fontSize:13, padding:"6px 14px", borderRadius:99, cursor:"pointer",
+                background: T.accent, color:"#fff", border:`1px solid ${T.accent}`,
+                fontFamily:"'DM Sans',sans-serif", display:"flex", alignItems:"center", gap:6 }}>
+              {label} <X size={11}/>
+            </button>
+          ))}
+        </div>
+        <div style={{ display:"flex", gap:8 }}>
+          <input value={customPayment} onChange={e => setCustomPayment(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter") { const v = customPayment.trim(); if (v && !paymentMethods.includes(v)) { setPaymentMethods(prev => [...prev, v]); setCustomPayment(""); } } }}
+            placeholder="Outro método..." style={{ ...inputSt, flex:1, fontSize:13 }} />
+          <Btn sm onClick={() => { const v = customPayment.trim(); if (v && !paymentMethods.includes(v)) { setPaymentMethods(prev => [...prev, v]); setCustomPayment(""); } }} disabled={!customPayment.trim()}>
+            <Plus size={13}/> Adicionar
+          </Btn>
         </div>
       </Card>
 
@@ -3878,21 +3891,36 @@ function SettingsView({ token, shop, onShopUpdated, themeMode = "dark", onToggle
             <div style={{ color:T.muted, fontSize:12, marginTop:2 }}>Informe os diferenciais e comodidades da sua barbearia.</div>
           </div>
         </div>
-        <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
-          {AMENITIES_CFG.map(({ key, label }) => {
-            const active = amenities.includes(key);
+        <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginBottom:12 }}>
+          {AMENITIES_CFG.map(label => {
+            const active = amenities.includes(label);
             return (
-              <button key={key}
-                onClick={() => setAmenities(prev => active ? prev.filter(k => k !== key) : [...prev, key])}
+              <button key={label}
+                onClick={() => setAmenities(prev => active ? prev.filter(l => l !== label) : [...prev, label])}
                 style={{ fontSize:13, padding:"6px 14px", borderRadius:99, cursor:"pointer",
-                  background: active ? T.accent : "transparent",
-                  color: active ? "#fff" : T.muted,
-                  border: `1px solid ${active ? T.accent : T.border}`,
-                  fontFamily:"'DM Sans',sans-serif", transition:"all .15s" }}>
+                  background: active ? T.accent : "transparent", color: active ? "#fff" : T.muted,
+                  border:`1px solid ${active ? T.accent : T.border}`, fontFamily:"'DM Sans',sans-serif", transition:"all .15s" }}>
                 {label}
               </button>
             );
           })}
+          {amenities.filter(l => !AMENITIES_CFG.includes(l)).map(label => (
+            <button key={label}
+              onClick={() => setAmenities(prev => prev.filter(l => l !== label))}
+              style={{ fontSize:13, padding:"6px 14px", borderRadius:99, cursor:"pointer",
+                background: T.accent, color:"#fff", border:`1px solid ${T.accent}`,
+                fontFamily:"'DM Sans',sans-serif", display:"flex", alignItems:"center", gap:6 }}>
+              {label} <X size={11}/>
+            </button>
+          ))}
+        </div>
+        <div style={{ display:"flex", gap:8 }}>
+          <input value={customAmenity} onChange={e => setCustomAmenity(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter") { const v = customAmenity.trim(); if (v && !amenities.includes(v)) { setAmenities(prev => [...prev, v]); setCustomAmenity(""); } } }}
+            placeholder="Outra facilidade..." style={{ ...inputSt, flex:1, fontSize:13 }} />
+          <Btn sm onClick={() => { const v = customAmenity.trim(); if (v && !amenities.includes(v)) { setAmenities(prev => [...prev, v]); setCustomAmenity(""); } }} disabled={!customAmenity.trim()}>
+            <Plus size={13}/> Adicionar
+          </Btn>
         </div>
       </Card>
 
