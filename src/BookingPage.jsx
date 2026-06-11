@@ -264,9 +264,9 @@ export default function BookingPage({ slug }) {
     <div style={{ minHeight:"100vh", background:BT.bg, fontFamily:"'DM Sans',sans-serif", color:BT.text }}>
 
       {/* Header */}
-      <div style={{ background:BT.card, borderBottom:`1px solid ${BT.border}`, padding:"1rem 1.5rem", display:"flex", alignItems:"center", gap:14 }}>
+      <div style={{ background:BT.card, borderBottom:`1px solid ${BT.border}`, padding:"1rem 1.5rem", display:"flex", alignItems:"center", justifyContent:"center", gap:14 }}>
         {shop?.logo_url && shop.logo_url !== "null" ? (
-          <img src={shop.logo_url} alt={shop.name} style={{ height:42, width:42, objectFit:"cover", borderRadius:10, flexShrink:0 }}/>
+          <img src={shop.logo_url} alt={shop.name} style={{ height:52, width:52, objectFit:"contain", borderRadius:10, flexShrink:0, background:"transparent" }}/>
         ) : (
           <div style={{ height:42, width:42, borderRadius:10, background:`${accent}22`, border:`1px solid ${accent}44`, display:"flex", alignItems:"center", justifyContent:"center", color:accent, fontFamily:"'Bebas Neue',sans-serif", fontSize:22, flexShrink:0 }}>
             {(shop?.name||"B")[0].toUpperCase()}
