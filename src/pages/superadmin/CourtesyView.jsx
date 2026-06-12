@@ -3,6 +3,7 @@ import {
   Ban,
   Check,
   Clock,
+  Edit2,
   Gift,
   Infinity,
   Loader2,
@@ -205,6 +206,9 @@ export default function CourtesyView({
   const [showRevokeModal, setShowRevokeModal] = useState(false);
   const [selectedRevokeId, setSelectedRevokeId] = useState("");
   const [actionLoading, setActionLoading] = useState("");
+  const [editRow, setEditRow] = useState(null);
+  const [editType, setEditType] = useState("unlimited");
+  const [editExpires, setEditExpires] = useState("");
 
   const reloadLocalRows = async () => {
     setLocalLoading(true);
@@ -305,6 +309,35 @@ export default function CourtesyView({
       await reloadLocalRows();
     } catch (e) {
       alert(e.message || "Erro ao excluir acesso revogado.");
+    } finally {
+      setActionLoading("");
+    }
+  };
+
+  const openEditModal = (row) => {
+    setEditRow(row);
+    setEditType(row.type === "unlimited" ? "unlimited" : "limited");
+    setEditExpires(row.expires_at ? row.expires_at.slice(0, 10) : "");
+  };
+
+  const handleSaveEditDuration = async () => {
+    if (!editRow) return;
+    if (editType === "limited" && !editExpires) {
+      alert("Informe a data de expiração.");
+      return;
+    }
+    setActionLoading(editRow.id);
+    try {
+      const payload = {
+        type: editType,
+        expires_at: editType === "unlimited" ? null : new Date(editExpires + "T23:59:59").toISOString(),
+      };
+      const { error } = await supabase.from("courtesy_access").update(payload).eq("id", editRow.id);
+      if (error) throw error;
+      await reloadLocalRows();
+      setEditRow(null);
+    } catch (e) {
+      alert(e.message || "Erro ao alterar duração.");
     } finally {
       setActionLoading("");
     }
@@ -515,6 +548,26 @@ export default function CourtesyView({
                         {row.status === "active" && (
                           <>
                             <button
+                              onClick={() => openEditModal(row)}
+                              disabled={actionLoading === row.id}
+                              style={{
+                                background: `${T.accent}18`,
+                                border: `1px solid ${T.accent}44`,
+                                borderRadius: 8,
+                                padding: "5px 10px",
+                                color: T.accent,
+                                fontSize: 12,
+                                fontWeight: 800,
+                                cursor: actionLoading === row.id ? "wait" : "pointer",
+                                display: "inline-flex",
+                                gap: 5,
+                                alignItems: "center",
+                              }}
+                            >
+                              <Edit2 size={12} /> Duração
+                            </button>
+
+                            <button
                               onClick={() => onSendInvite?.(row)}
                               disabled={sendingInvite === row.id}
                               style={{
@@ -608,6 +661,59 @@ export default function CourtesyView({
           </table>
         </div>
       </div>
+
+      {editRow && (
+        <LocalModal title="ALTERAR DURAÇÃO" onClose={() => setEditRow(null)}>
+          <div style={{ color: T.mutedLight, fontSize: 13, marginBottom: "1rem" }}>
+            <strong style={{ color: T.text }}>{editRow.display_email || editRow.email}</strong>
+          </div>
+
+          <div style={{ marginBottom: "1rem" }}>
+            <div style={{ fontSize: 11, color: T.muted, fontWeight: 700, letterSpacing: .6, marginBottom: 8 }}>TIPO DE DURAÇÃO</div>
+            <div style={{ display: "flex", gap: 10 }}>
+              {[["unlimited", "Indeterminado"], ["limited", "Prazo determinado"]].map(([val, label]) => (
+                <button key={val} onClick={() => setEditType(val)}
+                  style={{
+                    flex: 1, padding: "0.65rem", borderRadius: 10, cursor: "pointer",
+                    border: `1px solid ${editType === val ? T.accent : T.border}`,
+                    background: editType === val ? `${T.accent}18` : T.surface,
+                    color: editType === val ? T.accent : T.mutedLight,
+                    fontWeight: 700, fontSize: 13, fontFamily: "'DM Sans', sans-serif",
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                  }}>
+                  {val === "unlimited" ? <Infinity size={14}/> : <Clock size={14}/>}
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {editType === "limited" && (
+            <div style={{ marginBottom: "1rem" }}>
+              <div style={{ fontSize: 11, color: T.muted, fontWeight: 700, letterSpacing: .6, marginBottom: 6 }}>DATA DE EXPIRAÇÃO</div>
+              <input
+                type="date"
+                value={editExpires}
+                onChange={e => setEditExpires(e.target.value)}
+                min={new Date().toISOString().slice(0,10)}
+                style={{ ...inputSt, colorScheme: "dark" }}
+              />
+            </div>
+          )}
+
+          <div style={{ display: "flex", gap: 8, marginTop: "1.25rem" }}>
+            <button onClick={() => setEditRow(null)}
+              style={{ flex: 1, background: T.surface, border: `1px solid ${T.border}`, color: T.mutedLight, borderRadius: 10, padding: "0.75rem", fontWeight: 700, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>
+              Cancelar
+            </button>
+            <button onClick={handleSaveEditDuration} disabled={!!actionLoading}
+              style={{ flex: 1, background: `${T.accent}22`, border: `1px solid ${T.accent}66`, color: T.accent, borderRadius: 10, padding: "0.75rem", fontWeight: 900, cursor: actionLoading ? "wait" : "pointer", fontFamily: "'DM Sans', sans-serif", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+              {actionLoading ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }}/> : <Check size={14}/>}
+              Salvar
+            </button>
+          </div>
+        </LocalModal>
+      )}
 
       {showRevokeModal && (
         <LocalModal
