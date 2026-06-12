@@ -459,23 +459,29 @@ export default function BookingPage({ slug }) {
               <label style={{ display:"block", fontSize:13, color:BT.muted, fontWeight:600, marginBottom:6, textAlign: isMobile ? "center" : "left" }}>Selecione uma data</label>
               {isMobile ? (
                 <div style={{ display:"flex", justifyContent:"center", marginBottom:"1.5rem" }}>
-                  <input
-                    type="date"
-                    min={todayISO()}
-                    value={selectedDate}
-                    onChange={e => { setSelectedDate(e.target.value); setSelectedSlot(""); }}
-                    style={{
-                      background:    BT.card,
-                      border:        `1px solid ${BT.border}`,
-                      borderRadius:  10,
-                      padding:       "0.7rem 1rem",
-                      color:         BT.text,
-                      fontSize:      15,
-                      outline:       "none",
-                      fontFamily:    "'DM Sans', sans-serif",
-                      colorScheme:   "dark",
-                    }}
-                  />
+                  <label style={{ position:"relative", cursor:"pointer" }}>
+                    <div style={{
+                      background:  BT.card,
+                      border:      `1px solid ${BT.border}`,
+                      borderRadius: 10,
+                      padding:     "0.65rem 1.25rem",
+                      fontSize:    15,
+                      color:       selectedDate ? BT.text : BT.muted,
+                      fontFamily:  "'DM Sans', sans-serif",
+                      minWidth:    170,
+                      textAlign:   "center",
+                      userSelect:  "none",
+                    }}>
+                      {selectedDate ? fDate(selectedDate) : "dd/mm/aaaa"}
+                    </div>
+                    <input
+                      type="date"
+                      min={todayISO()}
+                      value={selectedDate}
+                      onChange={e => { setSelectedDate(e.target.value); setSelectedSlot(""); }}
+                      style={{ position:"absolute", opacity:0, top:0, left:0, width:"100%", height:"100%", cursor:"pointer" }}
+                    />
+                  </label>
                 </div>
               ) : (
                 <input
