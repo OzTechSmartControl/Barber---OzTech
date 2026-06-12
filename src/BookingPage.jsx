@@ -456,31 +456,14 @@ export default function BookingPage({ slug }) {
               </button>
               <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:26, letterSpacing:1, marginBottom:"1.25rem" }}>Data e Horário</div>
 
-              {isMobile ? (
-                <>
-                  <label style={{ display:"block", fontSize:13, color:BT.muted, fontWeight:600, marginBottom:6, textAlign:"center" }}>Selecione uma data</label>
-                  <div style={{ display:"flex", justifyContent:"center", marginBottom:"1.5rem" }}>
-                    <input
-                      type="date"
-                      min={todayISO()}
-                      value={selectedDate}
-                      onChange={e => { setSelectedDate(e.target.value); setSelectedSlot(""); }}
-                      style={{ ...inputSt, colorScheme:"dark", width:"auto", fontSize:14, padding:"0.5rem 0.75rem" }}
-                    />
-                  </div>
-                </>
-              ) : (
-                <>
-                  <label style={{ display:"block", fontSize:13, color:BT.muted, fontWeight:600, marginBottom:6 }}>Selecione uma data</label>
-                  <input
-                    type="date"
-                    min={todayISO()}
-                    value={selectedDate}
-                    onChange={e => { setSelectedDate(e.target.value); setSelectedSlot(""); }}
-                    style={{ ...inputSt, marginBottom:"1.5rem", colorScheme:"dark" }}
-                  />
-                </>
-              )}
+              <label style={{ display:"block", fontSize:13, color:BT.muted, fontWeight:600, marginBottom:6, textAlign: isMobile ? "center" : "left" }}>Selecione uma data</label>
+              <input
+                type="date"
+                min={todayISO()}
+                value={selectedDate}
+                onChange={e => { setSelectedDate(e.target.value); setSelectedSlot(""); }}
+                style={{ ...inputSt, marginBottom:"1.5rem", colorScheme:"dark", textAlign: isMobile ? "center" : "left" }}
+              />
 
               {selectedDate && (
                 <>
