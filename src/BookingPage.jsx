@@ -71,6 +71,19 @@ const todayISO = () => {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 };
 
+const WEEK_SHORT  = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+const MONTH_SHORT = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+
+const getNextDays = (n) => {
+  const days = [];
+  for (let i = 0; i < n; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() + i);
+    days.push(d.toISOString().slice(0, 10));
+  }
+  return days;
+};
+
 const fDate = (str) => {
   if (!str) return "";
   const [y, m, d] = str.split("-");
@@ -99,6 +112,13 @@ export default function BookingPage({ slug }) {
   const [form,             setForm]             = useState({ name: "", phone: "", email: "", notes: "" });
   const [clientFound,      setClientFound]      = useState(false); // cliente já cadastrado
   const [booking,          setBooking]          = useState(false);
+
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 640);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 640);
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
 
   // Totais computados a partir dos serviços selecionados
   const totalDuration = selectedServices.reduce((sum, s) => sum + (s.duration || 0), 0);
@@ -436,14 +456,54 @@ export default function BookingPage({ slug }) {
               </button>
               <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:26, letterSpacing:1, marginBottom:"1.25rem" }}>Data e Horário</div>
 
-              <label style={{ display:"block", fontSize:13, color:BT.muted, fontWeight:600, marginBottom:6 }}>Selecione uma data</label>
-              <input
-                type="date"
-                min={todayISO()}
-                value={selectedDate}
-                onChange={e => { setSelectedDate(e.target.value); setSelectedSlot(""); }}
-                style={{ ...inputSt, marginBottom:"1.5rem", colorScheme:"dark" }}
-              />
+              <label style={{ display:"block", fontSize:13, color:BT.muted, fontWeight:600, marginBottom:10 }}>Selecione uma data</label>
+
+              {isMobile ? (
+                <div style={{ overflowX:"auto", WebkitOverflowScrolling:"touch", marginBottom:"1.5rem", marginLeft:-20, marginRight:-20, paddingLeft:20, paddingRight:20 }}>
+                  <div style={{ display:"flex", gap:8, width:"max-content", paddingBottom:4 }}>
+                    {getNextDays(30).map(dateStr => {
+                      const d = new Date(dateStr + "T12:00:00");
+                      const isSel = selectedDate === dateStr;
+                      return (
+                        <button
+                          key={dateStr}
+                          onClick={() => { setSelectedDate(dateStr); setSelectedSlot(""); }}
+                          style={{
+                            display:"flex", flexDirection:"column", alignItems:"center",
+                            background: isSel ? accent : BT.card,
+                            color:      isSel ? "#fff"  : BT.text,
+                            border:     `1.5px solid ${isSel ? accent : BT.border}`,
+                            borderRadius: 12,
+                            padding:    "10px 12px",
+                            cursor:     "pointer",
+                            fontFamily: "'DM Sans',sans-serif",
+                            minWidth:   52,
+                            transition: "all .15s",
+                          }}
+                        >
+                          <span style={{ fontSize:11, fontWeight:600, color: isSel ? "rgba(255,255,255,.8)" : BT.muted, marginBottom:4 }}>
+                            {WEEK_SHORT[d.getDay()]}
+                          </span>
+                          <span style={{ fontSize:22, fontWeight:800, lineHeight:1 }}>
+                            {d.getDate()}
+                          </span>
+                          <span style={{ fontSize:11, color: isSel ? "rgba(255,255,255,.8)" : BT.muted, marginTop:4 }}>
+                            {MONTH_SHORT[d.getMonth()]}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <input
+                  type="date"
+                  min={todayISO()}
+                  value={selectedDate}
+                  onChange={e => { setSelectedDate(e.target.value); setSelectedSlot(""); }}
+                  style={{ ...inputSt, marginBottom:"1.5rem", colorScheme:"dark" }}
+                />
+              )}
 
               {selectedDate && (
                 <>
