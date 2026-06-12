@@ -457,13 +457,35 @@ export default function BookingPage({ slug }) {
               <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:26, letterSpacing:1, marginBottom:"1.25rem" }}>Data e Horário</div>
 
               <label style={{ display:"block", fontSize:13, color:BT.muted, fontWeight:600, marginBottom:6, textAlign: isMobile ? "center" : "left" }}>Selecione uma data</label>
-              <input
-                type="date"
-                min={todayISO()}
-                value={selectedDate}
-                onChange={e => { setSelectedDate(e.target.value); setSelectedSlot(""); }}
-                style={{ ...inputSt, marginBottom:"1.5rem", colorScheme:"dark", textAlign: isMobile ? "center" : "left" }}
-              />
+              {isMobile ? (
+                <div style={{ display:"flex", justifyContent:"center", marginBottom:"1.5rem" }}>
+                  <input
+                    type="date"
+                    min={todayISO()}
+                    value={selectedDate}
+                    onChange={e => { setSelectedDate(e.target.value); setSelectedSlot(""); }}
+                    style={{
+                      background:    BT.card,
+                      border:        `1px solid ${BT.border}`,
+                      borderRadius:  10,
+                      padding:       "0.7rem 1rem",
+                      color:         BT.text,
+                      fontSize:      15,
+                      outline:       "none",
+                      fontFamily:    "'DM Sans', sans-serif",
+                      colorScheme:   "dark",
+                    }}
+                  />
+                </div>
+              ) : (
+                <input
+                  type="date"
+                  min={todayISO()}
+                  value={selectedDate}
+                  onChange={e => { setSelectedDate(e.target.value); setSelectedSlot(""); }}
+                  style={{ ...inputSt, marginBottom:"1.5rem", colorScheme:"dark" }}
+                />
+              )}
 
               {selectedDate && (
                 <>
