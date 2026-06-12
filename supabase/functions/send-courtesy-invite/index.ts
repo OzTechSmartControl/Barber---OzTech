@@ -75,10 +75,10 @@ serve(async (req) => {
         </p>
 
         <a href="${magicLink}"
-           style="display:block;text-align:center;background:linear-gradient(135deg,#4db8ff,#7dd3fc);
-                  color:#061018;text-decoration:none;border-radius:12px;padding:15px 24px;
+           style="display:block;text-align:center;background:#4db8ff;
+                  color:#ffffff;text-decoration:none;border-radius:12px;padding:15px 24px;
                   font-size:15px;font-weight:900;letter-spacing:.3px;margin-bottom:24px;">
-          Criar minha conta →
+          Criar minha conta
         </a>
 
         <div style="background:#0f172a;border-radius:10px;padding:16px;border:1px solid #1e293b;">
