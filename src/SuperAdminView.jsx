@@ -391,16 +391,18 @@ export default function SuperAdminView({ section = "dashboard", token, themeMode
     const normalizedEmail = String(email || "").trim().toLowerCase();
     if (!normalizedEmail) throw new Error("E-mail não informado para envio do acesso.");
 
-    const redirectTo = `${window.location.origin}/`;
-    const { error } = await supabase.auth.signInWithOtp({
-      email: normalizedEmail,
-      options: {
-        shouldCreateUser: true,
-        emailRedirectTo: redirectTo,
-      },
+    const SUPABASE_URL = "https://kqjzontxfwlwmvbddbnv.supabase.co";
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token ?? "";
+
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/send-courtesy-invite`, {
+      method:  "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body:    JSON.stringify({ email: normalizedEmail, redirect_to: window.location.origin }),
     });
 
-    if (error) throw error;
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error ?? "Erro ao enviar e-mail de acesso.");
   };
 
   const handleSendCourtesyEmail = async (row) => {
