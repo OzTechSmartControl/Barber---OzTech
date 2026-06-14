@@ -2,7 +2,7 @@ import { useState } from "react";
 import { RefreshCw, User, Mail, Lock, Scissors, Phone, ChevronLeft, AlertCircle, Check, ExternalLink } from "lucide-react";
 
 const SUPABASE_URL  = "https://kqjzontxfwlwmvbddbnv.supabase.co";
-const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtxanpvbnR4Zndsd212YmRkYm52Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxOTU5NjIsImV4cCI6MjA5Mzc3MTk2Mn0.SiH3q7fQRoVDern1SnroZolD0rc_wttj5G-Me4wffVw";
+const SUPABASE_ANON = "sb_publishable_cTk8su9HL7LcXoPQE-bqVQ_5Idjyf1a";
 const EDGE_BASE     = `${SUPABASE_URL}/functions/v1`;
 
 const T = {
