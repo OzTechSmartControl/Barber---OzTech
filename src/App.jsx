@@ -89,14 +89,48 @@ const checkCurrentUserAccess = async (tok, profile) => {
     return { has_access: true, reason: "super_admin" };
   }
 
+  // ── Verificação direta da barbearia (trial e outros planos) ────
+  // Esta verificação é feita antes do RPC para garantir que trial funcione
+  // independentemente do status da função RPC no banco.
+  if (profile?.barbershop_id) {
+    try {
+      const shopRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/barbershops?id=eq.${profile.barbershop_id}&select=plan,status,trial_started_at&limit=1`,
+        { headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${tok}` } }
+      );
+      if (shopRes.ok) {
+        const rows = await shopRes.json();
+        const shop = Array.isArray(rows) ? rows[0] : null;
+        if (shop?.plan === "trial" && shop?.status === "trial" && shop?.trial_started_at) {
+          const TRIAL_DAYS = 7;
+          const start = new Date(shop.trial_started_at);
+          const end   = new Date(start.getTime() + TRIAL_DAYS * 864e5);
+          if (Date.now() < end.getTime()) {
+            const daysLeft = (end.getTime() - Date.now()) / 864e5;
+            return {
+              has_access:       true,
+              reason:           "trial_active",
+              plan:             "trial",
+              trial_days_left:  Math.round(daysLeft * 10) / 10,
+              expires_at:       end.toISOString(),
+            };
+          }
+          return { has_access: false, reason: "trial_expired", plan: "trial" };
+        }
+      }
+    } catch (e) {
+      console.warn("[checkAccess] Erro na verificação direta da barbearia:", e);
+    }
+  }
+
+  // ── RPC current_user_access_status (cortesia, assinaturas, etc.) ─
   try {
-    // Sem Prefer:return=representation — esse header causa 400 em RPCs que retornam jsonb
     const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/current_user_access_status`, {
       method: "POST",
       headers: {
-        apikey:          SUPABASE_ANON,
-        Authorization:   `Bearer ${tok}`,
-        "Content-Type":  "application/json",
+        apikey:         SUPABASE_ANON,
+        Authorization:  `Bearer ${tok}`,
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({}),
     });
@@ -113,7 +147,7 @@ const checkCurrentUserAccess = async (tok, profile) => {
     console.warn("Falha ao validar current_user_access_status:", e);
   }
 
-  // Fallback antigo, caso a função nova ainda não exista.
+  // ── Fallback legado (assinaturas ativas) ──────────────────────
   if (profile?.barbershop_id) {
     try {
       const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/has_active_access`, {
