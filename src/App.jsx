@@ -101,11 +101,12 @@ const checkCurrentUserAccess = async (tok, profile) => {
       if (shopRes.ok) {
         const rows = await shopRes.json();
         const shop = Array.isArray(rows) ? rows[0] : null;
-        if (shop?.plan === "trial" && shop?.status === "trial" && shop?.trial_started_at) {
+        // Trata plan=trial independente de status (o cron pode ter mudado para 'expired')
+        if (shop?.plan === "trial" && shop?.trial_started_at) {
           const TRIAL_DAYS = 7;
           const start = new Date(shop.trial_started_at);
           const end   = new Date(start.getTime() + TRIAL_DAYS * 864e5);
-          if (Date.now() < end.getTime()) {
+          if (Date.now() < end.getTime() && shop.status !== "inactive" && shop.status !== "deleted") {
             const daysLeft = (end.getTime() - Date.now()) / 864e5;
             return {
               has_access:       true,
