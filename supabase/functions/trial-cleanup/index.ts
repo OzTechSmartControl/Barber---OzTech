@@ -132,9 +132,10 @@ Deno.serve(async (req) => {
       cfg[s.key] = parseInt(s.value, 10);
     }
 
-    const softDeleteDays = cfg["trial_soft_delete_after_days"] || 30;
-    const hardDeleteDays = cfg["trial_hard_delete_after_days"] || 60;
-    const maxPerRun      = cfg["trial_max_deletions_per_run"]  || 10;
+    const trialDays      = cfg["trial_duration_days"]            || 7;
+    const softDeleteDays = cfg["trial_soft_delete_after_days"]   || 30;
+    const hardDeleteDays = cfg["trial_hard_delete_after_days"]   || 60;
+    const maxPerRun      = cfg["trial_max_deletions_per_run"]    || 10;
 
     const now = new Date();
     let totalActions = 0;
@@ -142,8 +143,10 @@ Deno.serve(async (req) => {
     // ══════════════════════════════════════════════════════════════
     // FASE 1 — HARD DELETE
     // Trials expirados há mais de hardDeleteDays dias, já soft-deletados
+    // Cutoff = now - (duração do trial + dias pós-expiração)
+    // Ex: trial 7 dias + 60 pós-expiry = 67 dias após início
     // ══════════════════════════════════════════════════════════════
-    const hardCutoff = new Date(now.getTime() - hardDeleteDays * 86400000).toISOString();
+    const hardCutoff = new Date(now.getTime() - (trialDays + hardDeleteDays) * 86400000).toISOString();
 
     const hardCandidates = await db(
       `barbershops?status=eq.deleted&plan=eq.trial` +
@@ -207,8 +210,10 @@ Deno.serve(async (req) => {
     // ══════════════════════════════════════════════════════════════
     // FASE 2 — SOFT DELETE (ANONIMIZAÇÃO)
     // Trials expirados há mais de softDeleteDays dias, status='expired'
+    // Cutoff = now - (duração do trial + dias pós-expiração)
+    // Ex: trial 7 dias + 30 pós-expiry = 37 dias após início
     // ══════════════════════════════════════════════════════════════
-    const softCutoff = new Date(now.getTime() - softDeleteDays * 86400000).toISOString();
+    const softCutoff = new Date(now.getTime() - (trialDays + softDeleteDays) * 86400000).toISOString();
 
     const softCandidates = await db(
       `barbershops?status=eq.expired&plan=eq.trial` +
