@@ -97,8 +97,13 @@ const checkCurrentUserAccess = async (tok, profile) => {
     });
 
     if (res.ok) {
-      const data = await res.json();
+      const raw = await res.json();
+      // PostgREST pode retornar array quando Prefer:return=representation está presente
+      const data = Array.isArray(raw) ? raw[0] : raw;
       if (data && typeof data === "object") return data;
+    } else {
+      const errBody = await res.json().catch(() => ({}));
+      console.warn("[checkAccess] RPC current_user_access_status falhou:", res.status, errBody);
     }
   } catch (e) {
     console.warn("Falha ao validar current_user_access_status:", e);
