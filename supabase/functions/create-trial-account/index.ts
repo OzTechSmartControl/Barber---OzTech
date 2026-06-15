@@ -222,14 +222,14 @@ Deno.serve(async (req) => {
       return err500("Erro ao configurar a barbearia. Tente novamente.");
     }
 
-    // ── 4. Cria o perfil admin ──────────────────────────────────────
+    // ── 4. Cria/atualiza o perfil admin (upsert porque um trigger pode ter criado o registro)
     const profileRes = await db("profiles", {
       method: "POST",
+      headers: { Prefer: "resolution=merge-duplicates,return=representation" },
       body: JSON.stringify({
         id:            userId,
         role:          "admin",
         barbershop_id: barbershopId,
-        full_name:     owner_name.trim(),
       }),
     });
 

@@ -90,15 +90,19 @@ const checkCurrentUserAccess = async (tok, profile) => {
   }
 
   try {
+    // Sem Prefer:return=representation — esse header causa 400 em RPCs que retornam jsonb
     const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/current_user_access_status`, {
       method: "POST",
-      headers: hdr(tok),
+      headers: {
+        apikey:          SUPABASE_ANON,
+        Authorization:   `Bearer ${tok}`,
+        "Content-Type":  "application/json",
+      },
       body: JSON.stringify({}),
     });
 
     if (res.ok) {
       const raw = await res.json();
-      // PostgREST pode retornar array quando Prefer:return=representation está presente
       const data = Array.isArray(raw) ? raw[0] : raw;
       if (data && typeof data === "object") return data;
     } else {
