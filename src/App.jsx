@@ -5404,7 +5404,6 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
                 flex:1,
                 width:"100%",
                 padding:"0.5rem 0.5rem",
-                gap:8,
               }}
             >
               <img
@@ -5412,24 +5411,14 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
                 alt="Oz.Barber"
                 style={{
                   width:"100%",
-                  maxWidth:150,
+                  maxWidth:210,
                   height:"auto",
-                  maxHeight:90,
+                  maxHeight:140,
                   objectFit:"contain",
                   display:"block",
                   filter:`drop-shadow(0 0 18px ${T.accent}33)`,
                 }}
               />
-              <div style={{
-                fontFamily:"'Bebas Neue', sans-serif",
-                fontSize:22,
-                letterSpacing:3,
-                color:T.accent,
-                lineHeight:1,
-                textShadow:`0 0 18px ${T.accent}55`,
-              }}>
-                Oz.Barber
-              </div>
             </div>
           ) : (
             <div
