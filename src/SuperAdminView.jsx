@@ -213,6 +213,8 @@ export default function SuperAdminView({ section = "dashboard", token, themeMode
   const [subscriptions, setSubscriptions] = useState([]);
   const [courtesies, setCourtesies] = useState([]);
   const [trials, setTrials] = useState([]);
+  const [reachTotals, setReachTotals] = useState({ total_users: 0, total_attendances: 0 });
+  const [reachByShop, setReachByShop] = useState([]);
 
   const [search, setSearch] = useState("");
   const [planFilter, setPlanFilter] = useState("all");
@@ -336,6 +338,8 @@ export default function SuperAdminView({ section = "dashboard", token, themeMode
         alertsRes,
         clientsRes,
         subscriptionsRes,
+        reachTotalsRes,
+        reachByShopRes,
       ] = await Promise.all([
         supabase.from("superadmin_dashboard_kpis").select("*").maybeSingle(),
         supabase.from("superadmin_customer_growth").select("*"),
@@ -351,6 +355,8 @@ export default function SuperAdminView({ section = "dashboard", token, themeMode
           .select("*")
           .order("barbershop_created_at", { ascending: false }),
         fetchSubscriptions(),
+        supabase.from("superadmin_reach_totals").select("*").maybeSingle(),
+        supabase.from("superadmin_reach_by_shop").select("*"),
       ]);
 
       if (metricsRes.error) throw metricsRes.error;
@@ -360,6 +366,8 @@ export default function SuperAdminView({ section = "dashboard", token, themeMode
       if (alertsRes.error) throw alertsRes.error;
       if (clientsRes.error) throw clientsRes.error;
       if (subscriptionsRes.error) console.warn("subscriptions:", subscriptionsRes.error);
+      if (reachTotalsRes.error) console.warn("reach totals:", reachTotalsRes.error);
+      if (reachByShopRes.error) console.warn("reach by shop:", reachByShopRes.error);
 
       const courtesyRows = await loadCourtesyRows();
 
@@ -375,6 +383,8 @@ export default function SuperAdminView({ section = "dashboard", token, themeMode
       setSubscriptions((subscriptionsRes.data || []).map(normalizeSubscription));
       setCourtesies(courtesyRows.map(normalizeCourtesy));
       setTrials(trialsRes.data || []);
+      setReachTotals(reachTotalsRes.data || { total_users: 0, total_attendances: 0 });
+      setReachByShop(reachByShopRes.data || []);
 
       const totalCourtesiesFromKpi = Number((metricsRes.data || {}).total_courtesies || 0);
       if (section === "courtesy" && totalCourtesiesFromKpi > 0 && courtesyRows.length === 0) {
@@ -621,7 +631,9 @@ export default function SuperAdminView({ section = "dashboard", token, themeMode
     }
 
     if (section === "alerts") return <AlertsView alerts={alerts} />;
-    if (section === "analytics") return <AnalyticsView />;
+    if (section === "analytics") {
+      return <AnalyticsView reachTotals={reachTotals} reachByShop={reachByShop} />;
+    }
     if (section === "trials") return <TrialsView trials={trials} loading={loading} />;
 
     return null;
@@ -645,6 +657,8 @@ export default function SuperAdminView({ section = "dashboard", token, themeMode
     subscriptions,
     trials,
     loading,
+    reachTotals,
+    reachByShop,
   ]);
 
   const activeCourtesies = courtesies.filter((item) => item.status === "active");
