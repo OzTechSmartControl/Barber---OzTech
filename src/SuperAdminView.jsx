@@ -14,6 +14,7 @@ import {
   TrendingUp,
   Users,
   X,
+  Zap,
 } from "lucide-react";
 
 import { supabase } from "./supabase";
@@ -26,6 +27,7 @@ import SubscriptionsView from "./pages/superadmin/SubscriptionsView";
 import CourtesyView from "./pages/superadmin/CourtesyView";
 import AlertsView from "./pages/superadmin/AlertsView";
 import AnalyticsView from "./pages/superadmin/AnalyticsView";
+import TrialsView from "./pages/superadmin/TrialsView";
 
 const defaultMetrics = {
   mrr: 0,
@@ -210,6 +212,7 @@ export default function SuperAdminView({ section = "dashboard", token, themeMode
   const [clients, setClients] = useState([]);
   const [subscriptions, setSubscriptions] = useState([]);
   const [courtesies, setCourtesies] = useState([]);
+  const [trials, setTrials] = useState([]);
 
   const [search, setSearch] = useState("");
   const [planFilter, setPlanFilter] = useState("all");
@@ -360,6 +363,9 @@ export default function SuperAdminView({ section = "dashboard", token, themeMode
 
       const courtesyRows = await loadCourtesyRows();
 
+      const trialsRes = await supabase.rpc("superadmin_list_trials");
+      if (trialsRes.error) console.warn("[trials]", trialsRes.error);
+
       setMetrics({ ...defaultMetrics, ...(metricsRes.data || {}) });
       setCustomerGrowth(customerGrowthRes.data || []);
       setRevenueGrowth(revenueGrowthRes.data || []);
@@ -368,6 +374,7 @@ export default function SuperAdminView({ section = "dashboard", token, themeMode
       setClients(clientsRes.data || []);
       setSubscriptions((subscriptionsRes.data || []).map(normalizeSubscription));
       setCourtesies(courtesyRows.map(normalizeCourtesy));
+      setTrials(trialsRes.data || []);
 
       const totalCourtesiesFromKpi = Number((metricsRes.data || {}).total_courtesies || 0);
       if (section === "courtesy" && totalCourtesiesFromKpi > 0 && courtesyRows.length === 0) {
@@ -615,6 +622,7 @@ export default function SuperAdminView({ section = "dashboard", token, themeMode
 
     if (section === "alerts") return <AlertsView alerts={alerts} />;
     if (section === "analytics") return <AnalyticsView />;
+    if (section === "trials") return <TrialsView trials={trials} loading={loading} />;
 
     return null;
   }, [
@@ -635,6 +643,8 @@ export default function SuperAdminView({ section = "dashboard", token, themeMode
     search,
     statusFilter,
     subscriptions,
+    trials,
+    loading,
   ]);
 
   const activeCourtesies = courtesies.filter((item) => item.status === "active");
@@ -693,6 +703,7 @@ export default function SuperAdminView({ section = "dashboard", token, themeMode
           finance:       { title: "Financeiro",      subtitle: "Métricas financeiras da plataforma SaaS",               Icon: DollarSign  },
           subscriptions: { title: "Assinaturas",     subtitle: "Centro de assinaturas, recorrência e cobrança",         Icon: CreditCard  },
           courtesy:      { title: "Cortesias",       subtitle: "Acessos cortesia liberados manualmente",                Icon: Gift        },
+          trials:        { title: "Testes Grátis",   subtitle: "Contas em período de teste de 7 dias",                  Icon: Zap         },
           alerts:        { title: "Alertas",         subtitle: "Eventos e notificações da plataforma",                  Icon: Bell        },
           analytics:     { title: "Analytics",       subtitle: "Inteligência e métricas avançadas",                     Icon: TrendingUp  },
         };

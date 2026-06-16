@@ -5332,6 +5332,7 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
         { id:"superadmin_finance",        label:"Financeiro",    Icon:DollarSign,     desc:"Receita" },
         { id:"superadmin_subscriptions",  label:"Assinaturas",   Icon:CreditCard,     desc:"Cobrança" },
         { id:"superadmin_courtesy",       label:"Cortesias",     Icon:Gift,           desc:"Acessos" },
+        { id:"superadmin_trials",         label:"Testes Grátis", Icon:Zap,            desc:"Trials" },
         { id:"superadmin_alerts",         label:"Alertas",       Icon:Bell,           desc:"Eventos" },
         { id:"superadmin_analytics",      label:"Analytics",     Icon:TrendingUp,     desc:"Inteligência" },
       ]
@@ -6377,6 +6378,7 @@ export default function App() {
         superadmin_finance:       <SuperAdminView token={tok} section="finance"       themeMode={themeMode} />,
         superadmin_subscriptions: <SuperAdminView token={tok} section="subscriptions" themeMode={themeMode} />,
         superadmin_courtesy:      <SuperAdminView token={tok} section="courtesy"      themeMode={themeMode} />,
+        superadmin_trials:        <SuperAdminView token={tok} section="trials"        themeMode={themeMode} />,
         superadmin_alerts:        <SuperAdminView token={tok} section="alerts"        themeMode={themeMode} />,
         superadmin_analytics:     <SuperAdminView token={tok} section="analytics"     themeMode={themeMode} />,
       }
