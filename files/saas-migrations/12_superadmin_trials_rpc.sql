@@ -45,8 +45,8 @@ BEGIN
       ROUND((trial_duration - EXTRACT(EPOCH FROM (NOW() - b.trial_started_at)) / 86400)::NUMERIC, 1)
     )                                                                                  AS days_remaining,
     p.id                                                                              AS admin_id,
-    u.email                                                                           AS admin_email,
-    (u.raw_user_meta_data->>'full_name')                                              AS admin_name
+    u.email::TEXT                                                                     AS admin_email,
+    (u.raw_user_meta_data->>'full_name')::TEXT                                        AS admin_name
   FROM barbershops b
   LEFT JOIN profiles p ON p.barbershop_id = b.id AND p.role = 'admin'
   LEFT JOIN auth.users u ON u.id = p.id
