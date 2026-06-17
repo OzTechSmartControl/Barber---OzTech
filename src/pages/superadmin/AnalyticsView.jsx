@@ -9,9 +9,9 @@ import DataTable from "../../components/superadmin/DataTable";
 const fmt = (value = 0) => Number(value || 0).toLocaleString("pt-BR");
 
 export default function AnalyticsView({ reachTotals = {}, reachByShop = [] }) {
-  const rows = [...reachByShop].sort(
-    (a, b) => Number(b.users_count || 0) - Number(a.users_count || 0)
-  );
+  const rows = [...reachByShop]
+    .filter((r) => Number(r.users_count || 0) > 0)
+    .sort((a, b) => Number(b.users_count || 0) - Number(a.users_count || 0));
 
   return (
     <div>
