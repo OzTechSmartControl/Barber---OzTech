@@ -95,16 +95,11 @@ export default function AnalyticsView({ reachByShop = [] }) {
       {/* Área de filtros */}
       <div
         style={{
-          background: T.card,
-          border: `1px solid ${T.border}`,
-          borderRadius: 20,
-          padding: "1rem 1.25rem",
-          marginBottom: "1.25rem",
-          boxShadow: "0 18px 50px rgba(0,0,0,.18)",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
           gap: 10,
+          marginBottom: "1.25rem",
         }}
       >
         {/* Preset pills */}
