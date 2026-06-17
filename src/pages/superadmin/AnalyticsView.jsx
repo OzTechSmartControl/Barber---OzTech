@@ -154,13 +154,13 @@ export default function AnalyticsView({ reachByShop = [] }) {
         }}
       >
         <KpiCard
-          label="Atendimentos no Período"
+          label="Atendimentos Realizados"
           value={loadingPeriod ? "…" : fmt(periodStats.period_attendances)}
           icon={ClipboardList}
           tone="info"
         />
         <KpiCard
-          label="Novos Usuários no Período"
+          label="Usuários Cadastrados"
           value={loadingPeriod ? "…" : fmt(periodStats.period_new_users)}
           icon={UserPlus}
           tone="success"
