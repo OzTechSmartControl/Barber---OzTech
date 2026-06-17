@@ -52,7 +52,7 @@ const dateSt = {
   colorScheme: "dark",
 };
 
-export default function AnalyticsView({ reachTotals = {}, reachByShop = [] }) {
+export default function AnalyticsView({ reachByShop = [] }) {
   const [dateFrom,     setDateFrom]     = useState(firstOfMonthISO);
   const [dateTo,       setDateTo]       = useState(todayISO);
   const [activePreset, setActivePreset] = useState(0);
@@ -94,31 +94,6 @@ export default function AnalyticsView({ reachTotals = {}, reachByShop = [] }) {
 
   return (
     <div>
-      {/* Totais históricos */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(2, minmax(150px, 1fr))",
-          gap: 14,
-          marginBottom: "1.5rem",
-        }}
-      >
-        <KpiCard
-          label="Usuários Cadastrados"
-          value={fmt(reachTotals.total_users)}
-          subtitle="Total histórico — admins + barbeiros"
-          icon={Users}
-          tone="accent"
-        />
-        <KpiCard
-          label="Atendimentos Realizados"
-          value={fmt(reachTotals.total_attendances)}
-          subtitle="Total histórico facilitado pelo Oz.Barber"
-          icon={ClipboardList}
-          tone="success"
-        />
-      </div>
-
       {/* Filtro de período */}
       <div
         style={{
