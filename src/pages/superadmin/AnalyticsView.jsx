@@ -37,7 +37,7 @@ const PRESETS = [
   { label: "Mês passado",    from: firstDayOfPrevMonthISO, to: lastDayOfPrevMonthISO },
   { label: "Últimos 3 meses", from: threeMonthsAgoISO,   to: todayISO                },
   { label: "Este ano",       from: () => `${new Date().getFullYear()}-01-01`, to: todayISO },
-  { label: "Tudo",           from: () => "2020-01-01",   to: todayISO                },
+  { label: "Tudo",           from: () => "2020-01-01",   to: () => "2099-12-31"      },
 ];
 
 const dateSt = {
