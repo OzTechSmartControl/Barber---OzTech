@@ -90,24 +90,22 @@ export default function AnalyticsView({ reachByShop = [] }) {
     .filter((r) => Number(r.users_count || 0) > 0)
     .sort((a, b) => Number(b.users_count || 0) - Number(a.users_count || 0));
 
-  const periodLabel = `${dateFrom} → ${dateTo}`;
-
   return (
     <div>
-      {/* Filtro de período */}
+      {/* Área de filtros */}
       <div
         style={{
           background: T.card,
           border: `1px solid ${T.border}`,
           borderRadius: 20,
           padding: "1.25rem",
-          marginBottom: "1.5rem",
+          marginBottom: "1.25rem",
           boxShadow: "0 18px 50px rgba(0,0,0,.18)",
         }}
       >
         <SectionHeader
-          title="Métricas por Período"
-          subtitle="Atendimentos e novos usuários no intervalo selecionado"
+          title="Filtrar por Período"
+          subtitle="Selecione um intervalo para ver as métricas"
           icon={CalendarDays}
           compact
         />
@@ -144,7 +142,6 @@ export default function AnalyticsView({ reachByShop = [] }) {
             justifyContent: "center",
             gap: 10,
             flexWrap: "wrap",
-            marginBottom: "1.25rem",
           }}
         >
           <input
@@ -161,30 +158,29 @@ export default function AnalyticsView({ reachByShop = [] }) {
             style={dateSt}
           />
         </div>
+      </div>
 
-        {/* Period KPI cards */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(2, minmax(150px, 1fr))",
-            gap: 14,
-          }}
-        >
-          <KpiCard
-            label="Atendimentos no Período"
-            value={loadingPeriod ? "…" : fmt(periodStats.period_attendances)}
-            subtitle={periodLabel}
-            icon={ClipboardList}
-            tone="info"
-          />
-          <KpiCard
-            label="Novos Usuários no Período"
-            value={loadingPeriod ? "…" : fmt(periodStats.period_new_users)}
-            subtitle={periodLabel}
-            icon={UserPlus}
-            tone="success"
-          />
-        </div>
+      {/* KPI cards — área independente */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(2, minmax(150px, 1fr))",
+          gap: 14,
+          marginBottom: "1.5rem",
+        }}
+      >
+        <KpiCard
+          label="Atendimentos no Período"
+          value={loadingPeriod ? "…" : fmt(periodStats.period_attendances)}
+          icon={ClipboardList}
+          tone="info"
+        />
+        <KpiCard
+          label="Novos Usuários no Período"
+          value={loadingPeriod ? "…" : fmt(periodStats.period_new_users)}
+          icon={UserPlus}
+          tone="success"
+        />
       </div>
 
       {/* Tabela por barbearia */}
