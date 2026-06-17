@@ -4,7 +4,18 @@ import {
   Minus,
 } from "lucide-react";
 
+import { useEffect, useState } from "react";
 import T from "../../config/theme";
+
+function useIsMobile(bp = 768) {
+  const [m, setM] = useState(() => window.innerWidth < bp);
+  useEffect(() => {
+    const h = () => setM(window.innerWidth < bp);
+    window.addEventListener("resize", h);
+    return () => window.removeEventListener("resize", h);
+  }, [bp]);
+  return m;
+}
 
 function TrendIcon({ trend }) {
   if (trend === "up") {
@@ -28,6 +39,7 @@ export default function KpiCard({
   trendValue,
   sparkline = [],
 }) {
+  const isMobile = useIsMobile();
   const colors = {
     accent: T.accent,
     success: T.success,
@@ -56,9 +68,9 @@ export default function KpiCard({
         overflow: "hidden",
         background: T.card,
         border: `1px solid ${T.border}`,
-        borderRadius: 20,
-        padding: "1.15rem 1.2rem",
-        minHeight: 148,
+        borderRadius: isMobile ? 14 : 20,
+        padding: isMobile ? "0.7rem 0.85rem" : "1.15rem 1.2rem",
+        minHeight: isMobile ? 82 : 148,
         boxShadow: "0 4px 24px rgba(0,0,0,.10)",
         transition: "transform .18s ease, border-color .18s ease, box-shadow .18s ease",
         animation: "kpiFadeIn .28s ease both",
@@ -140,7 +152,7 @@ export default function KpiCard({
               color: T.muted,
               textTransform: "uppercase",
               letterSpacing: 1,
-              marginBottom: 10,
+              marginBottom: isMobile ? 5 : 10,
               fontWeight: 800,
             }}
           >
@@ -150,11 +162,11 @@ export default function KpiCard({
           <div
             style={{
               fontFamily: "'Bebas Neue', sans-serif",
-              fontSize: 38,
+              fontSize: isMobile ? 26 : 38,
               letterSpacing: 1.2,
               lineHeight: 1,
               color,
-              marginBottom: 10,
+              marginBottom: isMobile ? 6 : 10,
             }}
           >
             {value}
@@ -209,9 +221,9 @@ export default function KpiCard({
             style={{
               background: `${color}16`,
               border: `1px solid ${color}22`,
-              borderRadius: 16,
-              width: 48,
-              height: 48,
+              borderRadius: isMobile ? 12 : 16,
+              width: isMobile ? 36 : 48,
+              height: isMobile ? 36 : 48,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -220,7 +232,7 @@ export default function KpiCard({
               animation: "kpiIconPop .28s ease both",
             }}
           >
-            <Icon size={20} color={color} />
+            <Icon size={isMobile ? 16 : 20} color={color} />
           </div>
         )}
       </div>

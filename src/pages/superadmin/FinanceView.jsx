@@ -90,7 +90,7 @@ export default function FinanceView({
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(185px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
           gap: 14,
           marginBottom: "1.5rem",
         }}
