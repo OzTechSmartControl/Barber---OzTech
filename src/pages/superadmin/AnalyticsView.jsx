@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Activity, CalendarDays, ClipboardList, TrendingUp, UserPlus, Users } from "lucide-react";
+import { Activity, ClipboardList, TrendingUp, UserPlus, Users } from "lucide-react";
 
 import { supabase } from "../../supabase";
 import T from "../../config/theme";
@@ -98,20 +98,17 @@ export default function AnalyticsView({ reachByShop = [] }) {
           background: T.card,
           border: `1px solid ${T.border}`,
           borderRadius: 20,
-          padding: "1.25rem",
+          padding: "1rem 1.25rem",
           marginBottom: "1.25rem",
           boxShadow: "0 18px 50px rgba(0,0,0,.18)",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 10,
         }}
       >
-        <SectionHeader
-          title="Filtrar por Período"
-          subtitle="Selecione um intervalo para ver as métricas"
-          icon={CalendarDays}
-          compact
-        />
-
         {/* Preset pills */}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: "1rem", justifyContent: "center" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 7, justifyContent: "center" }}>
           {PRESETS.map((p, i) => (
             <button
               key={p.label}
@@ -135,15 +132,7 @@ export default function AnalyticsView({ reachByShop = [] }) {
         </div>
 
         {/* Custom date inputs */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 10,
-            flexWrap: "wrap",
-          }}
-        >
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
           <input
             type="date"
             value={dateFrom}
