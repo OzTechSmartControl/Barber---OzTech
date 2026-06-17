@@ -41,6 +41,7 @@ export default function FinanceView({
   planDistribution = [],
   revenueGrowth = [],
   subscriptions = [],
+  isMobile = false,
 }) {
   const columns = [
     {
@@ -105,7 +106,7 @@ export default function FinanceView({
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
+          gridTemplateColumns: isMobile ? "1fr" : "minmax(0, 1fr) minmax(0, 1fr)",
           gap: 16,
           marginBottom: "1.5rem",
         }}

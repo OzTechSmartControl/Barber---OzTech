@@ -266,6 +266,7 @@ export default function DashboardView({
   revenueGrowth   = [],
   planDistribution = [],
   alerts           = [],
+  isMobile         = false,
 }) {
   const churnRate = metrics.total_barbershops > 0
     ? (metrics.cancelled_barbershops / metrics.total_barbershops) * 100
@@ -277,7 +278,7 @@ export default function DashboardView({
 
   return (
     <div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(150px, 1fr))", gap: 14, marginBottom: "1.5rem" }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(6, minmax(150px, 1fr))", gap: 14, marginBottom: "1.5rem" }}>
         <KpiCard label="MRR"            value={money(metrics.mrr)}             subtitle="Receita recorrente mensal"     icon={DollarSign}  tone="success" />
         <KpiCard label="ARR"            value={money(metrics.arr)}             subtitle="Receita anual projetada"       icon={TrendingUp}  tone="accent"  />
         <KpiCard label="Clientes ativos" value={metrics.active_barbershops}    subtitle="Assinaturas ativas"            icon={Building2}   tone="success" />
@@ -286,7 +287,7 @@ export default function DashboardView({
         <KpiCard label="Crescimento"    value={lastMonthCustomers}             subtitle="Novas contas no último mês"    icon={UserPlus}    tone="info"    />
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: 16, marginBottom: "1.5rem" }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "minmax(0, 1fr) minmax(0, 1fr)", gap: 16, marginBottom: "1.5rem" }}>
         <ChartShell title="Crescimento de Receita" subtitle="Evolução da receita registrada por mês" icon={TrendingUp}>
           <RevenueChart rows={revenueGrowth} />
         </ChartShell>
@@ -295,7 +296,7 @@ export default function DashboardView({
         </ChartShell>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1.05fr 0.95fr", gap: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1.05fr 0.95fr", gap: 16 }}>
         <ChartShell title="Distribuição de Planos Ativos" subtitle="Clientes ativos por modalidade de acesso" icon={PieChart}>
           <PlanDistribution rows={planDistribution} />
         </ChartShell>

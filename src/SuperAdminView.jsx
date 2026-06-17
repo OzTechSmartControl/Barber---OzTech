@@ -200,7 +200,18 @@ function normalizeSubscription(item) {
   };
 }
 
+function useIsMobile(bp = 768) {
+  const [m, setM] = useState(() => window.innerWidth < bp);
+  useEffect(() => {
+    const h = () => setM(window.innerWidth < bp);
+    window.addEventListener("resize", h);
+    return () => window.removeEventListener("resize", h);
+  }, [bp]);
+  return m;
+}
+
 export default function SuperAdminView({ section = "dashboard", token, themeMode = "dark" }) {
+  const isMobile = useIsMobile();
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
@@ -569,6 +580,7 @@ export default function SuperAdminView({ section = "dashboard", token, themeMode
           revenueGrowth={revenueGrowth}
           planDistribution={planDistribution}
           alerts={alerts}
+          isMobile={isMobile}
         />
       );
     }
@@ -595,6 +607,7 @@ export default function SuperAdminView({ section = "dashboard", token, themeMode
           planDistribution={planDistribution}
           revenueGrowth={revenueGrowth}
           subscriptions={subscriptions}
+          isMobile={isMobile}
         />
       );
     }
@@ -659,6 +672,7 @@ export default function SuperAdminView({ section = "dashboard", token, themeMode
     loading,
     reachTotals,
     reachByShop,
+    isMobile,
   ]);
 
   const activeCourtesies = courtesies.filter((item) => item.status === "active");
