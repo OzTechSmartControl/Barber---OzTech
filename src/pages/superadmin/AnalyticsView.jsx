@@ -113,7 +113,7 @@ export default function AnalyticsView({ reachByShop = [] }) {
         />
 
         {/* Preset pills */}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: "1rem" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: "1rem", justifyContent: "center" }}>
           {PRESETS.map((p, i) => (
             <button
               key={p.label}
@@ -141,6 +141,7 @@ export default function AnalyticsView({ reachByShop = [] }) {
           style={{
             display: "flex",
             alignItems: "center",
+            justifyContent: "center",
             gap: 10,
             flexWrap: "wrap",
             marginBottom: "1.25rem",
