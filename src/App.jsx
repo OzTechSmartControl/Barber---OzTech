@@ -6062,6 +6062,24 @@ export default function App() {
     };
   }, []);
 
+  // Quando o usuário retorna a uma aba congelada/inativa, verifica se a sessão
+  // ainda é válida. Se o token expirou enquanto a aba estava em background,
+  // limpa o estado e força novo login em vez de mostrar dados em branco.
+  useEffect(() => {
+    const handleVisibility = async () => {
+      if (document.visibilityState !== "visible") return;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        safeSaveAuth(null);
+        setAuth(null);
+        setSession(null);
+        setUser(null);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, []);
+
   // Detecta retorno do Mercado Pago (?payment=success&plan=...)
   useEffect(() => {
     const params  = new URLSearchParams(window.location.search);
