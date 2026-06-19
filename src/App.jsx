@@ -11,6 +11,7 @@ import BookingPage   from "./BookingPage";
 import FeedbackPage  from "./FeedbackPage";
 import ozBarberLogo from "./assets/ozbarber-logo.png.png";
 import sharedT from "./config/theme"; // T compartilhado com SuperAdminView
+import { compressImage } from "./utils/image";
 import {
   LayoutDashboard, Scissors, Users, Award, Tag, DollarSign,
   Menu, X, Plus, Search, Edit2, Trash2, Check, TrendingUp,
@@ -2539,7 +2540,7 @@ function BarbersView({ barbers, setBarbers, attendances, token, barbershopId, on
                   type="file"
                   accept="image/*"
                   style={{ display:"none" }}
-                  onChange={e => { const f = e.target.files?.[0]; if (f) setPhotoFile(f); e.target.value = ""; }}
+                  onChange={async e => { const f = e.target.files?.[0]; e.target.value = ""; if (f) setPhotoFile(await compressImage(f)); }}
                 />
                 <span style={{ fontSize:12, color:T.accent, textDecoration:"underline" }}>
                   {(photoPreview || form.photoUrl) ? "Trocar foto" : "Tirar foto / Fazer upload"}
@@ -4294,7 +4295,7 @@ function SettingsView({ token, shop, onShopUpdated, themeMode = "dark", onToggle
                 <input
                   type="file"
                   accept="image/png,image/jpeg,image/webp,image/svg+xml"
-                  onChange={(e) => setLogoFile(e.target.files?.[0] || null)}
+                  onChange={async (e) => { const f = e.target.files?.[0]; setLogoFile(f ? await compressImage(f) : null); }}
                   style={{ display:"none" }}
                 />
               </label>

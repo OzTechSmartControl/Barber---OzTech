@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { RefreshCw, ChevronRight, ChevronLeft, Check, Upload, X } from "lucide-react";
+import { compressImage } from "./utils/image";
 
 // ── CONFIG (mesmas constantes do App.jsx) ─────────────────────
 const SUPABASE_URL  = "https://kqjzontxfwlwmvbddbnv.supabase.co";
@@ -327,12 +328,13 @@ export default function Onboarding({ onComplete, courtesyEmail = "", initialToke
   };
 
   // ── Preview do logo ───────────────────────────────────────────
-  const handleLogoFile = (file) => {
+  const handleLogoFile = async (file) => {
     if (!file) return;
-    setLogoFile(file);
+    const compressed = await compressImage(file);
+    setLogoFile(compressed);
     const reader = new FileReader();
     reader.onload = e => setLogoPreview(e.target.result);
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(compressed);
   };
 
   // ── PASSO 1 — Criar conta ─────────────────────────────────────
