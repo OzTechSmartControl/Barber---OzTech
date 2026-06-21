@@ -2457,6 +2457,25 @@ function BarbersView({ barbers, setBarbers, attendances, token, barbershopId, on
     setSaving(false);
   };
 
+  const del = async id => {
+    if (!window.confirm("Excluir este barbeiro? Essa ação não pode ser desfeita.")) return;
+    setErr("");
+    try {
+      const res = await api.remove("barbers", id, token);
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(
+          /foreign key|violates/i.test(text)
+            ? "Não é possível excluir: este barbeiro possui atendimentos ou login vinculado. Marque-o como inativo em vez disso."
+            : "Erro ao excluir barbeiro."
+        );
+      }
+      setBarbers(bs => bs.filter(b => b.id !== id));
+    } catch (e) {
+      setErr(e.message);
+    }
+  };
+
   const monthStr = month();
   const monthAtts = attendances.filter(a=>a.date.startsWith(monthStr));
 
@@ -2466,6 +2485,7 @@ function BarbersView({ barbers, setBarbers, attendances, token, barbershopId, on
         onRefresh={onRefresh}
         right={<Btn onClick={()=>{setEditing(null);setForm({name:"",phone:"",commission:40,status:"active",email:"",password:"",notificationEmail:"",photoUrl:""});setPhotoFile(null);setPhotoPreview("");setShowModal(true);}}><Plus size={15}/>Novo Barbeiro</Btn>}
       />
+      <ErrorBar msg={err}/>
       <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap:"1rem" }}>
         {barbers.map(b=>{
           const bA          = monthAtts.filter(a => a.barberId === b.id);
@@ -2485,6 +2505,7 @@ function BarbersView({ barbers, setBarbers, attendances, token, barbershopId, on
                   <Badge color={b.status==="active"?T.success:T.muted}>{b.status==="active"?"Ativo":"Inativo"}</Badge>
                   <button onClick={()=>setAvailBarber(b)} title="Configurar disponibilidade" style={{ background:"none", border:"none", color:T.muted, cursor:"pointer", display:"inline-flex" }}><Clock size={14}/></button>
                   <button onClick={()=>{setEditing(b.id);setForm({...b, notificationEmail: b.notificationEmail||"", photoUrl: b.photoUrl||""});setPhotoFile(null);setPhotoPreview("");setShowModal(true);}} style={{ background:"none", border:"none", color:T.muted, cursor:"pointer", display:"inline-flex" }}><Edit2 size={14}/></button>
+                  <button onClick={()=>del(b.id)} title="Excluir barbeiro" style={{ background:"none", border:"none", color:T.muted, cursor:"pointer", display:"inline-flex" }}><Trash2 size={14}/></button>
                 </div>
               </div>
               <div style={{ fontWeight:600, color:T.text, marginBottom:3 }}>{b.name}</div>
