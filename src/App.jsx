@@ -6298,7 +6298,7 @@ export default function App() {
       profile={checkoutAuth?.profile}
       authData={checkoutAuth}
       session={{ access_token: checkoutAuth?.token || checkoutAuth?.access_token, user: checkoutAuth?.user, profile: checkoutAuth?.profile }}
-      onTrial={!expiredMsg ? () => { setShowPlans(false); setShowTrialSignup(true); } : undefined}
+      onTrial={(!expiredMsg && !checkoutAuth?.user) ? () => { setShowPlans(false); setShowTrialSignup(true); } : undefined}
     />
   );
 
