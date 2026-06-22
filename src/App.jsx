@@ -1639,8 +1639,8 @@ function AttendancesView({ attendances, setAttendances, clients, setClients, ser
   // ── Save ──────────────────────────────────────────────────────
   const save = async () => {
     const isNewClient = form.clientId === "__new__";
-    if (!isNewClient && !form.clientId || !form.barberId || form.selectedServices.length === 0)
-      return setErr("Preencha cliente, barbeiro e pelo menos um serviço.");
+    if (!isNewClient && !form.clientId || !form.barberId || (form.selectedServices.length === 0 && form.selectedProducts.length === 0))
+      return setErr("Preencha cliente, barbeiro e pelo menos um serviço ou produto.");
     if (isNewClient && !form.newClientName.trim())
       return setErr("Preencha o nome do novo cliente.");
     setSaving(true); setErr("");
@@ -1676,7 +1676,7 @@ function AttendancesView({ attendances, setAttendances, clients, setClients, ser
       const barberCommPct = barbers.find(b => b.id === +form.barberId)?.commission ?? null;
       const rows = await api.insert("attendances", {
         client_id: finalClientId, barber_id: +form.barberId,
-        service_id: primary.serviceId, price: totalPrice, services_price: totalServices,
+        service_id: primary?.serviceId ?? null, price: totalPrice, services_price: totalServices,
         payment: form.payment, date: form.date, time: form.time,
         notes: form.notes, extra_services: extras,
         products_sold: productsSoldPayload,
