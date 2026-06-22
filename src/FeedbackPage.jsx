@@ -206,7 +206,7 @@ export default function FeedbackPage() {
             width: "100%", boxSizing: "border-box",
             background: "#0f0f0f", border: `1px solid ${BORDER}`,
             borderRadius: 10, padding: "12px 14px",
-            color: "#fff", fontSize: 14, fontFamily: "'DM Sans', sans-serif",
+            color: "#fff", fontSize: 16, fontFamily: "'DM Sans', sans-serif",
             resize: "none", outline: "none", marginBottom: 16,
           }}
         />

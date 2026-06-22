@@ -193,6 +193,9 @@ export default function TrialSignup({ onComplete, onBack }) {
         input::placeholder,select::placeholder{color:${T.muted}}
         select option{background:#13141a;color:${T.text}}
         @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+        @media (max-width: 768px) {
+          input, select, textarea { font-size: 16px !important; }
+        }
       `}</style>
 
       <div style={{ width: "100%", maxWidth: 440 }}>

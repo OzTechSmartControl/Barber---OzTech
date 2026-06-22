@@ -546,6 +546,9 @@ export default function Onboarding({ onComplete, courtesyEmail = "", initialToke
         *{box-sizing:border-box}
         input::placeholder,textarea::placeholder{color:${T.muted}}
         @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+        @media (max-width: 768px) {
+          input, select, textarea { font-size: 16px !important; }
+        }
       `}</style>
 
       <div style={{ width: "100%", maxWidth: 620, display:"flex", flexDirection:"column", alignItems:"center" }}>

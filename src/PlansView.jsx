@@ -311,6 +311,9 @@ export default function PlansView({
         *{box-sizing:border-box}
         input::placeholder{color:${T.muted}}
         @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+        @media (max-width: 768px) {
+          input, select, textarea { font-size: 16px !important; }
+        }
       `}</style>
 
       <div

@@ -21,7 +21,7 @@ const inputSt = {
   borderRadius: 10,
   padding: "0.7rem 1rem",
   color: BT.text,
-  fontSize: 15,
+  fontSize: 16,
   outline: "none",
   boxSizing: "border-box",
   fontFamily: "'DM Sans', sans-serif",

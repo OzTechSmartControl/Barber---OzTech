@@ -725,6 +725,9 @@ const LoginView = ({ onLogin, onShowPlans, onShowTrialSignup }) => {
         *{box-sizing:border-box}
         input::placeholder{color:${T.muted}}
         @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+        @media (max-width: 768px) {
+          input, select, textarea { font-size: 16px !important; }
+        }
       `}</style>
 
       <div
@@ -5847,6 +5850,9 @@ const CSS = `
   @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
   .mob-scroll-x{overflow-x:auto;-webkit-overflow-scrolling:touch}
   .mob-scroll-x table{min-width:520px}
+  @media (max-width: 768px) {
+    input, select, textarea { font-size: 16px !important; }
+  }
 `;
 
 

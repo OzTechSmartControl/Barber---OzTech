@@ -155,6 +155,9 @@ export default function ResetPassword() {
           background: rgba(8, 10, 16, .94) !important;
         }
         button:focus-visible, input:focus-visible { outline: none; }
+        @media (max-width: 768px) {
+          input, select, textarea { font-size: 16px !important; }
+        }
       `}</style>
 
       <div
