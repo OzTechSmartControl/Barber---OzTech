@@ -5894,6 +5894,24 @@ const safeSaveShop = (shopData) => {
   } catch {}
 };
 
+// Busca a barbearia com até 3 tentativas. Cobre falhas transitórias (rede
+// instável, token sendo renovado no meio da requisição) buscando uma sessão
+// mais fresca antes de tentar de novo, em vez de desistir na primeira falha.
+const fetchShopWithRetry = async (shopId, initialTok, attempts = 3) => {
+  let tok = initialTok;
+  for (let i = 0; i < attempts; i++) {
+    const rows = await api.list("barbershops", `id=eq.${shopId}&select=*`, tok);
+    const found = Array.isArray(rows) ? rows[0] : null;
+    if (found) return found;
+    if (i < attempts - 1) {
+      await new Promise(r => setTimeout(r, 500 * (i + 1)));
+      const { data } = await supabase.auth.getSession();
+      tok = data?.session?.access_token || tok;
+    }
+  }
+  return null;
+};
+
 export default function App() {
 
   // ── Hooks devem vir ANTES de qualquer return condicional ──────
@@ -6222,8 +6240,8 @@ export default function App() {
         ? withShop("select=*&order=date.desc,time.desc")
         : withShop(`select=*&barber_id=eq.${profile.barber_id}&order=date.desc,time.desc`);
 
-      const [shopRows, brs, cls, svcs, atts, exps, prods, prodSales, fbs] = await Promise.all([
-        api.list("barbershops",  `id=eq.${shopId}&select=*`, tok),
+      const [currentShop, brs, cls, svcs, atts, exps, prods, prodSales, fbs] = await Promise.all([
+        fetchShopWithRetry(shopId, tok),
         api.list("barbers",      withShop("select=*&order=name"), tok),
         api.list("clients",      withShop("select=*&order=name"), tok),
         api.list("services",     withShop("select=*&order=name"), tok),
@@ -6234,20 +6252,18 @@ export default function App() {
         isAdm ? api.list("feedback_requests", withShop("select=*&submitted_at=not.is.null&order=submitted_at.desc"), tok) : Promise.resolve([]),
       ]);
 
-      const currentShop = ensureArray(shopRows)[0] || null;
       if (currentShop) {
         setShop(currentShop);
         safeSaveShop(currentShop);
         applyTenantTheme(currentShop);
       } else {
-        // Busca falhou ou voltou vazia mesmo com shopId válido (não deveria
-        // acontecer — toda barbearia tem 1 linha própria). Mantém o último
-        // shop válido em cache/estado em vez de zerar para o fallback
-        // genérico "Oz.Barber".
+        // 3 tentativas falharam (não deveria acontecer — toda barbearia tem
+        // 1 linha própria). Mantém o último shop válido em cache/estado em
+        // vez de zerar para o fallback genérico "Oz.Barber".
         const cached = safeLoadShop();
         const fallbackShop = (cached && String(cached.id) === String(shopId)) ? cached : shop;
-        if (fallbackShop) applyTenantTheme(fallbackShop);
-        console.warn("[loadData] Falha ao buscar barbershops para id=" + shopId + " — mantendo último dado conhecido.");
+        if (fallbackShop) { setShop(fallbackShop); applyTenantTheme(fallbackShop); }
+        console.warn("[loadData] Falha ao buscar barbershops para id=" + shopId + " após 3 tentativas — mantendo último dado conhecido.");
       }
 
       setBarbers(ensureArray(brs).map(toBarber));
