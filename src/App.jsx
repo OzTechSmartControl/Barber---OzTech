@@ -5872,28 +5872,6 @@ const safeSaveAuth = (authData) => {
   } catch {}
 };
 
-// Cache local do nome/logo/tema da barbearia. Funciona como rede de
-// segurança: se a busca falhar por uma falha transitória (rede instável,
-// token renovando no meio da requisição), mostramos o último dado válido
-// em vez de cair no fallback genérico "Oz.Barber" — que é confuso e
-// preocupante para quem está logado (parece que perdeu acesso à própria
-// barbearia).
-const safeLoadShop = () => {
-  try {
-    const raw = localStorage.getItem("ozbarber_shop");
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-};
-
-const safeSaveShop = (shopData) => {
-  try {
-    if (shopData) localStorage.setItem("ozbarber_shop", JSON.stringify(shopData));
-    else localStorage.removeItem("ozbarber_shop");
-  } catch {}
-};
-
 // Busca a barbearia com até 3 tentativas. Cobre falhas transitórias (rede
 // instável, token sendo renovado no meio da requisição) buscando uma sessão
 // mais fresca antes de tentar de novo, em vez de desistir na primeira falha.
@@ -5941,7 +5919,8 @@ export default function App() {
   const [trialInfo,      setTrialInfo]      = useState(null); // { daysLeft, expiresAt }
   const [postPaymentPlan, setPostPaymentPlan] = useState(null);
   const [courtesyEmail,setCourtesyEmail]= useState(null);
-  const [shop,         setShop]         = useState(() => safeLoadShop());
+  const [shop,         setShop]         = useState(null);
+  const [shopLoadError, setShopLoadError] = useState(false);
 
   const isResetPasswordRoute =
     window.location.pathname === "/reset-password" ||
@@ -6193,7 +6172,6 @@ export default function App() {
       if (isSuperAdmin) {
         resetTenantTheme();
         setShop(null);
-        safeSaveShop(null);
         setClients([]);
         setServices([]);
         setBarbers([]);
@@ -6254,16 +6232,24 @@ export default function App() {
 
       if (currentShop) {
         setShop(currentShop);
-        safeSaveShop(currentShop);
         applyTenantTheme(currentShop);
+        setShopLoadError(false);
       } else {
-        // 3 tentativas falharam (não deveria acontecer — toda barbearia tem
-        // 1 linha própria). Mantém o último shop válido em cache/estado em
-        // vez de zerar para o fallback genérico "Oz.Barber".
-        const cached = safeLoadShop();
-        const fallbackShop = (cached && String(cached.id) === String(shopId)) ? cached : shop;
-        if (fallbackShop) { setShop(fallbackShop); applyTenantTheme(fallbackShop); }
-        console.warn("[loadData] Falha ao buscar barbershops para id=" + shopId + " após 3 tentativas — mantendo último dado conhecido.");
+        // 3 tentativas falharam. Nunca renderiza a tela com nome genérico
+        // ou dado em cache como se fosse atual — em vez disso, decide entre
+        // dois caminhos explícitos:
+        const { data: sessionCheck } = await supabase.auth.getSession();
+        if (!sessionCheck?.session) {
+          // Sessão de fato expirou → força novo login, sem meio-termo.
+          onLogout();
+          return;
+        }
+        // Sessão válida, mas a busca falhou por outro motivo (rede instável,
+        // backend indisponível). Mostra tela de erro explícita com opção de
+        // tentar de novo, em vez de seguir para o Dashboard sem dados reais.
+        setShop(null);
+        setShopLoadError(true);
+        console.warn("[loadData] Falha ao buscar barbershops para id=" + shopId + " após 3 tentativas, com sessão válida.");
       }
 
       setBarbers(ensureArray(brs).map(toBarber));
@@ -6344,7 +6330,6 @@ export default function App() {
     setSession(null);
     setUser(null);
     setShop(null);
-    safeSaveShop(null);
     resetTenantTheme();
     setClients([]);
     setServices([]);
@@ -6441,6 +6426,21 @@ export default function App() {
   }
 
   if (loading||!dataLoaded) return <><style>{CSS}</style><LoadingScreen/></>;
+
+  if (shopLoadError) return (
+    <>
+      <style>{CSS}</style>
+      <div style={{ display:"flex", height:"100vh", alignItems:"center", justifyContent:"center", background:T.bg, flexDirection:"column", gap:16, padding:"2rem", textAlign:"center" }}>
+        <AlertCircle size={32} color={T.danger} />
+        <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:20, color:T.text, letterSpacing:1 }}>NÃO FOI POSSÍVEL CARREGAR SEUS DADOS</div>
+        <div style={{ color:T.muted, fontSize:13, maxWidth:340 }}>Verifique sua conexão e tente novamente. Nenhum dado foi exibido para evitar mostrar informações incorretas.</div>
+        <div style={{ display:"flex", gap:10, marginTop:6 }}>
+          <Btn onClick={() => { setShopLoadError(false); setDataLoaded(false); loadData(auth.token, auth.profile); }}><RefreshCw size={14}/> Tentar novamente</Btn>
+          <Btn variant="ghost" onClick={onLogout}>Sair</Btn>
+        </div>
+      </div>
+    </>
+  );
 
   const isAdmin      = auth.profile.role === "admin";
   const myBarberId   = auth.profile.barber_id;
