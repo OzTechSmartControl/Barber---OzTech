@@ -5872,6 +5872,28 @@ const safeSaveAuth = (authData) => {
   } catch {}
 };
 
+// Cache local do nome/logo/tema da barbearia. Funciona como rede de
+// segurança: se a busca falhar por uma falha transitória (rede instável,
+// token renovando no meio da requisição), mostramos o último dado válido
+// em vez de cair no fallback genérico "Oz.Barber" — que é confuso e
+// preocupante para quem está logado (parece que perdeu acesso à própria
+// barbearia).
+const safeLoadShop = () => {
+  try {
+    const raw = localStorage.getItem("ozbarber_shop");
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+
+const safeSaveShop = (shopData) => {
+  try {
+    if (shopData) localStorage.setItem("ozbarber_shop", JSON.stringify(shopData));
+    else localStorage.removeItem("ozbarber_shop");
+  } catch {}
+};
+
 export default function App() {
 
   // ── Hooks devem vir ANTES de qualquer return condicional ──────
@@ -5901,7 +5923,7 @@ export default function App() {
   const [trialInfo,      setTrialInfo]      = useState(null); // { daysLeft, expiresAt }
   const [postPaymentPlan, setPostPaymentPlan] = useState(null);
   const [courtesyEmail,setCourtesyEmail]= useState(null);
-  const [shop,         setShop]         = useState(null);
+  const [shop,         setShop]         = useState(() => safeLoadShop());
 
   const isResetPasswordRoute =
     window.location.pathname === "/reset-password" ||
@@ -6153,6 +6175,7 @@ export default function App() {
       if (isSuperAdmin) {
         resetTenantTheme();
         setShop(null);
+        safeSaveShop(null);
         setClients([]);
         setServices([]);
         setBarbers([]);
@@ -6212,8 +6235,20 @@ export default function App() {
       ]);
 
       const currentShop = ensureArray(shopRows)[0] || null;
-      setShop(currentShop);
-      applyTenantTheme(currentShop);
+      if (currentShop) {
+        setShop(currentShop);
+        safeSaveShop(currentShop);
+        applyTenantTheme(currentShop);
+      } else {
+        // Busca falhou ou voltou vazia mesmo com shopId válido (não deveria
+        // acontecer — toda barbearia tem 1 linha própria). Mantém o último
+        // shop válido em cache/estado em vez de zerar para o fallback
+        // genérico "Oz.Barber".
+        const cached = safeLoadShop();
+        const fallbackShop = (cached && String(cached.id) === String(shopId)) ? cached : shop;
+        if (fallbackShop) applyTenantTheme(fallbackShop);
+        console.warn("[loadData] Falha ao buscar barbershops para id=" + shopId + " — mantendo último dado conhecido.");
+      }
 
       setBarbers(ensureArray(brs).map(toBarber));
       setClients(ensureArray(cls).map(toClient));
@@ -6293,6 +6328,7 @@ export default function App() {
     setSession(null);
     setUser(null);
     setShop(null);
+    safeSaveShop(null);
     resetTenantTheme();
     setClients([]);
     setServices([]);
