@@ -2208,10 +2208,13 @@ function AttendancesView({ attendances, setAttendances, clients, setClients, ser
 
           <Row>
             <FG label="Data" half>
-              <input style={{ ...inputSt, opacity: isAdmin ? 1 : 0.5, cursor: isAdmin ? "text" : "not-allowed" }}
-                type="date" value={form.date}
-                onChange={isAdmin ? e => setForm(f => ({ ...f, date: e.target.value })) : undefined}
-                readOnly={!isAdmin}/>
+              <label style={{ position:"relative", display:"block", cursor: isAdmin ? "pointer" : "not-allowed" }}>
+                <div style={{ ...inputSt, opacity: isAdmin ? 1 : 0.5 }}>{fDate(form.date)}</div>
+                <input style={{ position:"absolute", opacity:0, top:0, left:0, width:"100%", height:"100%", cursor: isAdmin ? "pointer" : "not-allowed" }}
+                  type="date" value={form.date}
+                  onChange={isAdmin ? e => setForm(f => ({ ...f, date: e.target.value })) : undefined}
+                  readOnly={!isAdmin}/>
+              </label>
             </FG>
             <FG label="Horário" half>
               <input style={{ ...inputSt, opacity: isAdmin ? 1 : 0.5, cursor: isAdmin ? "text" : "not-allowed" }}
