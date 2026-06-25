@@ -1548,7 +1548,7 @@ function AttendancesView({ attendances, setAttendances, clients, setClients, ser
     clientId: "", barberId: isAdmin ? "" : String(myBarberId||""),
     selectedServices: [], selectedProducts: [], payment: "PIX",
     date: today(), time: nowTime(), notes: "",
-    newClientName: "", newClientPhone: "",
+    newClientName: "", newClientPhone: "", newClientEmail: "",
   });
 
   const [filterFrom,   setFilterFrom]   = useState(() => { const d = new Date(); d.setDate(d.getDate() - d.getDay()); return d.toISOString().slice(0,10); });
@@ -1655,6 +1655,7 @@ function AttendancesView({ attendances, setAttendances, clients, setClients, ser
           name:         form.newClientName.trim(),
           whatsapp:     form.newClientPhone.trim() || null,
           phone:        form.newClientPhone.trim() || null,
+          email:        form.newClientEmail.trim() || null,
           barbershop_id: barbershopId,
           points:       0,
         }, token);
@@ -2093,7 +2094,7 @@ function AttendancesView({ attendances, setAttendances, clients, setClients, ser
         <Modal title="Novo Atendimento" onClose={() => setShowModal(false)}>
           <ErrorBar msg={err}/>
 
-          <FSelect label="Cliente" value={form.clientId} onChange={e => setForm(f => ({ ...f, clientId: e.target.value, newClientName: "", newClientPhone: "" }))}>
+          <FSelect label="Cliente" value={form.clientId} onChange={e => setForm(f => ({ ...f, clientId: e.target.value, newClientName: "", newClientPhone: "", newClientEmail: "" }))}>
             <option value="">Selecione o cliente</option>
             <option value="__new__">➕ Cadastrar novo cliente</option>
             {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -2112,6 +2113,10 @@ function AttendancesView({ attendances, setAttendances, clients, setClients, ser
                     onChange={e => setForm(f => ({ ...f, newClientPhone: e.target.value }))} />
                 </FG>
               </Row>
+              <FG label="E-mail (opcional)">
+                <input style={inputSt} type="email" placeholder="cliente@email.com" value={form.newClientEmail}
+                  onChange={e => setForm(f => ({ ...f, newClientEmail: e.target.value }))} />
+              </FG>
             </div>
           )}
 
@@ -2244,7 +2249,7 @@ function ClientsView({ clients, setClients, attendances, services, token, isAdmi
   const [selected, setSelected] = useState(null);
   const [saving, setSaving]     = useState(false);
   const [err, setErr]           = useState("");
-  const [form, setForm]         = useState({ name:"", phone:"", whatsapp:"", birthdate:"", notes:"", points:0 });
+  const [form, setForm]         = useState({ name:"", phone:"", whatsapp:"", email:"", birthdate:"", notes:"", points:0 });
   const setF = k => e => setForm(f=>({...f,[k]:e.target.value}));
 
   const filtered = clients.filter(c=>c.name.toLowerCase().includes(search.toLowerCase())||c.phone.includes(search));
@@ -2252,7 +2257,7 @@ function ClientsView({ clients, setClients, attendances, services, token, isAdmi
   const bdays = clients.filter(c=>c.birthdate&&+c.birthdate.slice(5,7)===birthMonth);
   const getHist = id => attendances.filter(a=>a.clientId===id).sort((a,b)=>b.date.localeCompare(a.date));
 
-  const openAdd = () => { setEditing(null); setForm({ name:"", phone:"", whatsapp:"", birthdate:"", notes:"", points:0 }); setShowModal(true); };
+  const openAdd = () => { setEditing(null); setForm({ name:"", phone:"", whatsapp:"", email:"", birthdate:"", notes:"", points:0 }); setShowModal(true); };
   const openEdit = (c,e) => { e?.stopPropagation(); setEditing(c.id); setForm({...c}); setShowModal(true); };
 
   const save = async () => {
@@ -2260,10 +2265,10 @@ function ClientsView({ clients, setClients, attendances, services, token, isAdmi
     setSaving(true); setErr("");
     try {
       if (editing) {
-        await api.update("clients", editing, { name:form.name, phone:form.phone, whatsapp:form.whatsapp, birthdate:form.birthdate||null, notes:form.notes, points:+form.points }, token);
+        await api.update("clients", editing, { name:form.name, phone:form.phone, whatsapp:form.whatsapp, email:form.email||null, birthdate:form.birthdate||null, notes:form.notes, points:+form.points }, token);
         setClients(cs=>cs.map(c=>c.id===editing?{...form,id:editing,points:+form.points}:c));
       } else {
-        const rows = await api.insert("clients", { name:form.name, phone:form.phone, whatsapp:form.whatsapp, birthdate:form.birthdate||null, notes:form.notes, points:+form.points||0, barbershop_id: barbershopId }, token);
+        const rows = await api.insert("clients", { name:form.name, phone:form.phone, whatsapp:form.whatsapp, email:form.email||null, birthdate:form.birthdate||null, notes:form.notes, points:+form.points||0, barbershop_id: barbershopId }, token);
         setClients(cs=>[toClient(rows[0]),...cs]);
       }
       setShowModal(false);
@@ -2354,6 +2359,7 @@ function ClientsView({ clients, setClients, attendances, services, token, isAdmi
             <FG label="Telefone" half><input style={inputSt} value={form.phone} onChange={setF("phone")} placeholder="11999999999"/></FG>
             <FG label="WhatsApp" half><input style={inputSt} value={form.whatsapp} onChange={setF("whatsapp")} placeholder="11999999999"/></FG>
           </Row>
+          <FInput label="E-mail (opcional)" type="email" value={form.email} onChange={setF("email")} placeholder="cliente@email.com"/>
           <Row>
             <FG label="Data de Nascimento" half><input style={inputSt} type="date" value={form.birthdate} onChange={setF("birthdate")}/></FG>
             <FG label="Pontos de fidelidade" half><input style={inputSt} type="number" value={form.points} onChange={setF("points")}/></FG>
