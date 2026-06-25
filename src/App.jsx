@@ -1654,7 +1654,6 @@ function AttendancesView({ attendances, setAttendances, clients, setClients, ser
         const newClientRows = await api.insert("clients", {
           name:         form.newClientName.trim(),
           whatsapp:     form.newClientPhone.trim() || null,
-          phone:        form.newClientPhone.trim() || null,
           email:        form.newClientEmail.trim() || null,
           barbershop_id: barbershopId,
           points:       0,
@@ -2249,26 +2248,26 @@ function ClientsView({ clients, setClients, attendances, services, token, isAdmi
   const [selected, setSelected] = useState(null);
   const [saving, setSaving]     = useState(false);
   const [err, setErr]           = useState("");
-  const [form, setForm]         = useState({ name:"", phone:"", whatsapp:"", email:"", birthdate:"", notes:"", points:0 });
+  const [form, setForm]         = useState({ name:"", whatsapp:"", email:"", birthdate:"", notes:"", points:0 });
   const setF = k => e => setForm(f=>({...f,[k]:e.target.value}));
 
-  const filtered = clients.filter(c=>c.name.toLowerCase().includes(search.toLowerCase())||c.phone.includes(search));
+  const filtered = clients.filter(c=>c.name.toLowerCase().includes(search.toLowerCase())||c.whatsapp.includes(search)||c.phone.includes(search));
   const birthMonth = new Date().getMonth()+1;
   const bdays = clients.filter(c=>c.birthdate&&+c.birthdate.slice(5,7)===birthMonth);
   const getHist = id => attendances.filter(a=>a.clientId===id).sort((a,b)=>b.date.localeCompare(a.date));
 
-  const openAdd = () => { setEditing(null); setForm({ name:"", phone:"", whatsapp:"", email:"", birthdate:"", notes:"", points:0 }); setShowModal(true); };
-  const openEdit = (c,e) => { e?.stopPropagation(); setEditing(c.id); setForm({...c}); setShowModal(true); };
+  const openAdd = () => { setEditing(null); setForm({ name:"", whatsapp:"", email:"", birthdate:"", notes:"", points:0 }); setShowModal(true); };
+  const openEdit = (c,e) => { e?.stopPropagation(); setEditing(c.id); setForm({...c, whatsapp:c.whatsapp||c.phone||""}); setShowModal(true); };
 
   const save = async () => {
     if (!form.name) return setErr("Nome é obrigatório.");
     setSaving(true); setErr("");
     try {
       if (editing) {
-        await api.update("clients", editing, { name:form.name, phone:form.phone, whatsapp:form.whatsapp, email:form.email||null, birthdate:form.birthdate||null, notes:form.notes, points:+form.points }, token);
+        await api.update("clients", editing, { name:form.name, whatsapp:form.whatsapp, email:form.email||null, birthdate:form.birthdate||null, notes:form.notes, points:+form.points }, token);
         setClients(cs=>cs.map(c=>c.id===editing?{...form,id:editing,points:+form.points}:c));
       } else {
-        const rows = await api.insert("clients", { name:form.name, phone:form.phone, whatsapp:form.whatsapp, email:form.email||null, birthdate:form.birthdate||null, notes:form.notes, points:+form.points||0, barbershop_id: barbershopId }, token);
+        const rows = await api.insert("clients", { name:form.name, whatsapp:form.whatsapp, email:form.email||null, birthdate:form.birthdate||null, notes:form.notes, points:+form.points||0, barbershop_id: barbershopId }, token);
         setClients(cs=>[toClient(rows[0]),...cs]);
       }
       setShowModal(false);
@@ -2291,14 +2290,14 @@ function ClientsView({ clients, setClients, attendances, services, token, isAdmi
       <div style={{ display:"grid", gridTemplateColumns:selected?"1fr 360px":"1fr", gap:"1.5rem" }}>
         <Card style={{ padding:0, overflowX:"auto" }}>
           <table style={{ width:"100%", minWidth:480, borderCollapse:"collapse", fontSize:13 }}>
-            <THead cols={["Nome","Telefone","Pontos","Total Gasto","Visitas",""]}/>
+            <THead cols={["Nome","WhatsApp","Pontos","Total Gasto","Visitas",""]}/>
             <tbody>
               {filtered.map(c=>{
                 const hist=getHist(c.id), spent=hist.reduce((s,a)=>s+a.price,0), sel=selected?.id===c.id;
                 return (
                   <tr key={c.id} onClick={()=>setSelected(sel?null:c)} style={{ borderTop:`1px solid ${T.borderLight}`, cursor:"pointer", background:sel?T.accentGlow:"transparent" }}>
                     <td style={{ padding:"10px 0.75rem", color:T.text, fontWeight:500 }}>{c.name}{bdays.find(b=>b.id===c.id)?" 🎂":""}</td>
-                    <td style={{ padding:"10px 0.75rem", color:T.muted }}>{c.phone}</td>
+                    <td style={{ padding:"10px 0.75rem", color:T.muted }}>{c.whatsapp||c.phone}</td>
                     <td style={{ padding:"10px 0.75rem" }}><Badge color={T.accent}>{c.points} pts</Badge></td>
                     <td style={{ padding:"10px 0.75rem", color:T.success, fontWeight:600 }}>{R$(spent)}</td>
                     <td style={{ padding:"10px 0.75rem", color:T.muted }}>{hist.length}×</td>
@@ -2324,7 +2323,8 @@ function ClientsView({ clients, setClients, attendances, services, token, isAdmi
                 </div>
               </div>
               <div style={{ fontSize:13, marginBottom:"1rem" }}>
-                {selected.phone&&<div style={{ color:T.muted, marginBottom:5, display:"flex", alignItems:"center", gap:6 }}><Phone size={13}/>{selected.phone}</div>}
+                {(selected.whatsapp||selected.phone)&&<div style={{ color:T.muted, marginBottom:5, display:"flex", alignItems:"center", gap:6 }}><Phone size={13}/>{selected.whatsapp||selected.phone}</div>}
+                {selected.email&&<div style={{ color:T.muted, marginBottom:5, display:"flex", alignItems:"center", gap:6 }}><Mail size={13}/>{selected.email}</div>}
                 {selected.birthdate&&<div style={{ color:T.muted, marginBottom:5 }}>🎂 {fDate(selected.birthdate)}</div>}
                 {selected.notes&&<div style={{ color:T.muted, background:T.surface, borderRadius:6, padding:"8px 10px", fontSize:12, marginTop:8 }}>📝 {selected.notes}</div>}
               </div>
@@ -2356,10 +2356,9 @@ function ClientsView({ clients, setClients, attendances, services, token, isAdmi
           <ErrorBar msg={err}/>
           <FInput label="Nome completo" value={form.name} onChange={setF("name")} placeholder="Nome do cliente"/>
           <Row>
-            <FG label="Telefone" half><input style={inputSt} value={form.phone} onChange={setF("phone")} placeholder="11999999999"/></FG>
             <FG label="WhatsApp" half><input style={inputSt} value={form.whatsapp} onChange={setF("whatsapp")} placeholder="11999999999"/></FG>
+            <FG label="E-mail (opcional)" half><input style={inputSt} type="email" value={form.email} onChange={setF("email")} placeholder="cliente@email.com"/></FG>
           </Row>
-          <FInput label="E-mail (opcional)" type="email" value={form.email} onChange={setF("email")} placeholder="cliente@email.com"/>
           <Row>
             <FG label="Data de Nascimento" half><input style={inputSt} type="date" value={form.birthdate} onChange={setF("birthdate")}/></FG>
             <FG label="Pontos de fidelidade" half><input style={inputSt} type="number" value={form.points} onChange={setF("points")}/></FG>
