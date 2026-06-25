@@ -81,7 +81,7 @@ const FEATURES = [
   {
     icon: Users,
     title: "Clientes",
-    desc: "Histórico completo de cada cliente, pontos de fidelidade e dados de contato centralizados.",
+    desc: "Histórico completo de cada cliente e dados de contato centralizados.",
   },
   {
     icon: Smartphone,

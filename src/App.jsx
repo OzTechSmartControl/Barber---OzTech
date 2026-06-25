@@ -187,7 +187,7 @@ const accessDeniedMessage = (reason) => {
 // ── TRANSFORMS ────────────────────────────────────────────────
 const toAtt  = a => ({ id: a.id, clientId: a.client_id, barberId: a.barber_id, serviceId: a.service_id, price: +a.price, servicesPrice: +(a.services_price ?? a.price), payment: a.payment, date: a.date, time: a.time || "", notes: a.notes || "", extraServices: Array.isArray(a.extra_services) ? a.extra_services : [], productsSold: Array.isArray(a.products_sold) ? a.products_sold : [], appointmentId: a.appointment_id || null, source: a.source || "manual", barberCommissionPct: a.barber_commission_pct != null ? +a.barber_commission_pct : null });
 const fromAtt = a => ({ client_id: +a.clientId||0, barber_id: +a.barberId||0, service_id: +a.serviceId||0, price: +a.price, payment: a.payment, date: a.date, time: a.time, notes: a.notes, extra_services: a.extraServices||[] });
-const toClient = c => ({ id: c.id, name: c.name, phone: c.phone || "", whatsapp: c.whatsapp || "", birthdate: c.birthdate || "", notes: c.notes || "", points: +c.points, email: c.email || "" });
+const toClient = c => ({ id: c.id, name: c.name, phone: c.phone || "", whatsapp: c.whatsapp || "", birthdate: c.birthdate || "", notes: c.notes || "", email: c.email || "" });
 const toBarber = b => ({ id: b.id, name: b.name, phone: b.phone || "", commission: +b.commission, status: b.status, userId: b.user_id, notificationEmail: b.notification_email || "", photoUrl: b.photo_url || "" });
 const toService = s => ({ id: s.id, name: s.name, price: +s.price, duration: +s.duration, active: s.active });
 const toExpense     = e => ({ id: e.id, desc: e.description, amount: +e.amount, date: e.date, category: e.category || "" });
@@ -2248,7 +2248,7 @@ function ClientsView({ clients, setClients, attendances, services, token, isAdmi
   const [selected, setSelected] = useState(null);
   const [saving, setSaving]     = useState(false);
   const [err, setErr]           = useState("");
-  const [form, setForm]         = useState({ name:"", whatsapp:"", email:"", birthdate:"", notes:"", points:0 });
+  const [form, setForm]         = useState({ name:"", whatsapp:"", email:"", birthdate:"", notes:"" });
   const setF = k => e => setForm(f=>({...f,[k]:e.target.value}));
 
   const filtered = clients.filter(c=>c.name.toLowerCase().includes(search.toLowerCase())||c.whatsapp.includes(search)||c.phone.includes(search));
@@ -2256,7 +2256,7 @@ function ClientsView({ clients, setClients, attendances, services, token, isAdmi
   const bdays = clients.filter(c=>c.birthdate&&+c.birthdate.slice(5,7)===birthMonth);
   const getHist = id => attendances.filter(a=>a.clientId===id).sort((a,b)=>b.date.localeCompare(a.date));
 
-  const openAdd = () => { setEditing(null); setForm({ name:"", whatsapp:"", email:"", birthdate:"", notes:"", points:0 }); setShowModal(true); };
+  const openAdd = () => { setEditing(null); setForm({ name:"", whatsapp:"", email:"", birthdate:"", notes:"" }); setShowModal(true); };
   const openEdit = (c,e) => { e?.stopPropagation(); setEditing(c.id); setForm({...c, whatsapp:c.whatsapp||c.phone||""}); setShowModal(true); };
 
   const save = async () => {
@@ -2264,10 +2264,10 @@ function ClientsView({ clients, setClients, attendances, services, token, isAdmi
     setSaving(true); setErr("");
     try {
       if (editing) {
-        await api.update("clients", editing, { name:form.name, whatsapp:form.whatsapp, email:form.email||null, birthdate:form.birthdate||null, notes:form.notes, points:+form.points }, token);
-        setClients(cs=>cs.map(c=>c.id===editing?{...form,id:editing,points:+form.points}:c));
+        await api.update("clients", editing, { name:form.name, whatsapp:form.whatsapp, email:form.email||null, birthdate:form.birthdate||null, notes:form.notes }, token);
+        setClients(cs=>cs.map(c=>c.id===editing?{...form,id:editing}:c));
       } else {
-        const rows = await api.insert("clients", { name:form.name, whatsapp:form.whatsapp, email:form.email||null, birthdate:form.birthdate||null, notes:form.notes, points:+form.points||0, barbershop_id: barbershopId }, token);
+        const rows = await api.insert("clients", { name:form.name, whatsapp:form.whatsapp, email:form.email||null, birthdate:form.birthdate||null, notes:form.notes, points:0, barbershop_id: barbershopId }, token);
         setClients(cs=>[toClient(rows[0]),...cs]);
       }
       setShowModal(false);
@@ -2290,7 +2290,7 @@ function ClientsView({ clients, setClients, attendances, services, token, isAdmi
       <div style={{ display:"grid", gridTemplateColumns:selected?"1fr 360px":"1fr", gap:"1.5rem" }}>
         <Card style={{ padding:0, overflowX:"auto" }}>
           <table style={{ width:"100%", minWidth:480, borderCollapse:"collapse", fontSize:13 }}>
-            <THead cols={["Nome","WhatsApp","Pontos","Total Gasto","Visitas",""]}/>
+            <THead cols={["Nome","WhatsApp","Total Gasto","Visitas",""]}/>
             <tbody>
               {filtered.map(c=>{
                 const hist=getHist(c.id), spent=hist.reduce((s,a)=>s+a.price,0), sel=selected?.id===c.id;
@@ -2298,7 +2298,6 @@ function ClientsView({ clients, setClients, attendances, services, token, isAdmi
                   <tr key={c.id} onClick={()=>setSelected(sel?null:c)} style={{ borderTop:`1px solid ${T.borderLight}`, cursor:"pointer", background:sel?T.accentGlow:"transparent" }}>
                     <td style={{ padding:"10px 0.75rem", color:T.text, fontWeight:500 }}>{c.name}{bdays.find(b=>b.id===c.id)?" 🎂":""}</td>
                     <td style={{ padding:"10px 0.75rem", color:T.muted }}>{c.whatsapp||c.phone}</td>
-                    <td style={{ padding:"10px 0.75rem" }}><Badge color={T.accent}>{c.points} pts</Badge></td>
                     <td style={{ padding:"10px 0.75rem", color:T.success, fontWeight:600 }}>{R$(spent)}</td>
                     <td style={{ padding:"10px 0.75rem", color:T.muted }}>{hist.length}×</td>
                     <td style={{ padding:"10px 0.75rem", textAlign:"right" }}>
@@ -2328,8 +2327,8 @@ function ClientsView({ clients, setClients, attendances, services, token, isAdmi
                 {selected.birthdate&&<div style={{ color:T.muted, marginBottom:5 }}>🎂 {fDate(selected.birthdate)}</div>}
                 {selected.notes&&<div style={{ color:T.muted, background:T.surface, borderRadius:6, padding:"8px 10px", fontSize:12, marginTop:8 }}>📝 {selected.notes}</div>}
               </div>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:"1rem" }}>
-                {[["PONTOS",selected.points,T.accent],["TOTAL GASTO",R$(spent),T.success],["VISITAS",hist.length+"×",T.text],["TICKET MÉD.",R$(hist.length?spent/hist.length:0),T.info]].map(([l,v,c])=>(
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:"1rem" }}>
+                {[["TOTAL GASTO",R$(spent),T.success],["VISITAS",hist.length+"×",T.text],["TICKET MÉD.",R$(hist.length?spent/hist.length:0),T.info]].map(([l,v,c])=>(
                   <div key={l} style={{ background:T.surface, borderRadius:8, padding:"10px", textAlign:"center" }}>
                     <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:22, color:c }}>{v}</div>
                     <div style={{ fontSize:10, color:T.muted, textTransform:"uppercase", letterSpacing:0.5 }}>{l}</div>
@@ -2359,10 +2358,7 @@ function ClientsView({ clients, setClients, attendances, services, token, isAdmi
             <FG label="WhatsApp" half><input style={inputSt} value={form.whatsapp} onChange={setF("whatsapp")} placeholder="11999999999"/></FG>
             <FG label="E-mail (opcional)" half><input style={inputSt} type="email" value={form.email} onChange={setF("email")} placeholder="cliente@email.com"/></FG>
           </Row>
-          <Row>
-            <FG label="Data de Nascimento" half><input style={inputSt} type="date" value={form.birthdate} onChange={setF("birthdate")}/></FG>
-            <FG label="Pontos de fidelidade" half><input style={inputSt} type="number" value={form.points} onChange={setF("points")}/></FG>
-          </Row>
+          <FG label="Data de Nascimento"><input style={inputSt} type="date" value={form.birthdate} onChange={setF("birthdate")}/></FG>
           <FArea label="Observações" value={form.notes} onChange={setF("notes")}/>
           <Row g="0.5rem" style={{ justifyContent:"flex-end" }}>
             <Btn variant="ghost" onClick={()=>setShowModal(false)}>Cancelar</Btn>
