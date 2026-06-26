@@ -1544,7 +1544,6 @@ function MeuPlanoView({ token, userEmail, profile, onRenew }) {
 
 // ── DOWNLOAD APP ──────────────────────────────────────────────
 function DownloadAppView({ onRefresh }) {
-  const origin = window.location.origin;
   return (
     <div>
       <PageHeader title="Download App" sub="Instale o Oz.Barber no seu celular" onRefresh={onRefresh}/>
@@ -1572,13 +1571,16 @@ function DownloadAppView({ onRefresh }) {
           <Download size={16}/> Baixar APK
         </a>
 
-        <div style={{ fontSize:11, fontWeight:700, color:T.muted, textTransform:"uppercase", letterSpacing:0.8, marginBottom:10 }}>Como instalar</div>
+        <div style={{ fontSize:11, fontWeight:700, color:T.muted, textTransform:"uppercase", letterSpacing:0.8, marginBottom:10 }}>Como instalar o aplicativo</div>
         <ol style={{ margin:0, paddingLeft:18, color:T.mutedLight, fontSize:13, lineHeight:1.85 }}>
           <li>Toque no botão <b>Baixar APK</b> acima.</li>
-          <li>Quando o download terminar, abra o arquivo (geralmente aparece uma notificação, ou acesse a pasta "Download" do celular).</li>
-          <li>O Android pode mostrar um aviso de "Instalação bloqueada" ou "Apps desconhecidos não permitidos" — toque em <b>Configurações</b> dentro do próprio aviso e permita a instalação. É uma proteção padrão para apps fora da Play Store; só precisa fazer isso uma vez.</li>
-          <li>Volte à tela anterior, toque em <b>Instalar</b> e depois em <b>Abrir</b>.</li>
+          <li>Após o download, abra o arquivo. Ele geralmente aparece na barra de notificações do celular, mas também pode ser encontrado na pasta <b>Downloads</b>.</li>
+          <li>O Android pode exibir um aviso como <i>"Instalação bloqueada"</i> ou <i>"Apps desconhecidos não permitidos"</i>. Nesse caso, toque em <b>Configurações</b> dentro do próprio aviso e permita a instalação do aplicativo.</li>
+          <li>Volte para a tela anterior, toque em <b>Instalar</b> e, ao finalizar, toque em <b>Abrir</b>.</li>
         </ol>
+        <div style={{ background:T.accentGlow, border:`1px solid ${T.accent}33`, borderRadius:8, padding:"0.75rem", fontSize:12, color:T.mutedLight, marginTop:14 }}>
+          💡 Essa é uma proteção padrão do Android para aplicativos instalados fora da Play Store. A permissão precisa ser liberada apenas uma vez.
+        </div>
       </Card>
 
       <Card>
@@ -1594,7 +1596,7 @@ function DownloadAppView({ onRefresh }) {
 
         <div style={{ fontSize:11, fontWeight:700, color:T.muted, textTransform:"uppercase", letterSpacing:0.8, marginBottom:10 }}>Como adicionar à tela inicial</div>
         <ol style={{ margin:0, paddingLeft:18, color:T.mutedLight, fontSize:13, lineHeight:1.85 }}>
-          <li>Abra este mesmo endereço (<b>{origin}</b>) no navegador <b>Safari</b> — precisa ser o Safari; outros navegadores do iPhone não têm esse recurso.</li>
+          <li>Abra este mesmo endereço (<b>https://ozbarber.oztechsmartcontrol.com.br</b>) no navegador <b>Safari</b> — precisa ser o Safari; outros navegadores do iPhone não têm esse recurso.</li>
           <li>Toque no ícone de Compartilhar (quadrado com uma seta para cima) na barra inferior.</li>
           <li>Role as opções e toque em <b>"Adicionar à Tela de Início"</b>.</li>
           <li>Toque em <b>Adicionar</b>. Um ícone do Oz.Barber aparece na tela inicial, abrindo em tela cheia, como um aplicativo — sem precisar da App Store.</li>
