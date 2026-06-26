@@ -249,6 +249,7 @@ function Navbar({ onLogin, onSubscribe }) {
 }
 
 function HeroSection({ onSubscribe, onLogin }) {
+  const isAndroid = /android/i.test(navigator.userAgent);
   return (
     <section style={{
       padding: "88px 0 60px",
@@ -347,6 +348,21 @@ function HeroSection({ onSubscribe, onLogin }) {
                 </div>
               ))}
             </div>
+
+            {/* Download do app Android (só aparece para visitantes em dispositivo Android) */}
+            {isAndroid && (
+              <a
+                href="/downloads/Oz.Barber.apk"
+                download
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 8,
+                  marginTop: "1.1rem", color: "#43d18a", fontSize: 13, fontWeight: 700,
+                  textDecoration: "none", fontFamily: "'DM Sans', sans-serif",
+                }}
+              >
+                <Smartphone size={15} /> Baixar app para Android (APK)
+              </a>
+            )}
           </div>
 
           {/* ── Coluna direita — Dashboard ── */}

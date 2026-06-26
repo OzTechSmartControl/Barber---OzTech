@@ -1144,6 +1144,51 @@ const TrialBanner = ({ daysLeft, onSubscribe }) => {
   );
 };
 
+const AndroidAppBanner = ({ onDismiss }) => (
+  <div style={{
+    display:        "flex",
+    alignItems:     "center",
+    justifyContent: "space-between",
+    gap:            12,
+    padding:        "0.55rem 1.25rem",
+    background:     "#43d18a14",
+    borderBottom:   "1px solid #43d18a33",
+    flexShrink:     0,
+    flexWrap:       "wrap",
+  }}>
+    <span style={{ fontSize: 12, fontWeight: 700, color: "#2fae72", lineHeight: 1.4 }}>
+      📲 Instale o app do Oz.Barber no seu Android para uma experiência melhor.
+    </span>
+    <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+      <a
+        href="/downloads/Oz.Barber.apk"
+        download
+        style={{
+          background:  "#43d18a",
+          color:       "#061018",
+          border:      "none",
+          borderRadius: 7,
+          padding:     "0.32rem 0.75rem",
+          fontSize:    11,
+          fontWeight:  900,
+          fontFamily:  "'DM Sans', sans-serif",
+          whiteSpace:  "nowrap",
+          textDecoration: "none",
+        }}
+      >
+        Baixar App
+      </a>
+      <button
+        onClick={onDismiss}
+        title="Não mostrar de novo"
+        style={{ background: "none", border: "none", color: "#2fae72", cursor: "pointer", display: "flex", padding: 2 }}
+      >
+        <X size={14}/>
+      </button>
+    </div>
+  </div>
+);
+
 // ── LOADING SCREEN ────────────────────────────────────────────
 const LoadingScreen = () => (
   <div style={{ display: "flex", height: "100vh", alignItems: "center", justifyContent: "center", background: T.bg, flexDirection: "column", gap: 16 }}>
@@ -5898,7 +5943,11 @@ export default function App() {
 
   // ── Hooks devem vir ANTES de qualquer return condicional ──────
   const isMobile   = useIsMobile();
+  const isAndroid  = /android/i.test(navigator.userAgent);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [androidBannerDismissed, setAndroidBannerDismissed] = useState(
+    () => localStorage.getItem("oz_android_banner_dismissed") === "1"
+  );
 
   const [session, setSession] = useState(null);
   const [user, setUser] = useState(null);
@@ -6564,6 +6613,16 @@ export default function App() {
           <TrialBanner
             daysLeft={trialInfo.daysLeft}
             onSubscribe={() => { setShowPlans(true); }}
+          />
+        )}
+
+        {/* Banner de download do app Android */}
+        {isAndroid && !isSuperAdmin && !androidBannerDismissed && (
+          <AndroidAppBanner
+            onDismiss={() => {
+              setAndroidBannerDismissed(true);
+              localStorage.setItem("oz_android_banner_dismissed", "1");
+            }}
           />
         )}
 
