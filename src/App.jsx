@@ -1144,51 +1144,6 @@ const TrialBanner = ({ daysLeft, onSubscribe }) => {
   );
 };
 
-const AndroidAppBanner = ({ onDismiss }) => (
-  <div style={{
-    display:        "flex",
-    alignItems:     "center",
-    justifyContent: "space-between",
-    gap:            12,
-    padding:        "0.55rem 1.25rem",
-    background:     "#43d18a14",
-    borderBottom:   "1px solid #43d18a33",
-    flexShrink:     0,
-    flexWrap:       "wrap",
-  }}>
-    <span style={{ fontSize: 12, fontWeight: 700, color: "#2fae72", lineHeight: 1.4 }}>
-      📲 Instale o app do Oz.Barber no seu Android para uma experiência melhor.
-    </span>
-    <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-      <a
-        href="/downloads/Oz.Barber.apk"
-        download
-        style={{
-          background:  "#43d18a",
-          color:       "#061018",
-          border:      "none",
-          borderRadius: 7,
-          padding:     "0.32rem 0.75rem",
-          fontSize:    11,
-          fontWeight:  900,
-          fontFamily:  "'DM Sans', sans-serif",
-          whiteSpace:  "nowrap",
-          textDecoration: "none",
-        }}
-      >
-        Baixar App
-      </a>
-      <button
-        onClick={onDismiss}
-        title="Não mostrar de novo"
-        style={{ background: "none", border: "none", color: "#2fae72", cursor: "pointer", display: "flex", padding: 2 }}
-      >
-        <X size={14}/>
-      </button>
-    </div>
-  </div>
-);
-
 // ── LOADING SCREEN ────────────────────────────────────────────
 const LoadingScreen = () => (
   <div style={{ display: "flex", height: "100vh", alignItems: "center", justifyContent: "center", background: T.bg, flexDirection: "column", gap: 16 }}>
@@ -1583,6 +1538,68 @@ function MeuPlanoView({ token, userEmail, profile, onRenew }) {
           <Btn onClick={onRenew}><CreditCard size={14}/> Ver planos</Btn>
         </Card>
       )}
+    </div>
+  );
+}
+
+// ── DOWNLOAD APP ──────────────────────────────────────────────
+function DownloadAppView({ onRefresh }) {
+  const origin = window.location.origin;
+  return (
+    <div>
+      <PageHeader title="Download App" sub="Instale o Oz.Barber no seu celular" onRefresh={onRefresh}/>
+
+      <Card style={{ marginBottom:"1.25rem" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:"1.25rem" }}>
+          <div style={{ background:"#43d18a18", borderRadius:12, padding:10, display:"flex" }}>
+            <Smartphone size={19} color="#43d18a" />
+          </div>
+          <div>
+            <div style={{ color:T.text, fontWeight:800, fontSize:15 }}>Android</div>
+            <div style={{ color:T.muted, fontSize:12, marginTop:2 }}>Baixe e instale o app diretamente no seu celular.</div>
+          </div>
+        </div>
+
+        <a
+          href="/downloads/Oz.Barber.apk"
+          download
+          style={{
+            display:"inline-flex", alignItems:"center", gap:8, background:"#43d18a", color:"#061018",
+            border:"none", borderRadius:10, padding:"0.75rem 1.4rem", fontSize:14, fontWeight:800,
+            textDecoration:"none", fontFamily:"'DM Sans', sans-serif", marginBottom:"1.5rem",
+          }}
+        >
+          <Download size={16}/> Baixar APK
+        </a>
+
+        <div style={{ fontSize:11, fontWeight:700, color:T.muted, textTransform:"uppercase", letterSpacing:0.8, marginBottom:10 }}>Como instalar</div>
+        <ol style={{ margin:0, paddingLeft:18, color:T.mutedLight, fontSize:13, lineHeight:1.85 }}>
+          <li>Toque no botão <b>Baixar APK</b> acima.</li>
+          <li>Quando o download terminar, abra o arquivo (geralmente aparece uma notificação, ou acesse a pasta "Download" do celular).</li>
+          <li>O Android pode mostrar um aviso de "Instalação bloqueada" ou "Apps desconhecidos não permitidos" — toque em <b>Configurações</b> dentro do próprio aviso e permita a instalação. É uma proteção padrão para apps fora da Play Store; só precisa fazer isso uma vez.</li>
+          <li>Volte à tela anterior, toque em <b>Instalar</b> e depois em <b>Abrir</b>.</li>
+        </ol>
+      </Card>
+
+      <Card>
+        <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:"1.25rem" }}>
+          <div style={{ background:`${T.accent}18`, borderRadius:12, padding:10, display:"flex" }}>
+            <Smartphone size={19} color={T.accent} />
+          </div>
+          <div>
+            <div style={{ color:T.text, fontWeight:800, fontSize:15 }}>iPhone (iOS)</div>
+            <div style={{ color:T.muted, fontSize:12, marginTop:2 }}>A Apple não permite instalar apps fora da App Store — use o atalho abaixo, funciona como um aplicativo normal.</div>
+          </div>
+        </div>
+
+        <div style={{ fontSize:11, fontWeight:700, color:T.muted, textTransform:"uppercase", letterSpacing:0.8, marginBottom:10 }}>Como adicionar à tela inicial</div>
+        <ol style={{ margin:0, paddingLeft:18, color:T.mutedLight, fontSize:13, lineHeight:1.85 }}>
+          <li>Abra este mesmo endereço (<b>{origin}</b>) no navegador <b>Safari</b> — precisa ser o Safari; outros navegadores do iPhone não têm esse recurso.</li>
+          <li>Toque no ícone de Compartilhar (quadrado com uma seta para cima) na barra inferior.</li>
+          <li>Role as opções e toque em <b>"Adicionar à Tela de Início"</b>.</li>
+          <li>Toque em <b>Adicionar</b>. Um ícone do Oz.Barber aparece na tela inicial, abrindo em tela cheia, como um aplicativo — sem precisar da App Store.</li>
+        </ol>
+      </Card>
     </div>
   );
 }
@@ -5425,6 +5442,7 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
           { id:"settings",   label:"Configurações", Icon:Settings },
           { id:"meuPlano",   label:"Meu Plano",     Icon:Shield },
         ] : []),
+        { id:"downloadApp", label:"Download App",  Icon:Download },
       ];
 
   const shopName = isSuperAdmin ? "Oz.Barber" : (shop?.name || "Oz.Barber");
@@ -5943,11 +5961,7 @@ export default function App() {
 
   // ── Hooks devem vir ANTES de qualquer return condicional ──────
   const isMobile   = useIsMobile();
-  const isAndroid  = /android/i.test(navigator.userAgent);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [androidBannerDismissed, setAndroidBannerDismissed] = useState(
-    () => localStorage.getItem("oz_android_banner_dismissed") === "1"
-  );
 
   const [session, setSession] = useState(null);
   const [user, setUser] = useState(null);
@@ -6535,6 +6549,7 @@ export default function App() {
         reports:     <ReportsView attendances={finalizedAtts} clients={clients} services={services} barbers={barbers} expenses={expenses} shop={shop} isMobile={isMobile} onRefresh={() => loadData(tok, auth.profile)}/>,
         settings:    <SettingsView token={tok} shop={shop} onShopUpdated={(updatedShop) => { setShop(updatedShop); applyTenantTheme(updatedShop, themeMode); }} themeMode={themeMode} onToggleTheme={toggleTheme}/>,
         meuPlano:    <MeuPlanoView token={tok} userEmail={auth.user?.email} profile={auth.profile} onRenew={() => setShowPlans(true)} />,
+        downloadApp: <DownloadAppView onRefresh={() => loadData(tok, auth.profile)}/>,
       };
 
   const shopDisplayName = isSuperAdmin ? "Oz.Barber" : (shop?.name || "Oz.Barber");
@@ -6613,16 +6628,6 @@ export default function App() {
           <TrialBanner
             daysLeft={trialInfo.daysLeft}
             onSubscribe={() => { setShowPlans(true); }}
-          />
-        )}
-
-        {/* Banner de download do app Android */}
-        {isAndroid && !isSuperAdmin && !androidBannerDismissed && (
-          <AndroidAppBanner
-            onDismiss={() => {
-              setAndroidBannerDismissed(true);
-              localStorage.setItem("oz_android_banner_dismissed", "1");
-            }}
           />
         )}
 
