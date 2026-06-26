@@ -1579,7 +1579,7 @@ function DownloadAppView({ onRefresh }) {
           <li>Volte para a tela anterior, toque em <b>Instalar</b> e, ao finalizar, toque em <b>Abrir</b>.</li>
         </ol>
         <div style={{ background:T.accentGlow, border:`1px solid ${T.accent}33`, borderRadius:8, padding:"0.75rem", fontSize:12, color:T.mutedLight, marginTop:14 }}>
-          💡 Essa é uma proteção padrão do Android para aplicativos instalados fora da Play Store. A permissão precisa ser liberada apenas uma vez.
+          Essa é uma proteção padrão do Android para aplicativos instalados fora da Play Store. A permissão precisa ser liberada apenas uma vez.
         </div>
       </Card>
 
