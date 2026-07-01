@@ -1788,9 +1788,19 @@ function AttendancesView({ attendances, setAttendances, clients, setClients, ser
     setAttendances(prev => prev.filter(a => a.id !== id));
   };
 
+  const canFinalize = (a) => {
+    const td = today();
+    if (a.date > td) return false;
+    if (a.date < td) return true;
+    if (!a.time) return true;
+    return nowTime() >= a.time;
+  };
+
   // Finaliza atendimento Pendente via RPC SECURITY DEFINER (bypassa RLS para admin e barbeiro)
   const finalize = async (id) => {
     setFinSaving(true);
+    const att = attendances.find(a => a.id === id);
+    if (!att || !canFinalize(att)) { setFinSaving(false); return; }
     try {
       await fetch(`${SUPABASE_URL}/rest/v1/rpc/finalize_attendance`, {
         method: "POST",
@@ -1894,7 +1904,10 @@ function AttendancesView({ attendances, setAttendances, clients, setClients, ser
           </div>
         </div>
         <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4, flexShrink:0 }}>
-          {isPending && <Btn sm onClick={() => { setFinalModal(a.id); setFinPay("PIX"); }}><Check size={11}/> Finalizar</Btn>}
+          {isPending && (canFinalize(a)
+            ? <Btn sm onClick={() => { setFinalModal(a.id); setFinPay("PIX"); }}><Check size={11}/> Finalizar</Btn>
+            : <Btn sm variant="ghost" disabled style={{ opacity:0.45, cursor:"not-allowed" }} title="Só é possível finalizar no dia do atendimento, após o horário agendado"><Check size={11}/> Finalizar</Btn>
+          )}
           <button onClick={() => del(a.id)} style={{ background:"none", border:"none", color:T.muted, cursor:"pointer", display:"inline-flex" }}><Trash2 size={14}/></button>
         </div>
       </div>
@@ -2123,7 +2136,10 @@ function AttendancesView({ attendances, setAttendances, clients, setClients, ser
                     <td style={{ ...stCell, color:T.muted, fontSize:12 }}>{fDate(a.date)}</td>
                     <td style={{ ...stCell, textAlign:"right" }}>
                       <div style={{ display:"flex", gap:6, justifyContent:"flex-end", alignItems:"center" }}>
-                        {a.payment === "Pendente" && <Btn sm onClick={() => { setFinalModal(a.id); setFinPay("PIX"); }}><Check size={12}/> Finalizar</Btn>}
+                        {a.payment === "Pendente" && (canFinalize(a)
+                          ? <Btn sm onClick={() => { setFinalModal(a.id); setFinPay("PIX"); }}><Check size={12}/> Finalizar</Btn>
+                          : <Btn sm variant="ghost" disabled style={{ opacity:0.45, cursor:"not-allowed" }} title="Só é possível finalizar no dia do atendimento, após o horário agendado"><Check size={12}/> Finalizar</Btn>
+                        )}
                         <button onClick={() => del(a.id)} style={{ background:"none", border:"none", color:T.muted, cursor:"pointer", display:"inline-flex" }}><Trash2 size={14}/></button>
                       </div>
                     </td>
