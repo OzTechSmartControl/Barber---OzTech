@@ -4360,7 +4360,7 @@ function SettingsView({ token, shop, onShopUpdated, themeMode = "dark", onToggle
                 width:110,
                 height:110,
                 borderRadius:18,
-                background:"#fff",
+                background:T.card,
                 border:`1px solid ${T.border}`,
                 display:"flex",
                 alignItems:"center",
@@ -5547,18 +5547,18 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
             >
               <div
                 style={{
-                  width:80,
-                  height:80,
-                  minWidth:80,
-                  borderRadius:16,
-                  background:"#fff",
+                  width:96,
+                  height:96,
+                  minWidth:96,
+                  borderRadius:0,
+                  background:"transparent",
                   border:"none",
                   display:"flex",
                   alignItems:"center",
                   justifyContent:"center",
                   overflow:"hidden",
                   flexShrink:0,
-                  padding:4,
+                  padding:0,
                   boxShadow:"none",
                 }}
               >
@@ -5618,14 +5618,14 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
               width:50,
               height:50,
               minWidth:50,
-              borderRadius:16,
-              background:isSuperAdmin ? `${T.accent}14` : "#fff",
+              borderRadius:isSuperAdmin ? 16 : 0,
+              background:isSuperAdmin ? `${T.accent}14` : "transparent",
               border:isSuperAdmin ? `1px solid ${T.accent}24` : "none",
               display:"flex",
               alignItems:"center",
               justifyContent:"center",
               overflow:"hidden",
-              padding:isSuperAdmin ? 0 : 3,
+              padding:0,
             }}
           >
             <img src={logoUrl} alt={shopName} style={{ width:"100%", height:"100%", objectFit:"contain", display:"block" }} />
