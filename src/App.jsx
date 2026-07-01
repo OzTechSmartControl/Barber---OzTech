@@ -1793,7 +1793,8 @@ function AttendancesView({ attendances, setAttendances, clients, setClients, ser
     if (a.date > td) return false;
     if (a.date < td) return true;
     if (!a.time) return true;
-    return nowTime() >= a.time;
+    const toMin = (t) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
+    return toMin(nowTime()) >= toMin(a.time) - 60;
   };
 
   // Finaliza atendimento Pendente via RPC SECURITY DEFINER (bypassa RLS para admin e barbeiro)
