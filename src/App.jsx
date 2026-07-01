@@ -4360,7 +4360,7 @@ function SettingsView({ token, shop, onShopUpdated, themeMode = "dark", onToggle
                 width:110,
                 height:110,
                 borderRadius:18,
-                background:T.card,
+                background:"#fff",
                 border:`1px solid ${T.border}`,
                 display:"flex",
                 alignItems:"center",
@@ -5551,14 +5551,14 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
                   height:80,
                   minWidth:80,
                   borderRadius:16,
-                  background:"transparent",
+                  background:"#fff",
                   border:"none",
                   display:"flex",
                   alignItems:"center",
                   justifyContent:"center",
-                  overflow:"visible",
+                  overflow:"hidden",
                   flexShrink:0,
-                  padding:0,
+                  padding:4,
                   boxShadow:"none",
                 }}
               >
@@ -5619,13 +5619,13 @@ function Sidebar({ view, setView, collapsed, setCollapsed, isAdmin, isSuperAdmin
               height:50,
               minWidth:50,
               borderRadius:16,
-              background:isSuperAdmin ? `${T.accent}14` : "transparent",
+              background:isSuperAdmin ? `${T.accent}14` : "#fff",
               border:isSuperAdmin ? `1px solid ${T.accent}24` : "none",
               display:"flex",
               alignItems:"center",
               justifyContent:"center",
-              overflow:"visible",
-              padding:0,
+              overflow:"hidden",
+              padding:isSuperAdmin ? 0 : 3,
             }}
           >
             <img src={logoUrl} alt={shopName} style={{ width:"100%", height:"100%", objectFit:"contain", display:"block" }} />
