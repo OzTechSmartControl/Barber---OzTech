@@ -31,14 +31,21 @@ export const compressImage = (file, maxDim = 800, quality = 0.82) =>
       canvas.height = height;
       canvas.getContext("2d").drawImage(img, 0, 0, width, height);
 
+      // PNG e WebP suportam transparência — preservar o formato original para não perder o canal alpha
+      const hasPng  = file.type === "image/png";
+      const hasWebp = file.type === "image/webp";
+      const mime    = hasPng ? "image/png" : hasWebp ? "image/webp" : "image/jpeg";
+      const ext     = hasPng ? ".png"      : hasWebp ? ".webp"      : ".jpg";
+      const q       = hasPng ? undefined   : quality;
+
       canvas.toBlob(
         (blob) => {
           if (!blob) { resolve(file); return; }
-          const newName = file.name.replace(/\.\w+$/, "") + ".jpg";
-          resolve(new File([blob], newName, { type: "image/jpeg" }));
+          const newName = file.name.replace(/\.\w+$/, "") + ext;
+          resolve(new File([blob], newName, { type: mime }));
         },
-        "image/jpeg",
-        quality
+        mime,
+        q
       );
     };
 
